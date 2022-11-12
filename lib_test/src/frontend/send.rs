@@ -1,0 +1,2 @@
+fn encode() {}
+fn deliver() {}
