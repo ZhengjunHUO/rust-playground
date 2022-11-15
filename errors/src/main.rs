@@ -4,11 +4,17 @@ use std::io::{self,ErrorKind,Write,Read,Seek};
 fn main() {
     // file name typed string slice
     let filename = "foo.txt";
-    let content = read_file(filename).expect("Unable to read file.");
+    let content = read_file_with_creation(filename).expect("Unable to read file.");
     println!("file's content: {:?}", content);
+
+    let content2 = read_file(filename).expect("Unable to read file.");
+    println!("file's content: {:?}", content2);
+
+    let content3 = read_file_2(filename).expect("Unable to read file.");
+    println!("file's content: {:?}", content3);
 }
 
-fn read_file(filename: &str) -> Result<String, io::Error> {
+fn read_file_with_creation(filename: &str) -> Result<String, io::Error> {
     // try to open a file (read-only mode)
     // (1) use closure and the unwrap_or_else method here
     let mut f = File::open(filename).unwrap_or_else(|error| {
@@ -53,4 +59,27 @@ fn read_file(filename: &str) -> Result<String, io::Error> {
     }
     // (3) use expect
     //f.read_to_string(&mut buf).expect("Failed to dump file");
+}
+
+fn read_file(filename: &str) -> Result<String, io::Error> {
+    //let mut f = match File::open(filename) {
+    //    Ok(file) => file,
+    //    Err(e) => return Err(e),
+    //};
+    let mut f = File::open(filename)?;
+
+    let mut buf = String::new();
+
+    //match f.read_to_string(&mut buf) {
+    //    Ok(_) => Ok(buf),
+    //    Err(e) => Err(e),
+    //}
+    f.read_to_string(&mut buf)?;
+    Ok(buf)
+}
+
+fn read_file_2(filename: &str) -> Result<String, io::Error> {
+    let mut buf = String::new();
+    File::open(filename)?.read_to_string(&mut buf)?;
+    Ok(buf)
 }
