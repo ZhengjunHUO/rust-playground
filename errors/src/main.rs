@@ -1,10 +1,14 @@
 use std::fs::{File,OpenOptions};
-use std::io::{ErrorKind,Write,Read,Seek};
+use std::io::{self,ErrorKind,Write,Read,Seek};
 
 fn main() {
     // file name typed string slice
     let filename = "foo.txt";
+    let content = read_file(filename).expect("Unable to read file.");
+    println!("file's content: {:?}", content);
+}
 
+fn read_file(filename: &str) -> Result<String, io::Error> {
     // try to open a file (read-only mode)
     // (1) use closure and the unwrap_or_else method here
     let mut f = File::open(filename).unwrap_or_else(|error| {
@@ -23,14 +27,14 @@ fn main() {
                              // Rewind cursor to the begining of the file
                              Ok(_) => match created_file.rewind() {
                                  Ok(_) => {
-                                     println!("{} not exist, create it", filename);
+                                     println!("[DEBUG] {} not exist, create it", filename);
                                      created_file
                                  }
                                  Err(err) => panic!("Failed to rewind: {:?}", err),
                              }
                              Err(err) => panic!("Failed to write to created file: {:?}", err),
                          }
-                     },
+                     }
                      Err(err) => panic!("Failed to create: {:?}", err),
             }
         }else{
@@ -39,15 +43,14 @@ fn main() {
         }
     });
 
-    println!("file's info: {:?}", f);
+    println!("[DEBUG] file's info: {:?}", f);
     let mut buf = String::new();
 
     // read the file's content
-    //match f.read_to_string(&mut buf) {
-    //    Ok(_) => println!("file's content: {:?}", buf),
-    //    Err(err) => panic!(
-    //}
+    match f.read_to_string(&mut buf) {
+        Ok(_) => Ok(buf),
+        Err(err) => Err(err),
+    }
     // (3) use expect
-    f.read_to_string(&mut buf).expect("Failed to dump file");
-    println!("file's content: {:?}", buf);
+    //f.read_to_string(&mut buf).expect("Failed to dump file");
 }
