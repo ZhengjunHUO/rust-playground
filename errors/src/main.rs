@@ -1,17 +1,20 @@
 use std::fs::{File,OpenOptions};
 use std::io::{self,ErrorKind,Write,Read,Seek};
+use std::error::Error;
 
-fn main() {
+fn main() -> Result<(), Box<dyn Error>> {
     // file name typed string slice
     let filename = "foo.txt";
-    let content = read_file_with_creation(filename).expect("Unable to read file.");
+    let content = read_file_with_creation(filename)?;
     println!("file's content: {:?}", content);
 
-    let content2 = read_file(filename).expect("Unable to read file.");
+    let content2 = read_file(filename)?;
     println!("file's content: {:?}", content2);
 
-    let content3 = read_file_2(filename).expect("Unable to read file.");
+    let content3 = read_file_2(filename)?;
     println!("file's content: {:?}", content3);
+
+    Ok(())
 }
 
 fn read_file_with_creation(filename: &str) -> Result<String, io::Error> {

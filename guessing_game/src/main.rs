@@ -20,6 +20,11 @@ fn main() {
             Err(_) => continue,
         };
         println!("You guessed: {}", guess);
+
+        if guess < 1 || guess > 100 {
+            println!("The number should between 1 to 100.");
+            continue;
+        }
     
         match guess.cmp(&secret) {
             Ordering::Less => println!("Sorry too small !"),
