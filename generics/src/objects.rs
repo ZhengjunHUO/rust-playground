@@ -1,4 +1,5 @@
 use generics::Inspect;
+use std::fmt;
 
 #[derive(Debug)]
 pub struct Kube {
@@ -19,15 +20,15 @@ impl Kube {
     }
 }
 
-//impl Inspect for Kube {
-//    fn info(&self) -> String {
-//        let mut mode = String::from("DIRECT");
-//        if self.overlay {
-//            mode = String::from("TUNNELED");
-//        }
-//        format!("cluster {} has {} nodes using {} as cni [{}]", self.name, self.size, self.cni, mode)
-//    }
-//}
+impl fmt::Display for Kube {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut mode = String::from("DIRECT");
+        if self.overlay {
+            mode = String::from("TUNNELED");
+        }
+        write!(f, "cluster {} has {} nodes using {} as cni [{}]", self.name, self.size, self.cni, mode)
+    }
+}
 
 impl Inspect for Kube {
     fn show_name(&self) -> String {

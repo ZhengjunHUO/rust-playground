@@ -1,5 +1,6 @@
 use objects::{Kube, Cat, Point, PointX};
 use generics::Inspect;
+use std::fmt::Display;
 
 mod objects;
 
@@ -16,17 +17,30 @@ fn max_val<T: std::cmp::PartialOrd>(list: &[T]) -> &T {
 }
 
 fn notify<T: Inspect>(obj: &T) {
-    println!("[INFO] Find an object, details: {}", obj.info());
+    println!("[INFO] notify: Find an object: {}", obj.info());
+}
+
+fn notify_with_content<T: Inspect + Display>(obj: &T) {
+    println!("[INFO] notify_with_content: Find an object: {}\n[DEBUG] Content: {}", obj.info(), obj);
 }
 
 fn notify_sugar(obj: &impl Inspect) {
-    println!("[INFO] Find an object, details: {}", obj.info());
+    println!("[INFO] notify_sugar: Find an object: {}", obj.info());
 }
 
-// fn notify_duo<T: Inspect>(obj1: &T, obj2: &T) {  // Not work for different types
-fn notify_duo(obj1: &impl Inspect, obj2: &impl Inspect) {
-    println!("[INFO] Find 1st object, details: {}", obj1.info());
-    println!("[INFO] Find 2nd object, details: {}", obj2.info());
+fn notify_duo<T, U>(obj1: &T, obj2:&U)
+where
+    T: Inspect + Display,
+    U: Inspect,
+{
+    println!("[INFO] notify_duo: Find 1st object: {}", obj1.info());
+    println!("[INFO] notify_duo: Find 2nd object: {}", obj2.info());
+}
+
+// fn notify_sugar_duo<T: Inspect>(obj1: &T, obj2: &T) {  // Not work for different types
+fn notify_sugar_duo(obj1: &impl Inspect, obj2: &impl Inspect) {
+    println!("[INFO] notify_sugar_duo: Find 1st object: {}", obj1.info());
+    println!("[INFO] notify_sugar_duo: Find 2nd object: {}", obj2.info());
 }
 
 fn main() {
@@ -62,6 +76,12 @@ fn main() {
         6,
     );
     notify(&c1);
+
+    notify_sugar_duo(&k1, &c1);
+    notify_with_content(&k1);
+
+    // Not work with Cat, cause the Display trait is not implemented
+    // notify_with_content(&c1);
 
     notify_duo(&k1, &c1);
 }
