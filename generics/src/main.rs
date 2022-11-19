@@ -1,43 +1,7 @@
-use objects::{Kube, Cat};
+use objects::{Kube, Cat, Point, PointX};
 use generics::Inspect;
 
 mod objects;
-
-#[derive(Debug)]
-struct Point<T> {
-    x: T,
-    y: T,
-}
-
-impl<T> Point<T> {
-    fn get_x(&self) -> &T {
-        &self.x
-    }
-
-    fn get_y(&self) -> &T {
-        &self.y
-    }
-}
-
-struct PointX<X1, Y1> {
-    x: X1,
-    y: Y1,
-}
-
-impl<X1, Y1> PointX<X1, Y1> {
-    fn melange<X2, Y2>(self, other: PointX<X2, Y2>) -> PointX<X1, Y2> {
-        PointX {
-            x: self.x,
-            y: other.y,
-        }
-    }
-}
-
-impl Point<f32> {
-    fn dist_from_zero_point(&self) -> f32 {
-        (self.x.powi(2) + self.y.powi(2)).sqrt()
-    }
-}
 
 fn max_val<T: std::cmp::PartialOrd>(list: &[T]) -> &T {
     let mut max = &list[0];
@@ -49,6 +13,20 @@ fn max_val<T: std::cmp::PartialOrd>(list: &[T]) -> &T {
     }
 
     max
+}
+
+fn notify<T: Inspect>(obj: &T) {
+    println!("[INFO] Find an object, details: {}", obj.info());
+}
+
+fn notify_sugar(obj: &impl Inspect) {
+    println!("[INFO] Find an object, details: {}", obj.info());
+}
+
+// fn notify_duo<T: Inspect>(obj1: &T, obj2: &T) {  // Not work for different types
+fn notify_duo(obj1: &impl Inspect, obj2: &impl Inspect) {
+    println!("[INFO] Find 1st object, details: {}", obj1.info());
+    println!("[INFO] Find 2nd object, details: {}", obj2.info());
 }
 
 fn main() {
@@ -71,16 +49,19 @@ fn main() {
     println!("after the melange p5.x = {}, p5.y = {}", p5.x, p5.y);
 
     let k1 = Kube::new(
-        String::from("foo"),
+        String::from("k8s"),
         String::from("cilium"),
         8,
         false,
     );
-    println!("[INFO] {}", k1.info());
+    println!("k8s: {:?}", k1);
+    notify_sugar(&k1);
 
     let c1 = Cat::new(
         String::from("fufu"),
         6,
     );
-    println!("[INFO] {}", c1.info());
+    notify(&c1);
+
+    notify_duo(&k1, &c1);
 }
