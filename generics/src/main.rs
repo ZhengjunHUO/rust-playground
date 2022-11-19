@@ -1,3 +1,8 @@
+use objects::{Kube, Cat};
+use generics::Inspect;
+
+mod objects;
+
 #[derive(Debug)]
 struct Point<T> {
     x: T,
@@ -64,4 +69,18 @@ fn main() {
     let p4 = PointX { x: 1, y: 'x'};
     let p5 = p3.melange(p4);
     println!("after the melange p5.x = {}, p5.y = {}", p5.x, p5.y);
+
+    let k1 = Kube::new(
+        String::from("foo"),
+        String::from("cilium"),
+        8,
+        false,
+    );
+    println!("[INFO] {}", k1.info());
+
+    let c1 = Cat::new(
+        String::from("fufu"),
+        6,
+    );
+    println!("[INFO] {}", c1.info());
 }
