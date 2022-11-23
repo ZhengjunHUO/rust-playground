@@ -9,7 +9,7 @@ fn main() {
         println!("Get an err when parsing the args: {}", err);
         process::exit(1);
     });
-    println!("grep {} from {}", config.pattern, config.path_to_file);
+    println!("[DEBUG] grep {} from {}", config.pattern, config.path_to_file);
 
     if let Err(e) = exec(config) {
         println!("Get an err when read from the file: {}", e);

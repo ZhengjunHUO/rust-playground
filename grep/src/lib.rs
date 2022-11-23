@@ -17,7 +17,40 @@ impl Config {
 }
 
 pub fn exec(config: Config) -> Result<(), Box<dyn Error>> {
-    let cont = fs::read_to_string(&config.path_to_file)?;
-    println!("The content of {}:\n{}", config.path_to_file, cont);
+    let text = fs::read_to_string(&config.path_to_file)?;
+    //println!("The content of {}:\n{}", config.path_to_file, text);
+    for l in find(&config.pattern, &text) {
+        println!("{}", l);
+    }
+
     Ok(())
+}
+
+pub fn find<'a>(pattern: &str, text: &'a str) -> Vec<&'a str> {
+    let mut rslt = Vec::new();
+
+    for l in text.lines() {
+        if l.contains(pattern) {
+            rslt.push(l);
+        }
+    }
+
+    rslt
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn grep_pattern() {
+        let pattern = "fu";
+        let text = "\
+Hello Rust,
+fufu is a cat,
+foo bar.";
+
+        assert_eq!(vec!["fufu is a cat,"], find(pattern, text));
+    }
+
 }
