@@ -1,4 +1,8 @@
 use std::thread;
+use crate::role::Hero;
+use crate::role::sort_roles;
+
+mod role;
 
 fn increment_func (x: u32) -> u32 { x + 1 }
 
@@ -22,6 +26,17 @@ fn main() {
     mut_borrow();
     println!("=== Test move ownership ===");
     move_ownership();
+
+    println!("=== Test Fn trait ===");
+    // array
+    let mut roles = [
+        Hero { attack: 56, defense: 77},
+        Hero { attack: 78, defense: 89},
+        Hero { attack: 61, defense: 63},
+        Hero { attack: 78, defense: 59},
+    ];
+    // array to mutable slice
+    sort_roles(&mut roles[..]);
 }
 
 fn borrow() {
