@@ -9,14 +9,23 @@ pub struct Config {
 
 impl Config {
     // &'static str: string literal that have the 'static lifetime
-    pub fn build(args :&[String]) -> Result<Config, &'static str> {
-        if args.len() < 3 {
-            return Err("[Usage] cargo run -- <pattern> <path_to_file>");
-        }
+    pub fn build(mut args: impl Iterator<Item = String>) -> Result<Config, &'static str> {
+        // skip args[0]: the name of func itself
+        args.next();
+
+        let pattern = match args.next() {
+            Some(arg) => arg,
+            None => return Err("No pattern found !"),
+        };
+
+        let path_to_file = match args.next() {
+            Some(arg) => arg,
+            None => return Err("No path to target file found !"),
+        };
 
         Ok(Config {
-            pattern: args[1].clone(),
-            path_to_file: args[2].clone(),
+            pattern,
+            path_to_file,
             ignore_case: env::var("IGNORE_CASE").is_ok(),
         })
     }
@@ -40,29 +49,13 @@ pub fn exec(config: Config) -> Result<(), Box<dyn Error>> {
 }
 
 pub fn find<'a>(pattern: &str, text: &'a str) -> Vec<&'a str> {
-    let mut rslt = Vec::new();
-
-    for l in text.lines() {
-        if l.contains(pattern) {
-            rslt.push(l);
-        }
-    }
-
-    rslt
+    text.lines().filter(|l| l.contains(pattern)).collect()
 }
 
 pub fn find_ignore_case<'a>(pattern: &str, text: &'a str) -> Vec<&'a str> {
     // shadowed variable, return a String (create new data)
     let pattern = pattern.to_lowercase();
-    let mut rslt = Vec::new();
-
-    for l in text.lines() {
-        if l.to_lowercase().contains(&pattern) {
-            rslt.push(l);
-        }
-    }
-
-    rslt
+    text.lines().filter(|l| l.to_lowercase().contains(&pattern)).collect()
 }
 
 #[cfg(test)]
