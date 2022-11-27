@@ -1,21 +1,28 @@
 use std::ops::Deref;
 
 // tuple struct with 1 param
-struct FakeBox<T>(T);
+#[derive(Debug)]
+struct FakeBox<T: std::fmt::Debug>(T);
 
-impl<T> FakeBox<T> {
+impl<T: std::fmt::Debug> FakeBox<T> {
     fn new(x: T) -> FakeBox<T> {
         FakeBox(x)
     }
 }
 
-impl<T> Deref for FakeBox<T> {
+impl<T: std::fmt::Debug> Deref for FakeBox<T> {
     type Target = T;
 
     // return a ref and allow compiler to know how to deref
     fn deref(&self) -> &Self::Target {
         // ref of the tuple's first value
         &self.0
+    }
+}
+
+impl<T: std::fmt::Debug> Drop for FakeBox<T> {
+    fn drop(&mut self) {
+        println!("[{:?}]: drop called", self);
     }
 }
 
