@@ -24,6 +24,30 @@ impl Rectangle {
     }
 }
 
+#[derive(Debug)]
+struct Coordinate {
+    x: i32,
+    y: i32,
+}
+
+impl Coordinate {
+    fn up(&mut self) {
+        self.y += 1;
+    }
+
+    fn down(&mut self) {
+        self.y -= 1;
+    }
+
+    fn left(&mut self) {
+        self.x -= 1;
+    }
+
+    fn right(&mut self) {
+        self.x += 1;
+    }
+}
+
 fn main() {
     let unit = 2;
     let rc1 = Rectangle {
@@ -49,6 +73,12 @@ fn main() {
 
     println!("rectangle {} contains {} ? {}", rc1.name, rc2.name, rc1.contains(&rc2));
     println!("rectangle {} contains {} ? {}", rc1.name, rc3.name, rc1.contains(&rc3));
+
+    let mut c = Coordinate { x: 3, y: 5 };
+    println!("Initial coordiante: {:?}", c);
+    c.up();
+    c.left();
+    println!("Moved coordiante: {:?}", c);
 }
 
 fn size(rct: &Rectangle) -> u32 {
