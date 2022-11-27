@@ -31,6 +31,8 @@ impl Config {
     }
 }
 
+/// Load the target file and execute the search on it.
+/// Print out the result to stdout.
 pub fn exec(config: Config) -> Result<(), Box<dyn Error>> {
     let text = fs::read_to_string(&config.path_to_file)?;
     //println!("The content of {}:\n{}", config.path_to_file, text);
@@ -48,10 +50,36 @@ pub fn exec(config: Config) -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
+/// Search a pattern in text, return all lines who contains the pattern
+///
+/// # Example
+///
+/// ```
+/// let pattern = "uf";
+/// let text = "\
+/// Hello Rust,
+/// fufu is a cat,
+/// OUF!";
+///
+/// assert_eq!(vec!["fufu is a cat,"], grep::find(pattern, text));
+/// ```
 pub fn find<'a>(pattern: &str, text: &'a str) -> Vec<&'a str> {
     text.lines().filter(|l| l.contains(pattern)).collect()
 }
 
+/// Search a pattern in text, case insensitive, return all lines who contains the pattern.
+///
+/// # Example
+///
+/// ```
+/// let pattern = "uf";
+/// let text = "\
+/// Hello Rust,
+/// fufu is a cat,
+/// OUF!";
+///
+/// assert_eq!(vec!["fufu is a cat,", "OUF!"], grep::find_ignore_case(pattern, text));
+/// ```
 pub fn find_ignore_case<'a>(pattern: &str, text: &'a str) -> Vec<&'a str> {
     // shadowed variable, return a String (create new data)
     let pattern = pattern.to_lowercase();
