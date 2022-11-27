@@ -1,4 +1,6 @@
 use std::ops::Deref;
+use std::rc::Rc;
+use crate::List::*;
 
 // tuple struct with 1 param
 #[derive(Debug)]
@@ -24,6 +26,13 @@ impl<T: std::fmt::Debug> Drop for FakeBox<T> {
     fn drop(&mut self) {
         println!("[{:?}]: drop called", self);
     }
+}
+
+
+// Test ref counter
+enum List {
+    Node(u32, Rc<List>),
+    Nil,
 }
 
 fn echo(s: &str) {
@@ -53,4 +62,18 @@ fn main() {
     // *s => *(s.deref()) => *(&String) => String
     // &String[..] => &str
     echo(&(*s)[..]);
+
+
+    let l = Rc::new(Node(10, Rc::new(Node(100, Rc::new(Nil)))));
+    println!("After let l, l's counter = {}", Rc::strong_count(&l));
+    // Rc::clone don't do deep copy, increse ref count only
+    let l1 = Node(0, Rc::clone(&l));
+    println!("After let l1, l's counter = {}", Rc::strong_count(&l));
+    {
+        let l2 = Node(1, Rc::clone(&l));
+        println!("After let l2, l's counter = {}", Rc::strong_count(&l));
+    }
+    // the implementation of the Drop trait decreases the ref count automatically
+    // when an Rc<T> value goes out of scope.
+    println!("After l2 out of scope, l's counter = {}", Rc::strong_count(&l));
 }
