@@ -31,3 +31,37 @@ where
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::cell::RefCell;
+
+    struct FakeInformer {
+        cache: RefCell<Vec<String>>,
+    }
+
+    impl FakeInformer {
+        fn new() -> FakeInformer {
+            FakeInformer {
+                cache: RefCell::new(vec![]),
+            }
+        }
+    }
+
+    impl Informer for FakeInformer {
+        fn inform(&self, event: &str) {
+            self.cache.borrow_mut().push(String::from(event))
+        }
+    }
+
+    #[test]
+    fn get_informed() {
+        let fake = FakeInformer::new();
+        let mut watcher = Watcher::new(&fake, 100);
+        watcher.probe(60);
+        watcher.probe(95);
+        assert_eq!(fake.cache.borrow()[0], String::from("[WARNING] You've used over 50% of quota!"));
+        assert_eq!(fake.cache.borrow().len(), 2);
+    }
+}
