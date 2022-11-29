@@ -1,5 +1,6 @@
 use std::ops::Deref;
 use std::rc::Rc;
+use std::cell::RefCell;
 use crate::List::*;
 
 // tuple struct with 1 param
@@ -30,8 +31,9 @@ impl<T: std::fmt::Debug> Drop for FakeBox<T> {
 
 
 // Test ref counter
+#[derive(Debug)]
 enum List {
-    Node(u32, Rc<List>),
+    Node(Rc<RefCell<u32>>, Rc<List>),
     Nil,
 }
 
@@ -63,17 +65,28 @@ fn main() {
     // &String[..] => &str
     echo(&(*s)[..]);
 
-
-    let l = Rc::new(Node(10, Rc::new(Node(100, Rc::new(Nil)))));
+    // Test Rc<T> & RefCell<T>
+    let v1 = Rc::new(RefCell::new(10));
+    let v2 = Rc::new(RefCell::new(100));
+    let l = Rc::new(Node(Rc::clone(&v1), Rc::new(Node(Rc::clone(&v2), Rc::new(Nil)))));
     println!("After let l, l's counter = {}", Rc::strong_count(&l));
     // Rc::clone don't do deep copy, increse ref count only
-    let l1 = Node(0, Rc::clone(&l));
+    let l1 = Node(Rc::new(RefCell::new(0)), Rc::clone(&l));
     println!("After let l1, l's counter = {}", Rc::strong_count(&l));
     {
-        let l2 = Node(1, Rc::clone(&l));
+        let _l2 = Node(Rc::new(RefCell::new(1)), Rc::clone(&l));
         println!("After let l2, l's counter = {}", Rc::strong_count(&l));
     }
     // the implementation of the Drop trait decreases the ref count automatically
     // when an Rc<T> value goes out of scope.
     println!("After l2 out of scope, l's counter = {}", Rc::strong_count(&l));
+
+    println!("l: {:?}", l);
+    println!("l1: {:?}", l1);
+    println!("Increment v1 & v2");
+    // Rc<T> borrow_mut() => RefMut<T> ==*=> 10
+    *v1.borrow_mut() += 40;
+    *v2.borrow_mut() += 100;
+    println!("l after incr: {:?}", l);
+    println!("l1 after incr: {:?}", l1);
 }
