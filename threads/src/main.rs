@@ -1,5 +1,6 @@
 use std::thread;
 use std::time::Duration;
+use std::sync::mpsc;
 
 fn main() {
     let prime = vec![2, 3, 5 ,7, 11];
@@ -27,4 +28,17 @@ fn main() {
     println!("[Thread #1] Jobs done, quit.");
     h2.join().unwrap();
     println!("[Thread #2] Jobs done, quit.");
+
+    // test channel
+
+    // multi producer single consumer
+    let (tx, rx) = mpsc::channel();
+
+    thread::spawn(move || {
+        let s = String::from("Greeting from the upstream!");
+        tx.send(s).unwrap();
+    });
+
+    let r = rx.recv().unwrap();
+    println!("[Main] Receive msg from thread: {}", r);
 }
