@@ -33,12 +33,37 @@ fn main() {
 
     // multi producer single consumer
     let (tx, rx) = mpsc::channel();
+    let tx_cloned = tx.clone();
 
     thread::spawn(move || {
-        let s = String::from("Greeting from the upstream!");
-        tx.send(s).unwrap();
+        let ss = vec![
+            String::from("Greeting"),
+            String::from("from"),
+            String::from("the"),
+            String::from("upstream!"),
+        ];
+
+        for s in ss {
+            tx.send(s).unwrap();
+            thread::sleep(Duration::from_millis(10));
+        }
     });
 
-    let r = rx.recv().unwrap();
-    println!("[Main] Receive msg from thread: {}", r);
+    thread::spawn(move || {
+        let ss = vec![
+            String::from("Hello"),
+            String::from("it's"),
+            String::from("another"),
+            String::from("producer!"),
+        ];
+
+        for s in ss {
+            tx_cloned.send(s).unwrap();
+            thread::sleep(Duration::from_millis(10));
+        }
+    });
+
+    for r in rx {
+        println!("[Main] Receive msg from thread: {}", r);
+    }
 }
