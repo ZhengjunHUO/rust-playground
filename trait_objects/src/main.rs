@@ -1,4 +1,4 @@
-use trait_objects::{Project, K8s, Baremetal};
+use trait_objects::{Project, K8s, Baremetal, Service};
 
 fn main() {
     let p = Project {
@@ -17,4 +17,16 @@ fn main() {
     };
 
     p.exec();
+
+
+    // state pattern
+    let mut service = Service::new();
+    service.add_entrypoint("find ./ -name *rs");
+    assert_eq!("", service.entrypoint());
+
+    service.provision_container();
+    assert_eq!("", service.entrypoint());
+
+    service.exec();
+    assert_eq!("find ./ -name *rs", service.entrypoint());
 }
