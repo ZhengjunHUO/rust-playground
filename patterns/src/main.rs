@@ -77,6 +77,16 @@ fn main() {
     destructuring_enum(Sketchbook::CursorTo{ x: 20, y: 30 });
     destructuring_enum(Sketchbook::Draw(String::from("Hello Rust!")));
     destructuring_enum(Sketchbook::Close);
+
+    // (6) ignoring
+    //
+    let dst = Some(26);
+    let src = Some(12);
+    copy_check_exist(src, dst);
+    copy_check_exist(src, None);
+
+    ignore_multi_places();
+    ignore_consec_places();
 }
 
 struct Cordinate {
@@ -118,5 +128,32 @@ fn destructuring_enum(s: Sketchbook) {
         Sketchbook::SetColor(ColorMode::Hsv(h, s, v)) => println!("Set brush color to HSV({}, {}, {})", h, s, v),
         Sketchbook::Draw(s) => println!("Drawing {s}"),
         Sketchbook::Close => println!("Quit."),
+    }
+}
+
+fn copy_check_exist(src: Option<u32>, mut dst: Option<u32>) {
+    match (src, dst) {
+        (Some(_), Some(_)) => println!("dst already exist, skip copy"),
+        _ => {
+            dst = src;
+        }
+    }
+
+    println!("dst is {:?}", dst);
+}
+
+fn ignore_multi_places () {
+    let t = (1, 2, 3, 4, 5);
+
+    match t {
+        (first, _, third, _, fifth) => println!("partial tuple: ({first}, {third}, {fifth})"),
+    }
+}
+
+fn ignore_consec_places () {
+    let t = (1, 2, 3, 4, 5);
+
+    match t {
+        (first, .., last) => println!("partial tuple: ({first}, {last})"),
     }
 }
