@@ -1,5 +1,7 @@
 use std::slice;
 
+static mut COUNTER: u32 = 99;
+
 extern "C" {
     fn abs(input: i32) -> i32;
     fn rand() -> u32;
@@ -9,7 +11,19 @@ extern "C" {
 fn main() {
     deref_raw_pointer();
     split_ref();
+    use_c_lib();
+    increm_counter(1);
+}
 
+fn increm_counter(n: u32) {
+    unsafe {
+        println!("COUNTER before operation: {COUNTER}");
+        COUNTER += n;
+        println!("COUNTER updated: {COUNTER}");
+    }
+}
+
+fn use_c_lib() {
     let num = -1;
     unsafe {
         println!("Abs of {} is {}", num, abs(num));
