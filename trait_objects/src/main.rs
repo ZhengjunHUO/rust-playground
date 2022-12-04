@@ -1,4 +1,6 @@
-use trait_objects::{Project, K8s, Baremetal, Service};
+use trait_objects::runner::{Project, K8s, Baremetal};
+use trait_objects::state::Service;
+use trait_objects::operator::Binome;
 
 fn main() {
     let p = Project {
@@ -29,4 +31,7 @@ fn main() {
 
     service.exec();
     assert_eq!("find ./ -name *rs", service.entrypoint());
+
+    // trait with associated type
+    assert_eq!(Binome {a: 3, b: 4} * Binome {a: 8, b: 6}, Binome {a: 24, b: 24});
 }
