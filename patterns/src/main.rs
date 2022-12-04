@@ -42,6 +42,7 @@ fn main() {
 
     match x {
         Some(100) => println!("x == 100"),
+        Some(n) if n*3 == y => println!("x == 3*y "),
         // new y in a new scope, match any value in Some, y get the same value as x
         Some(y) => println!("x: {:?}, inner y: {}", x, y),
         _ => println!("Catchall case"),
@@ -69,6 +70,7 @@ fn main() {
     //
     let c = Cordinate{ x: 9, y: 0 };
     destructuring_struct(&c);
+    destructuring_struct(&Cordinate{ x: 12, y: 15 });
 
     let s = Sketchbook::SetColor(ColorMode::Rgb(125, 100, 250));
     destructuring_enum(s);
@@ -96,6 +98,7 @@ struct Cordinate {
 
 fn destructuring_struct(c: &Cordinate) {
     match c {
+        Cordinate { x: x @ 10..=20, y: y @ 10..=20 } => println!("c({}, {}) is in a specific range !", x, y),
         // match c.x == 0
         Cordinate { x: 0, y } => println!("c is on the y axis, offset {}", y),
         // match c.y == 0
