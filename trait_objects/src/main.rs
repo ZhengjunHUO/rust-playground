@@ -1,7 +1,7 @@
 use trait_objects::runner::{Project, K8s, Baremetal};
 use trait_objects::state::Service;
 use trait_objects::operator::{Binome, Offset};
-use trait_objects::fqs::{Feline, Cat, Tiger};
+use trait_objects::fqs::{Feline, Cat, Tiger, Mao, Neko};
 
 fn main() {
     let p = Project {
@@ -42,4 +42,7 @@ fn main() {
     f.talk();
     Cat::talk(&f);
     Tiger::talk(&f);
+
+    println!("My cat's name: {}", Mao::nickname());
+    println!("My cat's name: {}", <Mao as Neko>::nickname());
 }

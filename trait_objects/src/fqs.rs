@@ -1,3 +1,4 @@
+// test #1
 pub trait Cat {
     fn talk(&self);
 }
@@ -23,5 +24,24 @@ impl Cat for Feline {
 impl Tiger for Feline {
     fn talk(&self) {
         println!("Aowu ~");
+    }
+}
+
+// test #2
+pub trait Neko {
+    fn nickname() -> String;
+}
+
+pub struct Mao;
+
+impl Mao {
+    pub fn nickname() -> String {
+        String::from("FufuMao")
+    }
+}
+
+impl Neko for Mao {
+    fn nickname() -> String {
+        String::from("FukuNeko")
     }
 }
