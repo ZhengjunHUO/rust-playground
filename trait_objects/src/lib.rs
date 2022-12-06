@@ -7,3 +7,5 @@ pub mod operator;
 pub mod fqs;
 // supertrait
 pub mod supertrait;
+// newtype pattern; wrapper; impl external trait on external type
+pub mod newtype;

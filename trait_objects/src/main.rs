@@ -3,6 +3,7 @@ use trait_objects::state::Service;
 use trait_objects::operator::{Binome, Offset};
 use trait_objects::fqs::{Feline, Cat, Tiger, Mao, Neko};
 use trait_objects::supertrait::{WrappedPrint, Couple};
+use trait_objects::newtype::Envelope;
 
 fn main() {
     let p = Project {
@@ -50,4 +51,8 @@ fn main() {
     // supertrait
     let c = Couple { a: 6, b: 6 };
     c.wrapped_print();
+
+    // wraped type
+    let e = Envelope(vec![String::from("Rust"), String::from("Rocks")]);
+    println!("wrapped type e: {}", e);
 }
