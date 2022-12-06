@@ -2,6 +2,7 @@ use trait_objects::runner::{Project, K8s, Baremetal};
 use trait_objects::state::Service;
 use trait_objects::operator::{Binome, Offset};
 use trait_objects::fqs::{Feline, Cat, Tiger, Mao, Neko};
+use trait_objects::supertrait::{WrappedPrint, Couple};
 
 fn main() {
     let p = Project {
@@ -45,4 +46,8 @@ fn main() {
 
     println!("My cat's name: {}", Mao::nickname());
     println!("My cat's name: {}", <Mao as Neko>::nickname());
+
+    // supertrait
+    let c = Couple { a: 6, b: 6 };
+    c.wrapped_print();
 }
