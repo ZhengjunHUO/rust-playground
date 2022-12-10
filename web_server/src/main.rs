@@ -24,6 +24,7 @@ fn main() {
         wp.schedule(|| {
 	    handle_conn(conn);
         });
+        println!("[DEBUG] Conn dispatched!");
     }
 }
 
