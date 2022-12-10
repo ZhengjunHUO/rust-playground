@@ -1,10 +1,15 @@
-use std::net::{TcpListener, TcpStream};
-use std::io::{prelude::*, BufReader};
-use std::fs;
+use std::{
+    net::{TcpListener, TcpStream},
+    io::{prelude::*, BufReader},
+    fs,
+    thread,
+    time::Duration,
+};
 
 const RESP_OK_STATUS: &str = "HTTP/1.1 200 OK";
 const RESP_NOT_FOUND_STATUS: &str = "HTTP/1.1 404 NOT FOUND";
-const REQ_FORMAT: &str = "GET / HTTP/1.1";
+const REQ_ROOT_FORMAT: &str = "GET / HTTP/1.1";
+const REQ_SLEEP_FORMAT: &str = "GET /sleep HTTP/1.1";
 
 fn main() {
     let l = TcpListener::bind("127.0.0.1:8080").unwrap();
@@ -27,10 +32,20 @@ fn handle_conn(mut conn: TcpStream) {
     let req_format = rdr.lines().next().unwrap().unwrap();
     println!("[DEBUG] Recv conn req: {:#?}", req_format);
 
-    let (filename, resp_status) = if req_format == REQ_FORMAT {
-        ("index.html", RESP_OK_STATUS)
-    } else {
-        ("404.html", RESP_NOT_FOUND_STATUS)
+    // under the hood: let (filename, resp_status) = if &req_format[..] == REQ_ROOT_FORMAT {
+    //let (filename, resp_status) = if req_format == REQ_ROOT_FORMAT {
+    //    ("index.html", RESP_OK_STATUS)
+    //} else {
+    //    ("404.html", RESP_NOT_FOUND_STATUS)
+    //};
+
+    let (filename, resp_status) = match &req_format[..] {
+        REQ_ROOT_FORMAT => ("index.html", RESP_OK_STATUS),
+        REQ_SLEEP_FORMAT => {
+            thread::sleep(Duration::from_secs(10));
+            ("index.html", RESP_OK_STATUS)
+        }
+        _ => ("404.html", RESP_NOT_FOUND_STATUS),
     };
 
     let payload = fs::read_to_string(filename).unwrap();
