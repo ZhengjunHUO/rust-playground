@@ -5,21 +5,25 @@ use std::{
     thread,
     time::Duration,
 };
+use web_server::WorkerPool;
 
 const RESP_OK_STATUS: &str = "HTTP/1.1 200 OK";
 const RESP_NOT_FOUND_STATUS: &str = "HTTP/1.1 404 NOT FOUND";
 const REQ_ROOT_FORMAT: &str = "GET / HTTP/1.1";
-const REQ_SLEEP_FORMAT: &str = "GET /sleep HTTP/1.1";
+const REQ_SLEEP_FORMAT: &str = "GET /expensive HTTP/1.1";
 
 fn main() {
     let l = TcpListener::bind("127.0.0.1:8080").unwrap();
+    let wp = WorkerPool::new(3);
 
     // retrieve incoming TcpStream
     for conn in l.incoming() {
         let conn = conn.unwrap();
 
         println!("[DEBUG] Recv conn attempt!");
-	handle_conn(conn);
+        wp.schedule(|| {
+	    handle_conn(conn);
+        });
     }
 }
 
