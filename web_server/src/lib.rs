@@ -5,13 +5,15 @@ use std::{
 
 pub struct WorkerPool {
     workers: Vec<Worker>,
-    tx: mpsc::Sender<Task>,
+    tx: Option<mpsc::Sender<Task>>,
 }
 
 struct Worker {
     id: usize,
-    thread: thread::JoinHandle<()>,
+    thread: Option<thread::JoinHandle<()>>,
 }
+
+type Task = Box<dyn FnOnce() + Send + 'static>;
 
 impl WorkerPool {
     /// Create a new WorkerPool, whose size should be a positive number
@@ -31,7 +33,7 @@ impl WorkerPool {
             workers.push(Worker::new(id, Arc::clone(&rx)));
         }
 
-        WorkerPool { workers, tx }
+        WorkerPool { workers, tx: Some(tx) }
     }
 
     pub fn schedule<F>(&self, f: F)
@@ -39,20 +41,49 @@ impl WorkerPool {
         F: FnOnce() + Send + 'static,
     {
         let task = Box::new(f);
-        self.tx.send(task).unwrap();
+        // send the handler(with conn) through the channel to the workerpool
+        self.tx.as_ref().unwrap().send(task).unwrap();
+    }
+}
+
+// hook called when program exit
+impl Drop for WorkerPool {
+    fn drop(&mut self) {
+        // close the sender first to close the channel
+        // if not the join() method below will not return
+        // because of the workers loop forever
+        drop(self.tx.take());
+
+        for w in &mut self.workers {
+            println!("[Worker {}] Stopped.", w.id);
+
+            // move occurs
+            // take() on "Option" to move value out of "Some" variant and leave a "None" variant
+            // clean up done
+            if let Some(thread) = w.thread.take() {
+                thread.join().unwrap();
+            }
+        }
     }
 }
 
 impl Worker {
     fn new(id: usize, rx: Arc<Mutex<mpsc::Receiver<Task>>>) -> Worker {
         let thread = thread::spawn(move || loop {
-            let task = rx.lock().unwrap().recv().unwrap();
-            println!("Task scheduled to worker {id}");
-            task();
+            let msg = rx.lock().unwrap().recv();
+            match msg {
+                Ok(task) => {
+                    println!("[Worker {}] Receive task.", id);
+                    task();
+                }
+                Err(_) => {
+                    println!("[Worker {}] Gracefully shutting down ...", id);
+                    break;
+                }
+            }
         });
 
-	Worker { id, thread }
+	Worker { id, thread: Some(thread) }
     }
 }
 
-type Task = Box<dyn FnOnce() + Send + 'static>;

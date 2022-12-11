@@ -17,10 +17,12 @@ fn main() {
     let wp = WorkerPool::new(3);
 
     // retrieve incoming TcpStream
+    // take only 5 req: l.incoming().take(5), will trigger the cleanup process
     for conn in l.incoming() {
         let conn = conn.unwrap();
 
         println!("[DEBUG] Recv conn attempt!");
+        // send handler to workerpool
         wp.schedule(|| {
 	    handle_conn(conn);
         });
