@@ -6,6 +6,9 @@ use std::{
     thread,
     time::Duration,
 };
+use crossbeam_channel::{bounded, unbounded, Receiver, select};
+use anyhow::Result;
+use ctrlc;
 
 const RESP_OK_STATUS: &str = "HTTP/1.1 200 OK";
 const RESP_NOT_FOUND_STATUS: &str = "HTTP/1.1 404 NOT FOUND";
@@ -15,8 +18,8 @@ const REQ_SLEEP_FORMAT: &str = "GET /expensive HTTP/1.1";
 type Task = Box<dyn FnOnce() + Send + 'static>;
 
 pub struct Server {
-    l: TcpListener,
-    wp: WorkerPool,
+    l: Option<TcpListener>,
+    wp: Option<WorkerPool>,
 }
 
 struct WorkerPool {
@@ -34,23 +37,58 @@ impl Server {
         let l = TcpListener::bind(socket).unwrap();
         let wp = WorkerPool::new(num_thread);
 
-        Server { l , wp }
+        Server { l: Some(l) , wp: Some(wp) }
     }
 
     pub fn start(&self) {
-        // retrieve incoming TcpStream
-        // take only 5 req: l.incoming().take(5), will trigger the cleanup process
-        for conn in self.l.incoming() {
-            let conn = conn.unwrap();
+        // handler for Ctrl-C
+        let cancel = ctrlc_chan().unwrap();
 
-            println!("[DEBUG] Recv conn attempt!");
-            // send handler to workerpool
-            self.wp.schedule(|| {
-              handle_conn(conn);
-            });
-            println!("[DEBUG] Conn dispatched!");
+        let (tx, rx) = unbounded();
+        let listener_clone = self.l.as_ref().unwrap().try_clone().unwrap();
+        // thread accepting incoming connection, sent to rx
+        thread::spawn(move || {
+            // retrieve incoming TcpStream
+            // take only 5 req: l.as_ref().unwrap().incoming().take(5)
+            for conn in listener_clone.incoming() {
+                let conn = conn.unwrap();
+                tx.send(conn).unwrap();
+            }
+        });
+
+        loop {
+            select! {
+                recv(cancel) -> _ => {
+                    println!("Catch Ctrl-C signal, quitting ...");
+                    break;
+                }
+
+                recv(rx) -> rslt => {
+                    // rslt is Result<TcpStream, crossbeam_channel::RecvError>
+                    match rslt {
+                        Ok(conn) => {
+                            println!("[DEBUG] Recv conn attempt!");
+                            // send handler to workerpool
+                            self.wp.as_ref().unwrap().schedule(|| {
+                                handle_conn(conn);
+                            });
+                            println!("[DEBUG] Conn dispatched!");
+                        }
+                        Err(e) => {
+                            println!("[DEBUG] Got an error: {e}");
+                            break;
+                        }
+                    }
+                }
+            }
         }
+
     }
+
+    //pub fn stop(&mut self) {
+    //    drop(self.l.take());
+    //    drop(self.wp.take());
+    //}
 }
 
 impl WorkerPool {
@@ -93,20 +131,20 @@ impl Drop for WorkerPool {
         drop(self.tx.take());
 
         for w in &mut self.workers {
-            println!("[Worker {}] Stopped.", w.id);
-
             // move occurs
             // take() on "Option" to move value out of "Some" variant and leave a "None" variant
             // clean up done
             if let Some(thread) = w.thread.take() {
                 thread.join().unwrap();
             }
+            println!("[Worker {}] Stopped.", w.id);
         }
     }
 }
 
 impl Worker {
     fn new(id: usize, rx: Arc<Mutex<mpsc::Receiver<Task>>>) -> Worker {
+        // Worker's thread take a closure with infinite loop, listening on the receiver
         let thread = thread::spawn(move || loop {
             let msg = rx.lock().unwrap().recv();
             match msg {
@@ -135,12 +173,6 @@ fn handle_conn(mut conn: TcpStream) {
     println!("[DEBUG] Recv conn req: {:#?}", req_format);
 
     // under the hood: let (filename, resp_status) = if &req_format[..] == REQ_ROOT_FORMAT {
-    //let (filename, resp_status) = if req_format == REQ_ROOT_FORMAT {
-    //    ("index.html", RESP_OK_STATUS)
-    //} else {
-    //    ("404.html", RESP_NOT_FOUND_STATUS)
-    //};
-
     let (filename, resp_status) = match &req_format[..] {
         REQ_ROOT_FORMAT => ("index.html", RESP_OK_STATUS),
         REQ_SLEEP_FORMAT => {
@@ -155,4 +187,13 @@ fn handle_conn(mut conn: TcpStream) {
     let resp = format!("{resp_status}\r\nContent-Length: {len}\r\n\r\n{payload}");
 
     conn.write_all(resp.as_bytes()).unwrap();
+}
+
+fn ctrlc_chan() -> Result<Receiver<()>, ctrlc::Error> {
+    let (sender, receiver) = bounded(100);
+    ctrlc::set_handler(move || {
+        let _ = sender.send(());
+    })?;
+
+    Ok(receiver)
 }

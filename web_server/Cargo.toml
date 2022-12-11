@@ -3,6 +3,7 @@ name = "web_server"
 version = "0.1.0"
 edition = "2021"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [dependencies]
+ctrlc = "3.2.4"
+crossbeam-channel = "0.5.6"
+anyhow = "1.0.66"
