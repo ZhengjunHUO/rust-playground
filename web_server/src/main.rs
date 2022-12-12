@@ -1,4 +1,4 @@
-use web_server::Server;
+use web_server::server::Server;
 
 fn main() {
     let s = Server::new("127.0.0.1:8080", 3);
