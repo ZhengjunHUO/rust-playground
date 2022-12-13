@@ -1,9 +1,9 @@
-use trait_objects::runner::{Project, K8s, Baremetal};
-use trait_objects::state::Service;
-use trait_objects::operator::{Binome, Offset};
-use trait_objects::fqs::{Feline, Cat, Tiger, Mao, Neko};
-use trait_objects::supertrait::{WrappedPrint, Couple};
+use trait_objects::fqs::{Cat, Feline, Mao, Neko, Tiger};
 use trait_objects::newtype::Envelope;
+use trait_objects::operator::{Binome, Offset};
+use trait_objects::runner::{Baremetal, K8s, Project};
+use trait_objects::state::Service;
+use trait_objects::supertrait::{Couple, WrappedPrint};
 
 fn main() {
     let p = Project {
@@ -23,7 +23,6 @@ fn main() {
 
     p.exec();
 
-
     // state pattern
     let mut service = Service::new();
     service.add_entrypoint("find ./ -name *rs");
@@ -36,8 +35,11 @@ fn main() {
     assert_eq!("find ./ -name *rs", service.entrypoint());
 
     // trait with associated type
-    assert_eq!(Binome {a: 3, b: 4} * Binome {a: 8, b: 6}, Binome {a: 24, b: 24});
-    assert_eq!(Binome {a: 4, b: 9} + Offset(1), Binome {a: 5, b: 10});
+    assert_eq!(
+        Binome { a: 3, b: 4 } * Binome { a: 8, b: 6 },
+        Binome { a: 24, b: 24 }
+    );
+    assert_eq!(Binome { a: 4, b: 9 } + Offset(1), Binome { a: 5, b: 10 });
 
     // fully qualified syntax
     let f = Feline;

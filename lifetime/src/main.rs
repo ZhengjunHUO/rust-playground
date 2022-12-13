@@ -45,5 +45,5 @@ where
 
 fn new_str() -> &'static str {
     let rslt = "fufu";
-    return rslt
+    return rslt;
 }

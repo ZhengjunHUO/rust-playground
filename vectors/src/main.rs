@@ -22,7 +22,7 @@ fn main() {
     }
 
     // i32 implements the `Copy` trait, can use without &
-    // let i = v[3];  // in this case a following v.push will pass 
+    // let i = v[3];  // in this case a following v.push will pass
 
     println!("Vector v: ");
     for (idx, k) in v.iter().enumerate() {
@@ -31,16 +31,8 @@ fn main() {
 
     println!("Get v[3]: {}", i);
 
-
     // Vector of struct
-    let mut elements = vec![
-        Element {
-            value: 10,
-        },
-        Element {
-            value: 20,
-        },
-    ];
+    let mut elements = vec![Element { value: 10 }, Element { value: 20 }];
     // struct doesn't implement the `Copy` trait by default, should use reference
     //let e: &Element = &elements[1];
     println!("Vector elements: {:?}", elements);

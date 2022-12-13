@@ -1,14 +1,14 @@
+use crate::worker::WorkerPool;
+use anyhow::Result;
+use crossbeam_channel::{bounded, select, unbounded, Receiver};
+use ctrlc;
 use std::{
-    net::{TcpListener, TcpStream},
-    io::{prelude::*, BufReader},
     fs,
+    io::{prelude::*, BufReader},
+    net::{TcpListener, TcpStream},
     thread,
     time::Duration,
 };
-use crossbeam_channel::{bounded, unbounded, Receiver, select};
-use anyhow::Result;
-use ctrlc;
-use crate::worker::WorkerPool;
 
 const RESP_OK_STATUS: &str = "HTTP/1.1 200 OK";
 const RESP_NOT_FOUND_STATUS: &str = "HTTP/1.1 404 NOT FOUND";
@@ -25,7 +25,10 @@ impl Server {
         let l = TcpListener::bind(socket).unwrap();
         let wp = WorkerPool::new(num_thread);
 
-        Server { l: Some(l) , wp: Some(wp) }
+        Server {
+            l: Some(l),
+            wp: Some(wp),
+        }
     }
 
     pub fn start(&self) {
@@ -70,7 +73,6 @@ impl Server {
                 }
             }
         }
-
     }
 
     //pub fn stop(&mut self) {

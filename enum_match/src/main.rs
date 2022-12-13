@@ -21,7 +21,12 @@ fn main() {
     // test option enum
     let num_orig = Some(3);
     let num = add_i32(num_orig, FIVE);
-    println!("{} adds {} equals to {}", get_value_i32(num_orig), FIVE, get_value_i32(num));
+    println!(
+        "{} adds {} equals to {}",
+        get_value_i32(num_orig),
+        FIVE,
+        get_value_i32(num)
+    );
 
     let none_orig = None;
     let none = add_i32(none_orig, FIVE);

@@ -4,7 +4,9 @@ trait State {
     fn exec(self: Box<Self>) -> Box<dyn State>;
     // taking a ref to a Service as param, return a ref to Service's field
     // the lifetime is related
-    fn entrypoint<'l>(&self, _service: &'l Service) -> &'l str { "" }
+    fn entrypoint<'l>(&self, _service: &'l Service) -> &'l str {
+        ""
+    }
 }
 
 pub struct Service {

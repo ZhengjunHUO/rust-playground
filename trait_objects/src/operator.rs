@@ -1,4 +1,4 @@
-use std::ops::{Mul, Add};
+use std::ops::{Add, Mul};
 
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub struct Binome {

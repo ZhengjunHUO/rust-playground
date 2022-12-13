@@ -26,7 +26,11 @@ impl fmt::Display for Kube {
         if self.overlay {
             mode = String::from("TUNNELED");
         }
-        write!(f, "cluster {} has {} nodes using {} as cni [{}]", self.name, self.size, self.cni, mode)
+        write!(
+            f,
+            "cluster {} has {} nodes using {} as cni [{}]",
+            self.name, self.size, self.cni, mode
+        )
     }
 }
 
@@ -43,10 +47,7 @@ pub struct Cat {
 
 impl Cat {
     pub fn new(name: String, age: u8) -> Self {
-        Self {
-            name,
-            age,
-        }
+        Self { name, age }
     }
 }
 
@@ -62,8 +63,6 @@ impl Inspect for Cat {
         format!("A cat named {} is {} years old.", self.name, self.age)
     }
 }
-
-
 
 #[derive(Debug)]
 pub struct Point<T> {

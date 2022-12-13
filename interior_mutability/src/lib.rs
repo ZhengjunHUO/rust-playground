@@ -25,9 +25,11 @@ where
         let usage = self.consum as f64 / self.quota as f64;
 
         if usage >= 0.9 {
-            self.informer.inform("[WARNING] You are running out of quota!");
-        }else if usage >= 0.5 {
-            self.informer.inform("[WARNING] You've used over 50% of quota!");
+            self.informer
+                .inform("[WARNING] You are running out of quota!");
+        } else if usage >= 0.5 {
+            self.informer
+                .inform("[WARNING] You've used over 50% of quota!");
         }
     }
 }
@@ -61,7 +63,10 @@ mod tests {
         let mut watcher = Watcher::new(&fake, 100);
         watcher.probe(60);
         watcher.probe(95);
-        assert_eq!(fake.cache.borrow()[0], String::from("[WARNING] You've used over 50% of quota!"));
+        assert_eq!(
+            fake.cache.borrow()[0],
+            String::from("[WARNING] You've used over 50% of quota!")
+        );
         assert_eq!(fake.cache.borrow().len(), 2);
     }
 }

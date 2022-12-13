@@ -40,7 +40,10 @@ fn split_at_mut(list: &mut [i32], offset: usize) -> (&mut [i32], &mut [i32]) {
     assert!(offset <= l);
 
     unsafe {
-        (slice::from_raw_parts_mut(pos, offset), slice::from_raw_parts_mut(pos.add(offset), l-offset))
+        (
+            slice::from_raw_parts_mut(pos, offset),
+            slice::from_raw_parts_mut(pos.add(offset), l - offset),
+        )
     }
 }
 

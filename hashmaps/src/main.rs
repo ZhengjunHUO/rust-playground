@@ -25,7 +25,6 @@ fn main() {
     println!("bar's value: {}", bar_val);
     println!("baz's value: {}", baz_val);
 
-
     let mut counter = HashMap::new();
     let text = "what is fufu ? cat ! fufu is a domestic cat .";
 

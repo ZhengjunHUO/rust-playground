@@ -7,14 +7,12 @@ fn main() {
     const BILLION: u32 = MILLION * 1000;
     println!("const BILLION's value: {}", BILLION);
 
-
     // mutable variable
     let mut m = 5;
     println!("mutable var x's value: {}", m);
 
     m = 6;
     println!("  => x's value changed to: {}", m);
-
 
     // shadowed immutable variable
     let im = 2;
@@ -23,7 +21,7 @@ fn main() {
     {
         let im = "I'm a string";
         println!("inner scope's immutable value: {}", im);
-    } 
+    }
 
     println!("outer scope's immutable value: {}", im);
 }

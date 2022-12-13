@@ -20,18 +20,18 @@ struct Couple {
 }
 
 fn main() {
-    let dcc1 = DeriveCopyClone{ a: 6, b: 6 };
+    let dcc1 = DeriveCopyClone { a: 6, b: 6 };
     // 因为derive了Copy, dcc1被隐式地复制到dcc2
     // 没有产生move
     let dcc2 = dcc1;
     println!("dcc1: {:?}, dcc2: {:?}", dcc1, dcc2);
 
-    let dc1 = DeriveClone{ a: 3, b: 4 };
+    let dc1 = DeriveClone { a: 3, b: 4 };
     // 只derive了Clone，所以需要显示地复制到dc2
-    let dc2 = dc1.clone(); 
+    let dc2 = dc1.clone();
     println!("dc1: {:?}, dc2: {:?}", dc1, dc2);
 
-    let c1 = Couple{ a: 7, b: 8};
+    let c1 = Couple { a: 7, b: 8 };
     // 没有derive，所以是move
     let c2 = c1;
     println!("c2: {:?}", c2);

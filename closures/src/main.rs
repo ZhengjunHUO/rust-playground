@@ -1,15 +1,17 @@
-use std::thread;
-use crate::role::Hero;
 use crate::role::sort_roles;
+use crate::role::Hero;
+use std::thread;
 
 mod role;
 
-fn increment_func (x: u32) -> u32 { x + 1 }
+fn increment_func(x: u32) -> u32 {
+    x + 1
+}
 
 fn main() {
     let mut x: u32 = 0;
     let increment_closure1 = |x: u32| -> u32 { x + 1 };
-    let increment_closure2 = |x| { x + 1 };
+    let increment_closure2 = |x| x + 1;
     let increment_closure3 = |x| x + 1;
 
     x = increment_func(x);
@@ -30,10 +32,22 @@ fn main() {
     println!("=== Test Fn trait ===");
     // array
     let mut roles = [
-        Hero { attack: 56, defense: 77},
-        Hero { attack: 78, defense: 89},
-        Hero { attack: 61, defense: 63},
-        Hero { attack: 78, defense: 59},
+        Hero {
+            attack: 56,
+            defense: 77,
+        },
+        Hero {
+            attack: 78,
+            defense: 89,
+        },
+        Hero {
+            attack: 61,
+            defense: 63,
+        },
+        Hero {
+            attack: 78,
+            defense: 59,
+        },
     ];
     // array to mutable slice
     sort_roles(&mut roles[..]);
@@ -72,7 +86,9 @@ fn move_ownership() {
     println!("Define a prime list: {:?}", prime);
 
     // value moved into closure, closure used as thread's arg
-    thread::spawn(move || println!("[In thread] prime list: {:?}", prime)).join().unwrap();
+    thread::spawn(move || println!("[In thread] prime list: {:?}", prime))
+        .join()
+        .unwrap();
 
     // value moved, won't compile
     //println!("[After closure] prime list: {:?}", prime);

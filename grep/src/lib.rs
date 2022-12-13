@@ -1,5 +1,5 @@
-use std::{fs, env};
 use std::error::Error;
+use std::{env, fs};
 
 pub struct Config {
     pub pattern: String,
@@ -39,7 +39,7 @@ pub fn exec(config: Config) -> Result<(), Box<dyn Error>> {
 
     let rslt = if config.ignore_case {
         find_ignore_case(&config.pattern, &text)
-    }else{
+    } else {
         find(&config.pattern, &text)
     };
 
@@ -83,7 +83,9 @@ pub fn find<'a>(pattern: &str, text: &'a str) -> Vec<&'a str> {
 pub fn find_ignore_case<'a>(pattern: &str, text: &'a str) -> Vec<&'a str> {
     // shadowed variable, return a String (create new data)
     let pattern = pattern.to_lowercase();
-    text.lines().filter(|l| l.to_lowercase().contains(&pattern)).collect()
+    text.lines()
+        .filter(|l| l.to_lowercase().contains(&pattern))
+        .collect()
 }
 
 #[cfg(test)]
@@ -109,6 +111,9 @@ Hello fufu,
 fufu is a cat,
 foo bar.";
 
-        assert_eq!(vec!["Hello fufu,", "fufu is a cat,"], find_ignore_case(pattern, text));
+        assert_eq!(
+            vec!["Hello fufu,", "fufu is a cat,"],
+            find_ignore_case(pattern, text)
+        );
     }
 }

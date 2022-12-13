@@ -42,7 +42,7 @@ fn main() {
 
     match x {
         Some(100) => println!("x == 100"),
-        Some(n) if n*3 == y => println!("x == 3*y "),
+        Some(n) if n * 3 == y => println!("x == 3*y "),
         // new y in a new scope, match any value in Some, y get the same value as x
         Some(y) => println!("x: {:?}, inner y: {}", x, y),
         _ => println!("Catchall case"),
@@ -68,15 +68,15 @@ fn main() {
 
     // (5) pattern used for destructuring
     //
-    let c = Cordinate{ x: 9, y: 0 };
+    let c = Cordinate { x: 9, y: 0 };
     destructuring_struct(&c);
-    destructuring_struct(&Cordinate{ x: 12, y: 15 });
+    destructuring_struct(&Cordinate { x: 12, y: 15 });
 
     let s = Sketchbook::SetColor(ColorMode::Rgb(125, 100, 250));
     destructuring_enum(s);
 
     destructuring_enum(Sketchbook::SetColor(ColorMode::Hsv(25, 10, 200)));
-    destructuring_enum(Sketchbook::CursorTo{ x: 20, y: 30 });
+    destructuring_enum(Sketchbook::CursorTo { x: 20, y: 30 });
     destructuring_enum(Sketchbook::Draw(String::from("Hello Rust!")));
     destructuring_enum(Sketchbook::Close);
 
@@ -98,7 +98,10 @@ struct Cordinate {
 
 fn destructuring_struct(c: &Cordinate) {
     match c {
-        Cordinate { x: x @ 10..=20, y: y @ 10..=20 } => println!("c({}, {}) is in a specific range !", x, y),
+        Cordinate {
+            x: x @ 10..=20,
+            y: y @ 10..=20,
+        } => println!("c({}, {}) is in a specific range !", x, y),
         // match c.x == 0
         Cordinate { x: 0, y } => println!("c is on the y axis, offset {}", y),
         // match c.y == 0
@@ -118,17 +121,21 @@ enum ColorMode {
 }
 
 enum Sketchbook {
-    CursorTo { x: i32, y: i32}, // struct-like enum variant
-    SetColor(ColorMode), // nested enum
-    Draw(String), // tuple-like enum variant (single element)
-    Close, // enum variant without any data
+    CursorTo { x: i32, y: i32 }, // struct-like enum variant
+    SetColor(ColorMode),         // nested enum
+    Draw(String),                // tuple-like enum variant (single element)
+    Close,                       // enum variant without any data
 }
 
 fn destructuring_enum(s: Sketchbook) {
     match s {
         Sketchbook::CursorTo { x, y } => println!("Cursor moved to ({}, {})", x, y),
-        Sketchbook::SetColor(ColorMode::Rgb(r, g, b)) => println!("Set brush color to RGB({}, {}, {})", r, g, b),
-        Sketchbook::SetColor(ColorMode::Hsv(h, s, v)) => println!("Set brush color to HSV({}, {}, {})", h, s, v),
+        Sketchbook::SetColor(ColorMode::Rgb(r, g, b)) => {
+            println!("Set brush color to RGB({}, {}, {})", r, g, b)
+        }
+        Sketchbook::SetColor(ColorMode::Hsv(h, s, v)) => {
+            println!("Set brush color to HSV({}, {}, {})", h, s, v)
+        }
         Sketchbook::Draw(s) => println!("Drawing {s}"),
         Sketchbook::Close => println!("Quit."),
     }
@@ -145,7 +152,7 @@ fn copy_check_exist(src: Option<u32>, mut dst: Option<u32>) {
     println!("dst is {:?}", dst);
 }
 
-fn ignore_multi_places () {
+fn ignore_multi_places() {
     let t = (1, 2, 3, 4, 5);
 
     match t {
@@ -153,7 +160,7 @@ fn ignore_multi_places () {
     }
 }
 
-fn ignore_consec_places () {
+fn ignore_consec_places() {
     let t = (1, 2, 3, 4, 5);
 
     match t {

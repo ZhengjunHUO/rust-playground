@@ -10,7 +10,10 @@ pub struct K8s {
 
 impl Runner for K8s {
     fn run(&self) {
-        println!("Running on a {} nodes k8s[{}] powered by {}...", self.nodes, self.version, self.cni);
+        println!(
+            "Running on a {} nodes k8s[{}] powered by {}...",
+            self.nodes, self.version, self.cni
+        );
     }
 }
 
@@ -22,7 +25,10 @@ pub struct Baremetal {
 
 impl Runner for Baremetal {
     fn run(&self) {
-       println!("Running on a {} {}[Release: {}] ...", self.platform, self.os, self.release);
+        println!(
+            "Running on a {} {}[Release: {}] ...",
+            self.platform, self.os, self.release
+        );
     }
 }
 

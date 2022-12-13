@@ -21,10 +21,8 @@ pub fn sort_roles(roles: &mut [Hero]) {
         counter += 1;
         let rslt = a.attack.cmp(&b.attack);
         match rslt {
-            Ordering::Equal => {
-                a.defense.cmp(&b.defense)
-            },
-            _ => rslt
+            Ordering::Equal => a.defense.cmp(&b.defense),
+            _ => rslt,
         }
     });
 

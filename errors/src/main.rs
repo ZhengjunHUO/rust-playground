@@ -1,6 +1,6 @@
-use std::fs::{File,OpenOptions};
-use std::io::{self,ErrorKind,Write,Read,Seek};
 use std::error::Error;
+use std::fs::{File, OpenOptions};
+use std::io::{self, ErrorKind, Read, Seek, Write};
 
 fn main() -> Result<(), Box<dyn Error>> {
     // file name typed string slice
@@ -29,24 +29,25 @@ fn read_file_with_creation(filename: &str) -> Result<String, io::Error> {
                 .read(true)
                 .write(true)
                 .create(true)
-                .open(filename) {
-                     Ok(mut created_file) => {
-                         // Write to the created file
-                         match created_file.write_all(b"Hello Rust!") {
-                             // Rewind cursor to the begining of the file
-                             Ok(_) => match created_file.rewind() {
-                                 Ok(_) => {
-                                     println!("[DEBUG] {} not exist, create it", filename);
-                                     created_file
-                                 }
-                                 Err(err) => panic!("Failed to rewind: {:?}", err),
-                             }
-                             Err(err) => panic!("Failed to write to created file: {:?}", err),
-                         }
-                     }
-                     Err(err) => panic!("Failed to create: {:?}", err),
+                .open(filename)
+            {
+                Ok(mut created_file) => {
+                    // Write to the created file
+                    match created_file.write_all(b"Hello Rust!") {
+                        // Rewind cursor to the begining of the file
+                        Ok(_) => match created_file.rewind() {
+                            Ok(_) => {
+                                println!("[DEBUG] {} not exist, create it", filename);
+                                created_file
+                            }
+                            Err(err) => panic!("Failed to rewind: {:?}", err),
+                        },
+                        Err(err) => panic!("Failed to write to created file: {:?}", err),
+                    }
+                }
+                Err(err) => panic!("Failed to create: {:?}", err),
             }
-        }else{
+        } else {
             // all other unknown errors
             panic!("Failed to open: {:?}", error);
         }

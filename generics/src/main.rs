@@ -1,5 +1,5 @@
-use objects::{Kube, Cat, Point, PointX};
 use generics::Inspect;
+use objects::{Cat, Kube, Point, PointX};
 use std::fmt::Display;
 
 mod objects;
@@ -21,14 +21,18 @@ fn notify<T: Inspect>(obj: &T) {
 }
 
 fn notify_with_content<T: Inspect + Display>(obj: &T) {
-    println!("[INFO] notify_with_content: Find an object: {}\n[DEBUG] Content: {}", obj.info(), obj);
+    println!(
+        "[INFO] notify_with_content: Find an object: {}\n[DEBUG] Content: {}",
+        obj.info(),
+        obj
+    );
 }
 
 fn notify_sugar(obj: &impl Inspect) {
     println!("[INFO] notify_sugar: Find an object: {}", obj.info());
 }
 
-fn notify_duo<T, U>(obj1: &T, obj2:&U)
+fn notify_duo<T, U>(obj1: &T, obj2: &U)
 where
     T: Inspect + Display,
     U: Inspect,
@@ -55,26 +59,21 @@ fn main() {
     let p1 = Point { x: 6, y: 8 };
     let p2 = Point { x: 3.0, y: 4.0 };
     println!("p1.x: {}; p2.y: {}", p1.get_x(), p2.get_y());
-    println!("the distance between zero point and p2: {}", p2.dist_from_zero_point());
+    println!(
+        "the distance between zero point and p2: {}",
+        p2.dist_from_zero_point()
+    );
 
     let p3 = PointX { x: "Rust", y: 3.14 };
-    let p4 = PointX { x: 1, y: 'x'};
+    let p4 = PointX { x: 1, y: 'x' };
     let p5 = p3.melange(p4);
     println!("after the melange p5.x = {}, p5.y = {}", p5.x, p5.y);
 
-    let k1 = Kube::new(
-        String::from("k8s"),
-        String::from("cilium"),
-        8,
-        false,
-    );
+    let k1 = Kube::new(String::from("k8s"), String::from("cilium"), 8, false);
     println!("k8s: {:?}", k1);
     notify_sugar(&k1);
 
-    let c1 = Cat::new(
-        String::from("fufu"),
-        6,
-    );
+    let c1 = Cat::new(String::from("fufu"), 6);
     notify(&c1);
 
     notify_sugar_duo(&k1, &c1);

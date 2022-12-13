@@ -33,7 +33,10 @@ impl WorkerPool {
             workers.push(Worker::new(id, Arc::clone(&rx)));
         }
 
-        WorkerPool { workers, tx: Some(tx) }
+        WorkerPool {
+            workers,
+            tx: Some(tx),
+        }
     }
 
     pub fn schedule<F>(&self, f: F)
@@ -83,6 +86,9 @@ impl Worker {
             }
         });
 
-	Worker { id, thread: Some(thread) }
+        Worker {
+            id,
+            thread: Some(thread),
+        }
     }
 }

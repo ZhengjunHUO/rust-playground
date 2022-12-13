@@ -12,14 +12,14 @@ impl Rectangle {
 
     // &self is an alias
     fn contains(self: &Self, rect: &Rectangle) -> bool {
-	self.width >= rect.width && self.height >= rect.height
+        self.width >= rect.width && self.height >= rect.height
     }
 
     fn new(name: String, width: u32, height: u32) -> Self {
         Self {
-                name,
-                width,
-                height,
+            name,
+            width,
+            height,
         }
     }
 }
@@ -57,7 +57,7 @@ fn main() {
     };
 
     let rc2 = Rectangle {
-        name: String::from("bar"),	// remove this line compilation will fail(String is "moved" from rc1 to rc2)
+        name: String::from("bar"), // remove this line compilation will fail(String is "moved" from rc1 to rc2)
         width: 40,
         ..rc1
     };
@@ -71,8 +71,18 @@ fn main() {
     println!("{:#?}", rc2);
     println!("rectangle {}'s size is {}.", rc2.name, rc2.size());
 
-    println!("rectangle {} contains {} ? {}", rc1.name, rc2.name, rc1.contains(&rc2));
-    println!("rectangle {} contains {} ? {}", rc1.name, rc3.name, rc1.contains(&rc3));
+    println!(
+        "rectangle {} contains {} ? {}",
+        rc1.name,
+        rc2.name,
+        rc1.contains(&rc2)
+    );
+    println!(
+        "rectangle {} contains {} ? {}",
+        rc1.name,
+        rc3.name,
+        rc1.contains(&rc3)
+    );
 
     let mut c = Coordinate { x: 3, y: 5 };
     println!("Initial coordiante: {:?}", c);

@@ -1,7 +1,7 @@
+use crate::List::*;
+use std::cell::RefCell;
 use std::ops::Deref;
 use std::rc::Rc;
-use std::cell::RefCell;
-use crate::List::*;
 
 // tuple struct with 1 param
 #[derive(Debug)]
@@ -28,7 +28,6 @@ impl<T: std::fmt::Debug> Drop for FakeBox<T> {
         println!("[{:?}]: drop called", self);
     }
 }
-
 
 // Test ref counter
 #[derive(Debug)]
@@ -68,7 +67,10 @@ fn main() {
     // Test Rc<T> & RefCell<T>
     let v1 = Rc::new(RefCell::new(10));
     let v2 = Rc::new(RefCell::new(100));
-    let l = Rc::new(Node(Rc::clone(&v1), Rc::new(Node(Rc::clone(&v2), Rc::new(Nil)))));
+    let l = Rc::new(Node(
+        Rc::clone(&v1),
+        Rc::new(Node(Rc::clone(&v2), Rc::new(Nil))),
+    ));
     println!("After let l, l's counter = {}", Rc::strong_count(&l));
     // Rc::clone don't do deep copy, increse ref count only
     let l1 = Node(Rc::new(RefCell::new(0)), Rc::clone(&l));
@@ -79,7 +81,10 @@ fn main() {
     }
     // the implementation of the Drop trait decreases the ref count automatically
     // when an Rc<T> value goes out of scope.
-    println!("After l2 out of scope, l's counter = {}", Rc::strong_count(&l));
+    println!(
+        "After l2 out of scope, l's counter = {}",
+        Rc::strong_count(&l)
+    );
 
     println!("l: {:?}", l);
     println!("l1: {:?}", l1);

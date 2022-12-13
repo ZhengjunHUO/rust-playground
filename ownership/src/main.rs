@@ -1,7 +1,7 @@
 fn main() {
     // str pointer on stack, content on heap
     let s1 = String::from("Hello");
- 
+
     // move: s1 is not valid any more
     // try to print s1 return error
     //let s2 = s1;
@@ -35,11 +35,11 @@ fn main() {
     // can have several immut refs
     let r3 = &s4;
     let r4 = &s4;
-    println!("{} {}", r3, r4);  // r3, r4 scope end here, ok to have mut ref
+    println!("{} {}", r3, r4); // r3, r4 scope end here, ok to have mut ref
 
     // not the case for mut refs (avoid race condition)
     let r1 = &mut s4;
-    modif_str_ch(r1);  // r1's scope end here, ok to have another mutable ref
+    modif_str_ch(r1); // r1's scope end here, ok to have another mutable ref
 
     let r2 = &mut s4;
     modif_str_en(r2);

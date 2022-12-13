@@ -32,5 +32,5 @@ fn increment(prime: &Vec<u32>) -> Vec<u32> {
 
 fn can_be_divided_by(num: Vec<u32>, divisor: u32) -> Vec<u32> {
     // into_iter() take the ownership
-    num.into_iter().filter(|n| n%divisor == 0).collect()
+    num.into_iter().filter(|n| n % divisor == 0).collect()
 }

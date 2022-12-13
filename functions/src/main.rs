@@ -1,6 +1,6 @@
 fn main() {
     let mut max = 0;
-    let list: [u32; 5] = [12, 7, 88, 36, 1]; 
+    let list: [u32; 5] = [12, 7, 88, 36, 1];
 
     for v in list {
         max = max_positive(max, v);
@@ -17,7 +17,7 @@ fn main() {
 
 fn max_positive(x: u32, y: u32) -> u32 {
     if x > y {
-        return x
+        return x;
     }
 
     y

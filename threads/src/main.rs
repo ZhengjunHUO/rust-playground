@@ -1,9 +1,9 @@
+use std::sync::mpsc;
 use std::thread;
 use std::time::Duration;
-use std::sync::mpsc;
 
 fn main() {
-    let prime = vec![2, 3, 5 ,7, 11];
+    let prime = vec![2, 3, 5, 7, 11];
 
     // prime's ownership moved to thread
     let h1 = thread::spawn(move || {

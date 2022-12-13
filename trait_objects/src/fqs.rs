@@ -7,7 +7,6 @@ pub trait Tiger {
     fn talk(&self);
 }
 
-
 pub struct Feline;
 impl Feline {
     pub fn talk(&self) {
