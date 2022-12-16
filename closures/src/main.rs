@@ -1,8 +1,12 @@
 use crate::role::sort_roles;
 use crate::role::Hero;
+use crate::functraits::give_five_to;
+use crate::functraits::repeat;
+use crate::functraits::huo_say;
 use std::thread;
 
 mod role;
+mod functraits;
 
 fn increment_func(x: u32) -> u32 {
     x + 1
@@ -10,8 +14,9 @@ fn increment_func(x: u32) -> u32 {
 
 fn main() {
     let mut x: u32 = 0;
+    // 三种声明closure的方式
     let increment_closure1 = |x: u32| -> u32 { x + 1 };
-    let increment_closure2 = |x| x + 1;
+    let increment_closure2 = |x| { x + 1 };
     let increment_closure3 = |x| x + 1;
 
     x = increment_func(x);
@@ -51,8 +56,32 @@ fn main() {
     ];
     // array to mutable slice
     sort_roles(&mut roles[..]);
+
+
+    // a "fn" example
+    let double_c = |x| x * 2;
+    assert_eq!(give_five_to(double_c), 10);
+    assert_eq!(give_five_to(double_c), 10);
+
+    // a "fnMut" example
+    let mut val: usize = 256;
+    //let double_val_c = || val *= 2;
+    repeat(|| val *= 2);
+    assert_eq!(val, 1024);
+    repeat(|| val *= 2);
+    assert_eq!(val, 4096);
+
+    // a "fnOnce" example
+    let s = String::from("Rust rocks");
+
+    let move_s = move || s;
+    //huo_say(move || s);
+    huo_say(move_s);
+    // Can't call it again because closure move_s is moved
+    //huo_say(move_s);
 }
 
+// 一个fn的例子
 fn borrow() {
     let prime = vec![2, 3, 5];
     println!("Before defining a closure: {:?}", prime);
@@ -66,6 +95,7 @@ fn borrow() {
     println!("[After  closure] prime list: {:?}", prime);
 }
 
+// 一个fnMut的例子
 fn mut_borrow() {
     let mut prime = vec![2, 3, 5];
     println!("Before defining a closure: {:?}", prime);
@@ -81,6 +111,7 @@ fn mut_borrow() {
     println!("[After  closure] prime list: {:?}", prime);
 }
 
+// 一个fnOnce的例子
 fn move_ownership() {
     let prime = vec![2, 3, 5];
     println!("Define a prime list: {:?}", prime);
