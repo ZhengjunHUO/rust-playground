@@ -13,7 +13,7 @@ fn main() {
     // can't use num because num is moved in can_be_divided_by
     //println!("{:?}", num);
 
-
+    // 使用iter()在&T上循环
     // Test #2-1
     let cats = vec!["fufu", "lulu", "shoushou"];
     // iter()获取的是ref，之后cats依然有效
@@ -27,6 +27,18 @@ fn main() {
     // 同理此处&(name, _)也是元组的ref
     let name_only = cat_with_point.iter().map(|&(name, _)| { name }).collect::<Vec<_>>();
     assert_eq!(name_only, cats);
+
+    // 使用iter_mut()在&mut T上循环
+    let mut cats_with_point = [
+       [("fufu", 30), ("lulu", 50), ("shoushou", 25),],
+       [("fuku", 63), ("luku", 10), ("naonao", 47),],
+    ];
+    let sorted_asc = cats_with_point.iter_mut().map(|tp| {
+        tp.sort_by(|&a, &b| a.1.cmp(&b.1));
+        tp
+    }).collect::<Vec<_>>();
+
+    println!("After sort: {:?}", sorted_asc);
 }
 
 fn print_all<T: Display>(prime: &Vec<T>)
