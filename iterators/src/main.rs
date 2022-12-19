@@ -79,10 +79,20 @@ fn main() {
     test_for();
 
     // Test #6
-    let cats_bis = cats.clone().into_iter().collect::<Vec<_>>();
+    let cats_bis = name_moved.clone().into_iter().collect::<Vec<_>>();
     println!("=> Type of cats_bis is: ");
     type_of(&cats_bis);
+
+    // Vec<String>, Vec<String>
+    assert_eq!(name_moved, cats_bis);
+    // Vec<&str>, Vec<String> ?!
     assert_eq!(cats, cats_bis);
+
+    let cat_first_two = name_moved.clone().into_iter().take(2).collect::<Vec<_>>();
+    let cat_first_two_bis = name_moved.iter().map(|elem| elem.clone()).take(2).collect::<Vec<_>>();
+    let cat_first_two_ter = name_moved.iter().cloned().take(2).collect::<Vec<_>>();
+    assert_eq!(cat_first_two, cat_first_two_bis);
+    assert_eq!(cat_first_two, cat_first_two_ter);
 }
 
 fn print_all<T: Display>(prime: &Vec<T>)
