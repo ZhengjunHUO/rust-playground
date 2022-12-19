@@ -28,7 +28,7 @@ fn main() {
     let name_only = cat_with_point.iter().map(|&(name, _)| { name }).collect::<Vec<_>>();
     assert_eq!(name_only, cats);
 
-    // 使用iter_mut()在&mut T上循环
+    // Test #3 使用iter_mut()在&mut T上循环
     let mut cats_with_point = [
        [("fufu", 30), ("lulu", 50), ("shoushou", 25),],
        [("fuku", 63), ("luku", 10), ("naonao", 47),],
@@ -39,6 +39,14 @@ fn main() {
     }).collect::<Vec<_>>();
 
     println!("After sort: {:?}", sorted_asc);
+
+    // Test #4 使用into_iter()在T上循环 (move)
+    let cat_with_credit = vec![(String::from("fufu"), 30), (String::from("lulu"), 50), (String::from("shoushou"), 25)];
+    //let name_moved = cat_with_credit.into_iter().map(|(name, _)| { name }).collect::<Vec<_>>();
+    let name_moved = retrieve_name(cat_with_credit);
+    assert_eq!(name_moved, cats);
+    // Won't work because cat_with_credit is moved at into_iter() call
+    //println!("{:?}", cat_with_credit);
 }
 
 fn print_all<T: Display>(prime: &Vec<T>)
@@ -68,4 +76,8 @@ fn increment(prime: &Vec<u32>) -> Vec<u32> {
 fn can_be_divided_by(num: Vec<u32>, divisor: u32) -> Vec<u32> {
     // into_iter() take the ownership
     num.into_iter().filter(|n| n % divisor == 0).collect()
+}
+
+fn retrieve_name(v: Vec<(String, usize)>) -> Vec<String> {
+    v.into_iter().map(|(name, _)| { name }).collect()
 }
