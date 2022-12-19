@@ -1,9 +1,26 @@
 use std::fmt::Display;
+use std::any::type_name;
+
+fn type_of<T>(_: &T) {
+    println!("    {}", type_name::<T>())
+}
+
+fn test_for() {
+    //let vals = vec![1,2,3,4,5];
+    let vals = vec![String::from("huo"), String::from("rust"), String::from("rocks")];
+    for v in &vals {
+        println!("{}", v);
+    }
+
+    println!("{:?}", vals);
+}
 
 fn main() {
     // Test #1
     let prime = vec![2u32, 3, 5, 7, 11];
-    print_all(&prime);
+    println!("=> Type of prime is: ");
+    type_of(&prime);
+    //print_all(&prime);
 
     let num = increment(&prime);
     println!("incremented prime: {:?}", num);
@@ -16,6 +33,8 @@ fn main() {
     // 使用iter()在&T上循环
     // Test #2-1
     let cats = vec!["fufu", "lulu", "shoushou"];
+    println!("=> Type of cats is: ");
+    type_of(&cats);
     // iter()获取的是ref，之后cats依然有效
     // 注意iterator中的元素是&str的ref
     let sum = cats.iter().map(|id: &&str| id.len()).fold(8, |acc, len| acc + len);
@@ -24,6 +43,8 @@ fn main() {
 
     // Test #2-2
     let cat_with_point = [("fufu", 30), ("lulu", 50), ("shoushou", 25)];
+    println!("=> Type of cat_with_point is: ");
+    type_of(&cat_with_point);
     // 同理此处&(name, _)也是元组的ref
     let name_only = cat_with_point.iter().map(|&(name, _)| { name }).collect::<Vec<_>>();
     assert_eq!(name_only, cats);
@@ -33,6 +54,8 @@ fn main() {
        [("fufu", 30), ("lulu", 50), ("shoushou", 25),],
        [("fuku", 63), ("luku", 10), ("naonao", 47),],
     ];
+    println!("=> Type of cats_with_point is: ");
+    type_of(&cats_with_point);
     let sorted_asc = cats_with_point.iter_mut().map(|tp| {
         tp.sort_by(|&a, &b| a.1.cmp(&b.1));
         tp
@@ -42,11 +65,24 @@ fn main() {
 
     // Test #4 使用into_iter()在T上循环 (move)
     let cat_with_credit = vec![(String::from("fufu"), 30), (String::from("lulu"), 50), (String::from("shoushou"), 25)];
+    println!("=> Type of cat_with_credit is: ");
+    type_of(&cat_with_credit);
     //let name_moved = cat_with_credit.into_iter().map(|(name, _)| { name }).collect::<Vec<_>>();
     let name_moved = retrieve_name(cat_with_credit);
+    println!("=> Type of name_moved is: ");
+    type_of(&name_moved);
     assert_eq!(name_moved, cats);
     // Won't work because cat_with_credit is moved at into_iter() call
     //println!("{:?}", cat_with_credit);
+
+    // Test #5 About for
+    test_for();
+
+    // Test #6
+    let cats_bis = cats.clone().into_iter().collect::<Vec<_>>();
+    println!("=> Type of cats_bis is: ");
+    type_of(&cats_bis);
+    assert_eq!(cats, cats_bis);
 }
 
 fn print_all<T: Display>(prime: &Vec<T>)
