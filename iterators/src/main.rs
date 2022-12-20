@@ -93,6 +93,21 @@ fn main() {
     let cat_first_two_ter = name_moved.iter().cloned().take(2).collect::<Vec<_>>();
     assert_eq!(cat_first_two, cat_first_two_bis);
     assert_eq!(cat_first_two, cat_first_two_ter);
+
+    // Test #7 Zip
+    let z1 = vec![1, 2, 3];
+    let z2 = vec![10, 20, 30, 40];
+
+    // z1, z2 consumed; element in rslt is (i32, i32)
+    // use iter() to get ref (avoid move); element in rslt is (&i32, &i32)
+    // z1.into_iter().zip(z2.iter()); => (i32, &i32)
+    let rslt = z1.into_iter().zip(z2.into_iter());
+    // rslt consumed by for loop
+    // for loop syntax is actually sugar for iterators
+    for elem in rslt {
+        type_of(&elem);
+        println!("{:?}", elem);
+    }
 }
 
 fn print_all<T: Display>(prime: &Vec<T>)
