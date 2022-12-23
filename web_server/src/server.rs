@@ -2,6 +2,7 @@ use crate::worker::WorkerPool;
 use anyhow::Result;
 use crossbeam_channel::{bounded, select, unbounded, Receiver};
 use ctrlc;
+use log::{debug, info};
 use std::{
     fs,
     io::{prelude::*, BufReader},
@@ -46,11 +47,13 @@ impl Server {
                 tx.send(conn).unwrap();
             }
         });
+        info!("Listener up.");
 
         loop {
+            debug!("Waiting for incoming msg ...");
             select! {
                 recv(cancel) -> _ => {
-                    println!("Catch Ctrl-C signal, quitting ...");
+                    debug!("Catch Ctrl-C signal, quitting ...");
                     break;
                 }
 
@@ -58,15 +61,15 @@ impl Server {
                     // rslt is Result<TcpStream, crossbeam_channel::RecvError>
                     match rslt {
                         Ok(conn) => {
-                            println!("[DEBUG] Recv conn attempt!");
+                            debug!("Recv conn attempt!");
                             // send handler to workerpool
                             self.wp.as_ref().unwrap().schedule(|| {
                                 handle_conn(conn);
                             });
-                            println!("[DEBUG] Conn dispatched!");
+                            debug!("Conn dispatched!");
                         }
                         Err(e) => {
-                            println!("[DEBUG] Got an error: {e}");
+                            debug!("Got an error: {e}");
                             break;
                         }
                     }
@@ -88,7 +91,7 @@ fn handle_conn(mut conn: TcpStream) {
     //let req: Vec<_> = rdr.lines().map(|rslt| rslt.unwrap()).take_while(|line| !line.is_empty()).collect();
 
     let req_format = rdr.lines().next().unwrap().unwrap();
-    println!("[DEBUG] Recv conn req: {:#?}", req_format);
+    debug!("Recv conn req: {:#?}", req_format);
 
     // under the hood: let (filename, resp_status) = if &req_format[..] == REQ_ROOT_FORMAT {
     let (filename, resp_status) = match &req_format[..] {

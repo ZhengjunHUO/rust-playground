@@ -1,3 +1,4 @@
+use log::{debug, info};
 use std::{
     sync::{mpsc, Arc, Mutex},
     thread,
@@ -64,7 +65,7 @@ impl Drop for WorkerPool {
             if let Some(thread) = w.thread.take() {
                 thread.join().unwrap();
             }
-            println!("[Worker {}] Stopped.", w.id);
+            info!("[Worker {}] Stopped.", w.id);
         }
     }
 }
@@ -76,11 +77,11 @@ impl Worker {
             let msg = rx.lock().unwrap().recv();
             match msg {
                 Ok(task) => {
-                    println!("[Worker {}] Receive task.", id);
+                    debug!("[Worker {}] Receive task.", id);
                     task();
                 }
                 Err(_) => {
-                    println!("[Worker {}] Gracefully shutting down ...", id);
+                    info!("[Worker {}] Gracefully shutting down ...", id);
                     break;
                 }
             }
