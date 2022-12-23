@@ -1,7 +1,7 @@
 use anyhow::{Context, Result};
 use clap::Parser;
 use std::{
-    io::{BufRead, BufReader},
+    io::{self, BufRead, BufReader},
     {fs, path},
 };
 
@@ -26,12 +26,21 @@ fn main() -> Result<()> {
     */
 
     //let f = fs::File::open(&args.path).expect("failed to open target file");
-    let f = fs::File::open(&args.path).with_context(|| format!("Failed to open file `{}`", &args.path.display()))?;
+    let f = fs::File::open(&args.path)
+        .with_context(|| format!("Failed to open file `{}`", &args.path.display()))?;
     let buf = BufReader::new(f);
+    search_in(buf, &args.pattern, io::stdout())
+}
+
+fn search_in<R>(buf: BufReader<R>, pattern: &str, mut writer: impl io::Write) -> Result<()>
+where
+    R: std::io::Read,
+{
     for line in buf.lines() {
         if let Ok(l) = line {
-            if l.contains(&args.pattern) {
-                println!("{}", l);
+            if l.contains(pattern) {
+                writeln!(writer, "{}", l)
+                    .with_context(|| format!("Error occurred during write"))?;
             }
         }
     }
