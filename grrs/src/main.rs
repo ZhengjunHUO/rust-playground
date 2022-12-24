@@ -1,10 +1,10 @@
 use anyhow::{Context, Result};
 use clap::Parser;
+use grrs::search_in;
 use std::{
     io::{self, BufReader},
     {fs, path},
 };
-use grrs::search_in;
 
 #[derive(Debug, Parser)]
 struct Cli {
