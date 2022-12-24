@@ -1,9 +1,10 @@
 use anyhow::{Context, Result};
 use clap::Parser;
 use std::{
-    io::{self, BufRead, BufReader},
+    io::{self, BufReader},
     {fs, path},
 };
+use grrs::search_in;
 
 #[derive(Debug, Parser)]
 struct Cli {
@@ -30,19 +31,4 @@ fn main() -> Result<()> {
         .with_context(|| format!("Failed to open file `{}`", &args.path.display()))?;
     let buf = BufReader::new(f);
     search_in(buf, &args.pattern, io::stdout())
-}
-
-fn search_in<R>(buf: BufReader<R>, pattern: &str, mut writer: impl io::Write) -> Result<()>
-where
-    R: std::io::Read,
-{
-    for line in buf.lines() {
-        if let Ok(l) = line {
-            if l.contains(pattern) {
-                writeln!(writer, "{}", l)
-                    .with_context(|| format!("Error occurred during write"))?;
-            }
-        }
-    }
-    Ok(())
 }
