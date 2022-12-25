@@ -10,5 +10,4 @@ anyhow = "1.0.66"
 log = "0.4.17"
 env_logger = "0.10.0"
 confy = "0.5.1"
-serde_derive = "1.0.151"
-serde = "1.0.151"
+serde = { version = "1.0.151", features = ["derive"] }

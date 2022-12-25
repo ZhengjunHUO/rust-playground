@@ -1,5 +1,5 @@
 use log::{debug, info};
-use serde_derive::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
 use web_server::server::Server;
 
 #[derive(Serialize, Deserialize)]
