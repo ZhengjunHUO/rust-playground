@@ -3,7 +3,7 @@ use num::Complex;
 use std::{fs::File, io::Error, str::FromStr};
 
 /// Parse a string slice `s` containing two values, seperated by a delimiter `d` to a tuple
-fn get_pair<T: FromStr>(s: &str, d: char) -> Option<(T, T)> {
+pub fn get_pair<T: FromStr>(s: &str, d: char) -> Option<(T, T)> {
     match s.find(d) {
         None => None,
         Some(idx) => match (T::from_str(&s[..idx]), T::from_str(&s[idx + 1..])) {
@@ -14,7 +14,7 @@ fn get_pair<T: FromStr>(s: &str, d: char) -> Option<(T, T)> {
 }
 
 /// Turn a string slice `s` containing two values, seperated by a delimiter `#` to a Complex
-fn get_complex(s: &str) -> Option<Complex<f64>> {
+pub fn get_complex(s: &str) -> Option<Complex<f64>> {
     match get_pair(s, '#') {
         Some((re, im)) => Some(Complex { re, im }),
         _ => None,
@@ -62,7 +62,7 @@ fn pixel2complex(
 /// then test if the Complex is a member of set
 /// and parse the result to a grayscale value
 /// eg. is a member => return None => 0 => black
-fn render(
+pub fn render(
     pixel_range: (usize, usize),
     complex_range: (Complex<f64>, Complex<f64>),
     pixels: &mut [u8],
@@ -82,7 +82,7 @@ fn render(
 }
 
 /// Write pixels (with grayscale value) to a png image
-fn save_to_img(name: &str, pixel_range: (usize, usize), pixels: &[u8]) -> Result<(), Error> {
+pub fn save_to_img(name: &str, pixel_range: (usize, usize), pixels: &[u8]) -> Result<(), Error> {
     let f = File::create(name)?;
     let enc = PNGEncoder::new(f);
     enc.encode(
