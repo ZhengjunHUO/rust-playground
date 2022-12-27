@@ -10,10 +10,7 @@ fn main() {
             "Usage: {} FILENAME PIXEL_COORD UPPERLEFT LOWERRIGHT",
             args[0]
         );
-        eprintln!(
-            "Example: {} mandel.png 1000x750 -1.20#0.35 -1#0.20",
-            args[0]
-        );
+        eprintln!("   eg. {} result.png 5000x5000 -1.55#1.1 0.65#-1.1", args[0]);
         exit(1);
     }
 
