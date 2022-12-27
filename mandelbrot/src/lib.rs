@@ -42,7 +42,7 @@ fn is_mandelbrot_set_member(c: Complex<f64>, max_iter: usize) -> Option<usize> {
 /// `complex_range`: the size is designated by
 ///    a upper left complex and a lower_right complex
 /// `pixel`: the pixel to be converted
-fn pixel2complex(
+pub fn pixel2complex(
     pixel_range: (usize, usize),
     complex_range: (Complex<f64>, Complex<f64>),
     pixel: (usize, usize),

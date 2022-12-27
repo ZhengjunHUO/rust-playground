@@ -8,3 +8,4 @@ edition = "2021"
 [dependencies]
 num = "0.4"
 image = "0.13.0"
+crossbeam = "0.8"
