@@ -1,4 +1,4 @@
-use actix_web::{web, App, HttpResponse, HttpServer};
+use actix_web::{get, post, web, App, HttpResponse, HttpServer};
 use serde::Deserialize;
 
 #[derive(Deserialize)]
@@ -7,22 +7,21 @@ struct ModParams {
     m: u32,
 }
 
-fn main() {
-    let socket = "127.0.0.1:8080";
-
+#[actix_web::main]
+async fn main() -> std::io::Result<()> {
     let s = HttpServer::new(|| {
         App::new()
-            .route("/", web::get().to(show_home))
-            .route("/mod", web::post().to(post_mod))
+            .service(show_home)
+            .service(post_mod)
     });
-    println!("Starting server at {} ...", socket);
-    s.bind(socket)
-        .expect("Failed to bind to localhost:8080!")
+    println!("Starting server at 8080");
+    s.bind(("127.0.0.1", 8080))?
         .run()
-        .expect("Failed to start the server");
+        .await
 }
 
-fn show_home() -> HttpResponse {
+#[get("/")]
+async fn show_home() -> HttpResponse {
     HttpResponse::Ok().content_type("text/html").body(
         r#"
             <title>Modulo Calculator</title>
@@ -35,7 +34,8 @@ fn show_home() -> HttpResponse {
     )
 }
 
-fn post_mod(form: web::Form<ModParams>) -> HttpResponse {
+#[post("/mod")]
+async fn post_mod(form: web::Form<ModParams>) -> HttpResponse {
     if form.m == 0 {
         return HttpResponse::BadRequest()
             .content_type("text/html")
