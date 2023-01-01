@@ -14,7 +14,8 @@ fn main() {
     assert_eq!(a1, [1, 3, 6, 9, 10]);
 
     let mut a2 = [24, 3, 11, 8, 6];
-    let r2 = &mut a2[..];
+    let r2: &mut [i32] = &mut a2[..];
+    //let r2 = &mut a2;
     r2.sort();
     assert_eq!(a2, [3, 6, 8, 11, 24]);
 
@@ -42,4 +43,23 @@ fn main() {
     let r3 = &mut v3[..];
     r3.reverse();
     assert_eq!(v3, vec![5, 4, 3, 2, 1, 0]);
+
+    // 关于slice
+    // 隐式地转换&[T; N]为&[T]
+    let sa = &a2;
+    // 隐式地转换&Vec<T>为&[T]
+    let sv = &v3;
+    // Array和Vec都可以作为参数传递给print_all
+    print_all(sa);
+    print_all(sv);
+}
+
+// 接受一个slice ref
+fn print_all<T>(s: &[T])
+where
+    T: std::fmt::Display,
+{
+    for i in s {
+        println!("{}", i);
+    }
 }
