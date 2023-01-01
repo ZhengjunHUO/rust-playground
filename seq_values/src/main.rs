@@ -1,12 +1,12 @@
 fn main() {
     // 关于Array
-    // (1) 
-    let mut b = [true; 3];
-    b[1] = false;
-    assert_eq!(b.len(), 3);
-    assert_eq!(b, [true, false, true]);
+    // (1)
+    let mut b1 = [true; 3];
+    b1[1] = false;
+    assert_eq!(b1.len(), 3);
+    assert_eq!(b1, [true, false, true]);
 
-    // (2) 
+    // (2)
     let mut a1 = [1, 10, 6, 3, 9];
     // 很多有用的方法是在slice上实现，array可直接调用，因为
     // 隐式地将array转换为&mut a1[..], 如下r2所示
@@ -17,4 +17,29 @@ fn main() {
     let r2 = &mut a2[..];
     r2.sort();
     assert_eq!(a2, [3, 6, 8, 11, 24]);
+
+    // 关于Vector
+    // (1)
+    let mut v1 = vec![2, 3, 5];
+    assert_eq!(v1.pop(), Some(5));
+    v1.push(7);
+    assert_eq!(v1.iter().product::<u32>(), 42);
+
+    // (2)
+    // 类似array的声明法
+    let mut b2 = vec![true; 3];
+    b2[0] = false;
+    assert_eq!(b2, vec![false, true, true]);
+
+    // (3)
+    // collect()需要显式指出类型
+    let mut v2: Vec<u32> = (0..6).collect();
+    // 类似array的隐式转换，变成slice后调用方法
+    v2.reverse();
+    assert_eq!(v2, vec![5, 4, 3, 2, 1, 0]);
+
+    let mut v3: Vec<u32> = (0..6).collect();
+    let r3 = &mut v3[..];
+    r3.reverse();
+    assert_eq!(v3, vec![5, 4, 3, 2, 1, 0]);
 }
