@@ -48,6 +48,11 @@ impl Coordinate {
     }
 }
 
+struct Cluster {
+    name: Option<String>,
+    nodes: u32,
+}
+
 fn main() {
     let unit = 2;
     let rc1 = Rectangle {
@@ -89,6 +94,21 @@ fn main() {
     c.up();
     c.left();
     println!("Moved coordiante: {:?}", c);
+
+
+    // 如果需要从结构中取出个别值，可以考虑在结构定义使用Option<T>
+    // 调用take可以取出Some<T>并在原地留下None, 不会触发ownership的约束
+    let mut clusters = Vec::new();
+    clusters.push(Cluster {
+        name: Some("internal".to_string()),
+        nodes: 8,
+    });
+
+    let cname = clusters[0].name.take();
+    // 等同于take
+    //let cname = std::mem::replace(&mut clusters[0].name, None);
+    assert_eq!(cname, Some("internal".to_string()));
+    assert_eq!(clusters[0].name, None);
 }
 
 fn size(rct: &Rectangle) -> u32 {
