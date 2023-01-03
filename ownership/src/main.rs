@@ -1,3 +1,5 @@
+use std::rc::Rc;
+
 fn main() {
     // str pointer on stack, content on heap
     let s1 = String::from("Hello");
@@ -44,6 +46,28 @@ fn main() {
     let r2 = &mut s4;
     modif_str_en(r2);
     println!("After change: {}", s4);
+
+    // 比较ref
+    let ai = 8;
+    let bi = 8;
+    let ra = &ai;
+    let rb = &bi;
+    // ref指向的内容在数值上相同
+    assert!(ra == rb);
+    // 但是存储在不同的地址上
+    assert!(!std::ptr::eq(ra, rb));
+
+    // Rc也可以进行类似的比较
+    let rc_str_a = Rc::new("huo".to_string());
+    let rc_str_b = rc_str_a.clone();
+    assert!(rc_str_a == rc_str_b);
+    // 指向的是同一片区域
+    assert!(Rc::ptr_eq(&rc_str_a, &rc_str_b));
+
+    let rc_str_c = Rc::new("huo".to_string());
+    assert!(rc_str_a == rc_str_c);
+    // 值相同但是地址不同
+    assert!(!Rc::ptr_eq(&rc_str_a, &rc_str_c));
 }
 
 fn get_len(s: String) -> (String, usize) {
