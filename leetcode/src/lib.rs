@@ -1,8 +1,10 @@
 mod graph;
 mod hashtable;
+mod sliding_window;
 
 use crate::graph::*;
 use crate::hashtable::*;
+use crate::sliding_window::*;
 
 #[cfg(test)]
 mod tests {
@@ -31,5 +33,19 @@ mod tests {
 
         f = vec![vec![0, 1, 100], vec![1, 2, 100], vec![0, 2, 500]];
         assert_eq!(find_cheapest_price(3, f, 0, 2, 0), 500);
+    }
+
+    #[test]
+    fn test_min_window() {
+        let s = vec![String::from("ADOBECODEBANC"), String::from("a")];
+        let t = vec![String::from("ABC"), String::from("a")];
+        let o = vec![String::from("BANC"), String::from("a")];
+
+        let rslt: Vec<String> = s
+            .into_iter()
+            .zip(t.into_iter())
+            .map(|(a, b)| min_window(a, b))
+            .collect();
+        assert_eq!(rslt, o);
     }
 }
