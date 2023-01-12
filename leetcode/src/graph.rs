@@ -51,16 +51,15 @@ pub fn find_cheapest_price(n: i32, flights: Vec<Vec<i32>>, src: i32, dst: i32, k
         }
 
         if curr.hops_left > 0 {
-            if dict.contains_key(&curr.node_id) {
-                let neigh = dict.get(&curr.node_id).unwrap();
-                for i in neigh {
+            dict.entry(curr.node_id).and_modify(|e| {
+                for i in e {
                     pq.push(Flight {
                         node_id: i[0],
                         hops_left: curr.hops_left - 1,
                         cost_accumulated: curr.cost_accumulated + i[1],
                     });
                 }
-            }
+            });
         }
     }
 
