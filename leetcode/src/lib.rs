@@ -1,7 +1,9 @@
+mod binary_search;
 mod graph;
 mod hashtable;
 mod sliding_window;
 
+use crate::binary_search::*;
 use crate::graph::*;
 use crate::hashtable::*;
 use crate::sliding_window::*;
@@ -45,6 +47,24 @@ mod tests {
             .into_iter()
             .zip(t.into_iter())
             .map(|(a, b)| min_window(a, b))
+            .collect();
+        assert_eq!(rslt, o);
+    }
+
+    #[test]
+    fn test_binary_search() {
+        let w = vec![
+            vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+            vec![3, 2, 2, 4, 1, 4],
+            vec![1, 2, 3, 1, 1],
+        ];
+        let d = vec![5, 3, 4];
+        let o = vec![15, 6, 3];
+
+        let rslt: Vec<i32> = w
+            .into_iter()
+            .zip(d.into_iter())
+            .map(|(a, b)| ship_within_days(a, b))
             .collect();
         assert_eq!(rslt, o);
     }
