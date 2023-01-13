@@ -1,9 +1,11 @@
 mod binary_search;
+mod dynamic_prog;
 mod graph;
 mod hashtable;
 mod sliding_window;
 
 use crate::binary_search::*;
+use crate::dynamic_prog::*;
 use crate::graph::*;
 use crate::hashtable::*;
 use crate::sliding_window::*;
@@ -67,5 +69,19 @@ mod tests {
             .map(|(a, b)| ship_within_days(a, b))
             .collect();
         assert_eq!(rslt, o);
+    }
+
+    #[test]
+    fn test_dynamic_prog() {
+        let coins = vec![vec![1, 2, 5], vec![2], vec![1], vec![1], vec![1]];
+        let amounts = vec![11, 3, 0, 1, 2];
+        let wants = vec![3, -1, 0, 1, 2];
+
+        let rslt: Vec<i32> = coins
+            .into_iter()
+            .zip(amounts.into_iter())
+            .map(|(a, b)| coin_change(a, b))
+            .collect();
+        assert_eq!(rslt, wants);
     }
 }
