@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+// Solve leetcode [0076] Minimum Window Substring
 pub fn min_window(s: String, t: String) -> String {
     // 需要找到的各元素，及对应的次数（值减为0 => 该元素已找齐）
     let mut elem_counter = HashMap::new();
