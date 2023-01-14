@@ -1,4 +1,5 @@
 // Solve leetcode [0322] Coin Change
+#[allow(dead_code)]
 pub fn coin_change(coins: Vec<i32>, amount: i32) -> i32 {
     // 最小面额为1，故最大值不会超过amount/1
     let mut dp = vec![amount + 1; ((amount + 1) as usize).try_into().unwrap()];

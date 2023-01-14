@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 // Solve leetcode [0001] Two Sum
+#[allow(dead_code)]
 pub fn two_sum(nums: Vec<i32>, target: i32) -> Vec<i32> {
     let mut hm = HashMap::new();
 

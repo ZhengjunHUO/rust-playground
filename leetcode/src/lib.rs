@@ -1,3 +1,4 @@
+#![allow(unused_imports)]
 mod binary_search;
 mod dynamic_prog;
 mod graph;

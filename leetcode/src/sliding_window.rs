@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 // Solve leetcode [0076] Minimum Window Substring
+#[allow(dead_code)]
 pub fn min_window(s: String, t: String) -> String {
     // 需要找到的各元素，及对应的次数（值减为0 => 该元素已找齐）
     let mut elem_counter = HashMap::new();
@@ -14,8 +15,8 @@ pub fn min_window(s: String, t: String) -> String {
     let mut lp = 0;
     let mut rp = 0;
     // 存储结果
-    let mut startPos = 0;
-    let mut minSize = 100000;
+    let mut start_pos = 0;
+    let mut min_size = 100000;
 
     // 右指针遍历到底
     while rp < s.len() {
@@ -34,9 +35,9 @@ pub fn min_window(s: String, t: String) -> String {
 
         while counter == 0 {
             //更新较优解
-            if (rp - lp) < minSize {
-                startPos = lp;
-                minSize = rp - lp;
+            if (rp - lp) < min_size {
+                start_pos = lp;
+                min_size = rp - lp;
             }
 
             //左指针行动（仅在valid状态下移动）
@@ -53,8 +54,8 @@ pub fn min_window(s: String, t: String) -> String {
         }
     }
 
-    if minSize < 100000 {
-        return s[startPos..startPos + minSize].to_string();
+    if min_size < 100000 {
+        return s[start_pos..start_pos + min_size].to_string();
     }
 
     String::from("")

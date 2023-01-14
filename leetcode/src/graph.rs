@@ -2,6 +2,7 @@ use std::cmp::Ordering;
 use std::collections::{BinaryHeap, HashMap};
 
 #[derive(Debug)]
+#[allow(dead_code)]
 struct Flight {
     node_id: i32,
     hops_left: i32,
@@ -18,6 +19,7 @@ impl Eq for Flight {}
 
 impl Ord for Flight {
     fn cmp(&self, other: &Self) -> Ordering {
+        // 使用reverse来实现一个Min Priority Queue
         self.cost_accumulated.cmp(&other.cost_accumulated).reverse()
     }
 }
@@ -29,7 +31,9 @@ impl PartialOrd for Flight {
 }
 
 // Solve leetcode [0787] Cheapest Flights Within K Stops
+#[allow(unused_variables, dead_code)]
 pub fn find_cheapest_price(n: i32, flights: Vec<Vec<i32>>, src: i32, dst: i32, k: i32) -> i32 {
+    // 字典形式的邻接表，value为[邻接结点编号，花费]
     let mut dict = HashMap::<i32, Vec<[i32; 2]>>::new();
 
     for f in flights {
@@ -46,6 +50,7 @@ pub fn find_cheapest_price(n: i32, flights: Vec<Vec<i32>>, src: i32, dst: i32, k
     });
 
     while pq.len() > 0 {
+        // 优先pop出累计花费最少的点
         let curr = pq.pop().unwrap();
         if curr.node_id == dst {
             return curr.cost_accumulated;
