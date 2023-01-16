@@ -2,7 +2,6 @@ use std::cmp::Ordering;
 use std::collections::{BinaryHeap, HashMap};
 
 #[derive(Debug)]
-#[allow(dead_code)]
 struct Flight {
     node_id: i32,
     hops_left: i32,
@@ -31,7 +30,7 @@ impl PartialOrd for Flight {
 }
 
 // Solve leetcode [0787] Cheapest Flights Within K Stops
-#[allow(unused_variables, dead_code)]
+#[allow(unused_variables)]
 pub fn find_cheapest_price(n: i32, flights: Vec<Vec<i32>>, src: i32, dst: i32, k: i32) -> i32 {
     // 字典形式的邻接表，value为[邻接结点编号，花费]
     let mut dict = HashMap::<i32, Vec<[i32; 2]>>::new();

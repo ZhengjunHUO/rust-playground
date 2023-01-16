@@ -1,5 +1,4 @@
 // Solve leetcode [1011] Capacity To Ship Packages Within D Days
-#[allow(dead_code)]
 pub fn ship_within_days(weights: Vec<i32>, days: i32) -> i32 {
     fn days_needed(weights: &Vec<i32>, capacity: i32) -> i32 {
         let mut rest = capacity;

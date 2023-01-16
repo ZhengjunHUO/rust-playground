@@ -1,19 +1,16 @@
-#![allow(unused_imports)]
-mod binary_search;
-mod dynamic_prog;
-mod graph;
-mod hashtable;
-mod sliding_window;
-
-use crate::binary_search::*;
-use crate::dynamic_prog::*;
-use crate::graph::*;
-use crate::hashtable::*;
-use crate::sliding_window::*;
+pub mod binary_search;
+pub mod dynamic_prog;
+pub mod graph;
+pub mod hashtable;
+pub mod sliding_window;
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use crate::binary_search::*;
+    use crate::dynamic_prog::*;
+    use crate::graph::*;
+    use crate::hashtable::*;
+    use crate::sliding_window::*;
 
     #[test]
     fn test_two_sum() {
