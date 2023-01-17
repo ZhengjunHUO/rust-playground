@@ -34,3 +34,21 @@ pub fn ship_within_days(weights: Vec<i32>, days: i32) -> i32 {
 
     l
 }
+
+#[test]
+fn test_ship_within_days() {
+    let w = vec![
+        vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+        vec![3, 2, 2, 4, 1, 4],
+        vec![1, 2, 3, 1, 1],
+    ];
+    let d = vec![5, 3, 4];
+    let o = vec![15, 6, 3];
+
+    let rslt: Vec<i32> = w
+        .into_iter()
+        .zip(d.into_iter())
+        .map(|(a, b)| ship_within_days(a, b))
+        .collect();
+    assert_eq!(rslt, o);
+}

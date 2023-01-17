@@ -72,14 +72,23 @@ pub fn find_cheapest_price(n: i32, flights: Vec<Vec<i32>>, src: i32, dst: i32, k
     return -1;
 }
 
+#[test]
+fn test_find_cheapest_price() {
+    let mut f = vec![vec![0, 1, 100], vec![1, 2, 100], vec![0, 2, 500]];
+    assert_eq!(find_cheapest_price(3, f, 0, 2, 1), 200);
+
+    f = vec![vec![0, 1, 100], vec![1, 2, 100], vec![0, 2, 500]];
+    assert_eq!(find_cheapest_price(3, f, 0, 2, 0), 500);
+}
+
 // Solve leetcode [0684] Redundant Connection
 pub fn find_redundant_connection(edges: Vec<Vec<i32>>) -> Vec<i32> {
     let n = edges.len();
-    let mut uf = UF::new((n+1) as usize);
+    let mut uf = UF::new((n + 1) as usize);
 
     for i in 0..n {
         if uf.is_linked(edges[i][0] as usize, edges[i][1] as usize) {
-            return edges[i].clone()
+            return edges[i].clone();
         }
 
         uf.union(edges[i][0] as usize, edges[i][1] as usize);
@@ -90,9 +99,14 @@ pub fn find_redundant_connection(edges: Vec<Vec<i32>>) -> Vec<i32> {
 
 #[test]
 fn test_find_redundant_connection() {
-    let edges = vec![vec![vec![1, 2], vec![1, 3], vec![2, 3]],
-        vec![vec![1, 2], vec![2, 3], vec![3, 4], vec![1, 4], vec![1, 5]]];
+    let edges = vec![
+        vec![vec![1, 2], vec![1, 3], vec![2, 3]],
+        vec![vec![1, 2], vec![2, 3], vec![3, 4], vec![1, 4], vec![1, 5]],
+    ];
     let expected = vec![vec![2, 3], vec![1, 4]];
-    let rslt: Vec<Vec<i32>> = edges.into_iter().map(|a| find_redundant_connection(a)).collect();
+    let rslt: Vec<Vec<i32>> = edges
+        .into_iter()
+        .map(|a| find_redundant_connection(a))
+        .collect();
     assert_eq!(rslt, expected);
 }

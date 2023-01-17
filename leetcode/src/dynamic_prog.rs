@@ -26,3 +26,17 @@ pub fn coin_change(coins: Vec<i32>, amount: i32) -> i32 {
         return dp[dp.len() - 1];
     }
 }
+
+#[test]
+fn test_coin_change() {
+    let coins = vec![vec![1, 2, 5], vec![2], vec![1], vec![1], vec![1]];
+    let amounts = vec![11, 3, 0, 1, 2];
+    let wants = vec![3, -1, 0, 1, 2];
+
+    let rslt: Vec<i32> = coins
+        .into_iter()
+        .zip(amounts.into_iter())
+        .map(|(a, b)| coin_change(a, b))
+        .collect();
+    assert_eq!(rslt, wants);
+}

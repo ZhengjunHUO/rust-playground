@@ -59,3 +59,17 @@ pub fn min_window(s: String, t: String) -> String {
 
     String::from("")
 }
+
+#[test]
+fn test_min_window() {
+    let s = vec![String::from("ADOBECODEBANC"), String::from("a")];
+    let t = vec![String::from("ABC"), String::from("a")];
+    let o = vec![String::from("BANC"), String::from("a")];
+
+    let rslt: Vec<String> = s
+        .into_iter()
+        .zip(t.into_iter())
+        .map(|(a, b)| min_window(a, b))
+        .collect();
+    assert_eq!(rslt, o);
+}
