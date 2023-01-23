@@ -41,12 +41,42 @@ fn main() -> Result<(), Box<dyn Error>> {
     println!("Select reverse: {:?}\n", sel_rev);
 
     let pred = col("size").gt(10);
-
     let sel_pred = df.clone().lazy().select([pred.clone()]).collect()?;
     println!("Select predict: {:?}\n", sel_pred);
-
     let sel_filter = df.clone().lazy().filter(pred).collect()?;
     println!("Select filtered with predict: {:?}\n", sel_filter);
+
+    let div = 123.0;
+    let sel_filter_bis =
+        df.clone()
+            .lazy()
+            .select([(col("id").filter(col("env").str().contains("k8s")).sum()
+                * col("size").sum()
+                / lit(div))
+            .alias("result")])
+            .collect()?;
+    println!(
+        "Another select filtered with predict: {:?}\n",
+        sel_filter_bis
+    );
+
+    let sel_fold = df
+        .clone()
+        .lazy()
+        .select([fold_exprs(
+            lit(0),
+            |acc, x| Ok(&acc + &x),
+            [
+                col("id").pow(lit(2)),
+                lit(":"),
+                col("size") / lit(2.0),
+                lit("cf"),
+                col("coef"),
+            ],
+        )
+        .alias("fold")])
+        .collect()?;
+    println!("Select with fold: {:?}\n", sel_fold);
 
     Ok(())
 }
