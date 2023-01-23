@@ -19,5 +19,34 @@ fn main() -> Result<(), Box<dyn Error>> {
         .collect()?;
     println!("Selected columns: {:?}\n", sel);
 
+    let sel_reg = df
+        .clone()
+        .lazy()
+        .select([col("^id|size$").sum()])
+        .collect()?;
+    println!("Select using regex: {:?}\n", sel_reg);
+
+    let sel_mult = df
+        .clone()
+        .lazy()
+        .select([cols(["id", "coef"]).sum()])
+        .collect()?;
+    println!("Select multiple cols: {:?}\n", sel_mult);
+
+    let sel_rev = df
+        .clone()
+        .lazy()
+        .select([col("id"), all().reverse().suffix("_rev")])
+        .collect()?;
+    println!("Select reverse: {:?}\n", sel_rev);
+
+    let pred = col("size").gt(10);
+
+    let sel_pred = df.clone().lazy().select([pred.clone()]).collect()?;
+    println!("Select predict: {:?}\n", sel_pred);
+
+    let sel_filter = df.clone().lazy().filter(pred).collect()?;
+    println!("Select filtered with predict: {:?}\n", sel_filter);
+
     Ok(())
 }
