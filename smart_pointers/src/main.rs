@@ -3,6 +3,8 @@ use std::cell::RefCell;
 use std::ops::Deref;
 use std::rc::Rc;
 
+use smart_pointers::Noeud;
+
 // tuple struct with 1 param
 #[derive(Debug)]
 struct FakeBox<T: std::fmt::Debug>(T);
@@ -94,4 +96,17 @@ fn main() {
     *v2.borrow_mut() += 100;
     println!("l after incr: {:?}", l);
     println!("l1 after incr: {:?}", l1);
+
+    let mut p1 = Noeud::new("parent1");
+    let mut p2 = Noeud::new("parent2");
+    let n1 = Rc::new(Noeud::new("node1"));
+    println!("Ref to n1: {}", Rc::strong_count(&n1));
+    n1.clone().append_to(&mut p1);
+    println!("Ref to n1: {}", Rc::strong_count(&n1));
+    n1.clone().append_to(&mut p2);
+    println!("Ref to n1: {}", Rc::strong_count(&n1));
+
+    println!("parent1 got {} nodes: [{}]", p1.children.len(), p1.children[0].name);
+    println!("parent2 got {} nodes: [{}]", p2.children.len(), p1.children[0].name);
+    println!("node1: {}", n1.name);
 }
