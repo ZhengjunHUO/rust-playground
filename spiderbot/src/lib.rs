@@ -8,6 +8,7 @@ pub struct SpiderBot {
     leg_devs: [u32; 8],
     alerts: RefCell<String>,
     alerts_counter: Cell<u32>,
+    modules: RefCell<Vec<Box<dyn SpiderMod>>>,
 }
 
 impl SpiderBot {
@@ -26,6 +27,15 @@ impl SpiderBot {
         s.push_str("\n");
         self.incr_alerts();
     }
+
+    pub fn equipe_module(self: Rc<Self>, mut module: Box<dyn SpiderMod>) {
+        module.set_owner_bot(self.clone());
+        self.modules.borrow_mut().push(module);
+    }
+}
+
+pub trait SpiderMod {
+    fn set_owner_bot(&mut self, owner: Rc<SpiderBot>);
 }
 
 pub struct SensorMod {
@@ -35,6 +45,12 @@ pub struct SensorMod {
     gyro: u32,
 }
 
+impl SpiderMod for SensorMod {
+    fn set_owner_bot(&mut self, owner: Rc<SpiderBot>) {
+        self.bot = owner;
+    }
+}
+
 pub struct CombatMod {
     bot: Rc<SpiderBot>,
     voltage: u32,
@@ -42,9 +58,21 @@ pub struct CombatMod {
     emp_equipped: bool,
 }
 
+impl SpiderMod for CombatMod {
+    fn set_owner_bot(&mut self, owner: Rc<SpiderBot>) {
+        self.bot = owner;
+    }
+}
+
 pub struct InfiltrateMod {
     bot: Rc<SpiderBot>,
     script: String,
+}
+
+impl SpiderMod for InfiltrateMod {
+    fn set_owner_bot(&mut self, owner: Rc<SpiderBot>) {
+        self.bot = owner;
+    }
 }
 
 #[cfg(test)]
@@ -60,6 +88,7 @@ mod tests {
             leg_devs: [1; 8],
             alerts: RefCell::new(String::new()),
             alerts_counter: Cell::new(0),
+            modules: RefCell::new(vec![]),
         };
         assert!(!sb.has_alerts());
 
