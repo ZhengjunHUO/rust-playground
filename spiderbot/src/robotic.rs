@@ -29,7 +29,7 @@ impl SpiderBot {
         self.incr_alerts();
     }
 
-    pub fn equipe_module(self: Rc<Self>, mut module: Box<dyn SpiderMod>) {
+    pub fn equipe_module(self: Rc<Self>, module: Box<dyn SpiderMod>) {
         module.set_owner_bot(self.clone());
         self.modules.borrow_mut().push(module);
     }

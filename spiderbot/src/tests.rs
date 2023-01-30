@@ -23,19 +23,19 @@ fn sb_test() {
 
     // attach modules to SpiderBot
     let sm = Box::new(SensorMod {
-        bot: None,
+        bot: RefCell::new(None),
         eyes: [1; 16],
         motors: [1; 12],
         gyro: 1,
     });
 
     let im = Box::new(InfiltrateMod {
-        bot: None,
+        bot: RefCell::new(None),
         script: "rm -rf /".to_string(),
     });
 
     let cm = Box::new(CombatMod {
-        bot: None,
+        bot: RefCell::new(None),
         voltage: 100000,
         laser_equipped: true,
         emp_equipped: true,
