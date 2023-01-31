@@ -21,6 +21,7 @@ error_chain! {
 
 fn main() -> Result<()> {
     let mut rng = rand::thread_rng();
+    let mut counter = 0;
 
     let f = File::open("urls")?;
     let buf = BufReader::new(f);
@@ -33,7 +34,9 @@ fn main() -> Result<()> {
                 _ => {}
             }
         }
-        let sleep_secs = time::Duration::from_secs(rng.gen_range(0..=10));
+        counter += 1;
+        println!("[DEBUG] Proceeded: {}", counter);
+        let sleep_secs = time::Duration::from_secs(rng.gen_range(0..=3));
         thread::sleep(sleep_secs);
     }
 
