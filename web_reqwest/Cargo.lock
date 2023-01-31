@@ -1493,6 +1493,7 @@ name = "web_client"
 version = "0.1.0"
 dependencies = [
  "error-chain",
+ "rand 0.8.5",
  "reqwest",
  "scraper",
 ]

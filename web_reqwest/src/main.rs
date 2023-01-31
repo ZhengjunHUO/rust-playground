@@ -1,8 +1,10 @@
 use error_chain::error_chain;
+use rand::Rng;
 use reqwest;
 use scraper::{node::Node, Html};
 use std::fs::File;
 use std::io::{BufRead, BufReader, Read, Write};
+use std::{thread, time};
 
 const HTTPS_SCHEME: &str = "https://";
 const RESULT_FOLDER: &str = "result/";
@@ -18,6 +20,8 @@ error_chain! {
 }
 
 fn main() -> Result<()> {
+    let mut rng = rand::thread_rng();
+
     let f = File::open("urls")?;
     let buf = BufReader::new(f);
     for line in buf.lines() {
@@ -29,6 +33,8 @@ fn main() -> Result<()> {
                 _ => {}
             }
         }
+        let sleep_secs = time::Duration::from_secs(rng.gen_range(0..=10));
+        thread::sleep(sleep_secs);
     }
 
     Ok(())
@@ -40,7 +46,7 @@ fn probe(path: &str) -> Result<()> {
     println!("[DEBUG] HTTP/2 {}", rslt.status());
     let mut body = String::new();
     rslt.read_to_string(&mut body)?;
-    println!("[DEBUG] Headers:\n{:#?}", rslt.headers());
+    //println!("[DEBUG] Headers:\n{:#?}", rslt.headers());
 
     if !body.contains(EXCLUDE_PATTERN) {
         let mut filtered = String::new();
