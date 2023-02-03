@@ -1,3 +1,5 @@
+use std::io::Write;
+use std::fs::File;
 use trait_objects::fqs::{Cat, Feline, Mao, Neko, Tiger};
 use trait_objects::newtype::Envelope;
 use trait_objects::operator::{Binome, Offset};
@@ -5,7 +7,21 @@ use trait_objects::runner::{Baremetal, K8s, Project};
 use trait_objects::state::Service;
 use trait_objects::supertrait::{Couple, WrappedPrint};
 
+fn say_sth_to(to: &mut dyn Write, sth: &str) -> std::io::Result<()> {
+    to.write_all(sth.as_bytes())?;
+    to.flush()
+}
+
 fn main() {
+    // test #1
+    let sth = "Rust rocks!";
+    let mut f = File::create("test").expect("Create file failed: ");
+    say_sth_to(&mut f, sth).expect("Write to file failed: ");
+    let mut buf = vec![];
+    say_sth_to(&mut buf, sth).expect("Write to vec failed: ");
+    assert_eq!(buf, sth.as_bytes().to_vec());
+
+    // test #2
     let p = Project {
         envs: vec![
             Box::new(K8s {
