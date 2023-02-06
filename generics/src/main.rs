@@ -1,6 +1,7 @@
 use generics::Inspect;
 use objects::{Cat, Kube, Point, PointX};
 use std::fmt::Display;
+use std::ops::{Add, AddAssign, Mul};
 
 mod objects;
 
@@ -48,6 +49,7 @@ fn notify_sugar_duo(obj1: &impl Inspect, obj2: &impl Inspect) {
 }
 
 fn main() {
+    // test #1
     let l1 = vec![25, 17, 33, 69, 40];
     let max1 = max_val(&l1);
     println!("The max in {:?} is {}", l1, max1);
@@ -56,6 +58,7 @@ fn main() {
     let max2 = max_val(&l2);
     println!("The max in {:?} is {}", l2, max2);
 
+    // test #2
     let p1 = Point { x: 6, y: 8 };
     let p2 = Point { x: 3.0, y: 4.0 };
     println!("p1.x: {}; p2.y: {}", p1.get_x(), p2.get_y());
@@ -83,4 +86,24 @@ fn main() {
     // notify_with_content(&c1);
 
     notify_duo(&k1, &c1);
+
+    // test #3
+    let v1 = [1, 2, 3];
+    let v2 = [4, 5, 6];
+    assert_eq!(dot(&v1, &v2), 32);
+
+    let v3 = [1.0, 2.0, 3.0];
+    let v4 = [4.0, 5.0, 6.0];
+    assert_eq!(dot(&v3, &v4), 32.0);
+}
+
+fn dot<T>(v1: &[T], v2: &[T]) -> T
+where
+    T: Add<Output = T> + Mul<Output = T> + Default + Copy + AddAssign,
+{
+    let mut result: T = T::default();
+    for i in 0..v1.len() {
+        result += v1[i] * v2[i];
+    }
+    result
 }
