@@ -1,5 +1,5 @@
-use std::fmt::Display;
 use std::any::type_name;
+use std::fmt::Display;
 
 fn type_of<T>(_: &T) {
     println!("    {}", type_name::<T>())
@@ -7,12 +7,26 @@ fn type_of<T>(_: &T) {
 
 fn test_for() {
     //let vals = vec![1,2,3,4,5];
-    let vals = vec![String::from("huo"), String::from("rust"), String::from("rocks")];
+    let vals = vec![
+        String::from("huo"),
+        String::from("rust"),
+        String::from("rocks"),
+    ];
     for v in &vals {
         println!("{}", v);
     }
 
     println!("{:?}", vals);
+}
+
+fn collect_into_vec<I: Iterator>(source: I) -> Vec<I::Item> {
+    let mut rslt = Vec::new();
+
+    for v in source {
+        rslt.push(v)
+    }
+
+    rslt
 }
 
 fn main() {
@@ -37,7 +51,10 @@ fn main() {
     type_of(&cats);
     // iter()获取的是ref，之后cats依然有效
     // 注意iterator中的元素是&str的ref
-    let sum = cats.iter().map(|id: &&str| id.len()).fold(8, |acc, len| acc + len);
+    let sum = cats
+        .iter()
+        .map(|id: &&str| id.len())
+        .fold(8, |acc, len| acc + len);
     assert_eq!(sum, 24);
     print_all(&cats);
 
@@ -46,25 +63,35 @@ fn main() {
     println!("=> Type of cat_with_point is: ");
     type_of(&cat_with_point);
     // 同理此处&(name, _)也是元组的ref
-    let name_only = cat_with_point.iter().map(|&(name, _)| { name }).collect::<Vec<_>>();
+    let name_only = cat_with_point
+        .iter()
+        .map(|&(name, _)| name)
+        .collect::<Vec<_>>();
     assert_eq!(name_only, cats);
 
     // Test #3 使用iter_mut()在&mut T上循环
     let mut cats_with_point = [
-       [("fufu", 30), ("lulu", 50), ("shoushou", 25),],
-       [("fuku", 63), ("luku", 10), ("naonao", 47),],
+        [("fufu", 30), ("lulu", 50), ("shoushou", 25)],
+        [("fuku", 63), ("luku", 10), ("naonao", 47)],
     ];
     println!("=> Type of cats_with_point is: ");
     type_of(&cats_with_point);
-    let sorted_asc = cats_with_point.iter_mut().map(|tp| {
-        tp.sort_by(|&a, &b| a.1.cmp(&b.1));
-        tp
-    }).collect::<Vec<_>>();
+    let sorted_asc = cats_with_point
+        .iter_mut()
+        .map(|tp| {
+            tp.sort_by(|&a, &b| a.1.cmp(&b.1));
+            tp
+        })
+        .collect::<Vec<_>>();
 
     println!("After sort: {:?}", sorted_asc);
 
     // Test #4 使用into_iter()在T上循环 (move)
-    let cat_with_credit = vec![(String::from("fufu"), 30), (String::from("lulu"), 50), (String::from("shoushou"), 25)];
+    let cat_with_credit = vec![
+        (String::from("fufu"), 30),
+        (String::from("lulu"), 50),
+        (String::from("shoushou"), 25),
+    ];
     println!("=> Type of cat_with_credit is: ");
     type_of(&cat_with_credit);
     //let name_moved = cat_with_credit.into_iter().map(|(name, _)| { name }).collect::<Vec<_>>();
@@ -89,7 +116,11 @@ fn main() {
     assert_eq!(cats, cats_bis);
 
     let cat_first_two = name_moved.clone().into_iter().take(2).collect::<Vec<_>>();
-    let cat_first_two_bis = name_moved.iter().map(|elem| elem.clone()).take(2).collect::<Vec<_>>();
+    let cat_first_two_bis = name_moved
+        .iter()
+        .map(|elem| elem.clone())
+        .take(2)
+        .collect::<Vec<_>>();
     let cat_first_two_ter = name_moved.iter().cloned().take(2).collect::<Vec<_>>();
     assert_eq!(cat_first_two, cat_first_two_bis);
     assert_eq!(cat_first_two, cat_first_two_ter);
@@ -104,14 +135,18 @@ fn main() {
     let rslt = z1.into_iter().zip(z2.into_iter());
     // rslt consumed by for loop
     // for loop syntax is actually sugar for iterators
+    /*
     for elem in rslt {
-        type_of(&elem);
+        type_of(elem);
         println!("{:?}", elem);
     }
+    */
+    assert_eq!(collect_into_vec(rslt), vec![(1, 10), (2, 20), (3, 30)]);
 }
 
 fn print_all<T: Display>(prime: &Vec<T>)
-where T: Display
+where
+    T: Display,
 {
     let mut prime_itr = prime.iter();
 
@@ -140,5 +175,5 @@ fn can_be_divided_by(num: Vec<u32>, divisor: u32) -> Vec<u32> {
 }
 
 fn retrieve_name(v: Vec<(String, usize)>) -> Vec<String> {
-    v.into_iter().map(|(name, _)| { name }).collect()
+    v.into_iter().map(|(name, _)| name).collect()
 }
