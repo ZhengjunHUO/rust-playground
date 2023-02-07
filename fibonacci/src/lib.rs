@@ -21,7 +21,7 @@ impl Positive for f32 {
     const ONE: f32 = 1.0;
 }
 
-pub fn fib<T: Positive + Add<Output = T>>(n: usize) -> T
+pub fn fib<T>(n: usize) -> T
 where
     T: Positive + Add<Output = T>,
 {
