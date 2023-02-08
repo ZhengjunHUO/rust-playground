@@ -29,5 +29,17 @@ fn main() {
         left_boundary: 12,
         right_boundary: 17,
     };
+    let itv3 = Interval::<i32> {
+        left_boundary: 20,
+        right_boundary: 35,
+    };
+    let itv4 = Interval::<i32> {
+        left_boundary: 29,
+        right_boundary: 47,
+    };
     assert!(itv2 < itv1);
+    assert!(itv1 == itv3);
+    assert!(!(itv4 < itv1));
+    assert!(!(itv4 > itv1));
+    assert!(!(itv4 == itv1));
 }
