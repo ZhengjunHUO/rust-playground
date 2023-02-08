@@ -6,7 +6,7 @@ pub struct SpiderBot {
     pub model: String,
     pub serial_num: u32,
     pub is_online: bool,
-    pub leg_devs: [u32; 8],
+    pub leg_devs: [FileDescriptor; 8],
     pub alerts: RefCell<String>,
     pub alerts_counter: Cell<u32>,
     pub modules: RefCell<Vec<Box<dyn SpiderMod>>>,

@@ -2,15 +2,17 @@ use super::robotic::*;
 use std::cell::RefCell;
 use std::rc::Rc;
 
+pub type FileDescriptor = u32;
+
 pub trait SpiderMod {
     fn set_owner_bot(&self, owner: Rc<SpiderBot>);
 }
 
 pub struct SensorMod {
     pub bot: RefCell<Option<Rc<SpiderBot>>>,
-    pub eyes: [u32; 16],
-    pub motors: [u32; 12],
-    pub gyro: u32,
+    pub eyes: [FileDescriptor; 16],
+    pub motors: [FileDescriptor; 12],
+    pub gyro: FileDescriptor,
 }
 
 impl SpiderMod for SensorMod {
