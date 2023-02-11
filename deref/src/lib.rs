@@ -5,6 +5,12 @@ pub struct Pool<T> {
     current: usize,
 }
 
+impl<T> Pool<T> {
+    pub fn new(content: Vec<T>, current: usize) -> Pool<T> {
+        Pool { content, current }
+    }
+}
+
 impl<T> Deref for Pool<T> {
     type Target = T;
     fn deref(&self) -> &T {
