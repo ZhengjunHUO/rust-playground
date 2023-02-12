@@ -14,7 +14,16 @@ where
     T: Eq + Hash,
 {
     fn extend<I: IntoIterator<Item = T>>(&mut self, iter: I) {
-        HashSet::extend(&mut self.dict, iter);
+        HashSet::extend::<I>(&mut self.dict, iter);
+    }
+}
+
+impl<'a, T> Extend<&'a T> for Collector<T>
+where
+    T: 'a + Eq + Hash + Copy,
+{
+    fn extend<I: IntoIterator<Item = &'a T>>(&mut self, iter: I) {
+        HashSet::extend::<I>(&mut self.dict, iter);
     }
 }
 
@@ -23,7 +32,8 @@ fn main() {
     let hs: [i32; 8] = [4, 18, 64, 108, 126, 512, 700, 1024];
     //let (pw_two, others): (HashSet<i32>, HashSet<i32>) = hs.iter().partition(|&n| n & (n - 1) == 0);
     let (pw_two, others): (Collector<i32>, Collector<i32>) =
-        hs.into_iter().partition(|n| n & (n - 1) == 0);
+        hs.iter().partition(|&n| n & (n - 1) == 0);
+    //hs.into_iter().partition(|n| n & (n - 1) == 0);
 
     assert_eq!(pw_two.some_field, 0);
     assert_eq!(pw_two.dict.len(), 4);
