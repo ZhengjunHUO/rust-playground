@@ -1,12 +1,22 @@
+use crate::functraits::give_five_to;
+use crate::functraits::huo_say;
+use crate::functraits::repeat;
 use crate::role::sort_roles;
 use crate::role::Hero;
-use crate::functraits::give_five_to;
-use crate::functraits::repeat;
-use crate::functraits::huo_say;
 use std::thread;
 
-mod role;
 mod functraits;
+mod role;
+
+#[derive(Debug)]
+struct City {
+    name: String,
+    population: i64,
+}
+
+fn city_sort_incr(cs: &mut Vec<City>) {
+    cs.sort_by_key(|city| city.population);
+}
 
 fn increment_func(x: u32) -> u32 {
     x + 1
@@ -57,7 +67,6 @@ fn main() {
     // array to mutable slice
     sort_roles(&mut roles[..]);
 
-
     // a "fn" example
     let double_c = |x| x * 2;
     assert_eq!(give_five_to(double_c), 10);
@@ -79,6 +88,24 @@ fn main() {
     huo_say(move_s);
     // Can't call it again because closure move_s is moved
     //huo_say(move_s);
+
+    // sort cities by populations
+    let mut cs = vec![
+        City {
+            name: "foo".to_string(),
+            population: 20000,
+        },
+        City {
+            name: "bar".to_string(),
+            population: 5000,
+        },
+        City {
+            name: "fufu".to_string(),
+            population: 12000,
+        },
+    ];
+    city_sort_incr(&mut cs);
+    println!("Cities after sort: {:?}", cs);
 }
 
 // 一个fn的例子
