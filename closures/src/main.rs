@@ -3,6 +3,7 @@ use crate::functraits::huo_say;
 use crate::functraits::repeat;
 use crate::role::sort_roles;
 use crate::role::Hero;
+use std::collections::HashMap;
 use std::thread;
 
 mod functraits;
@@ -14,8 +15,26 @@ struct City {
     population: i64,
 }
 
+impl City {
+    fn get_stat(&self, stat: &Statistics) -> i64 {
+        let result = match stat.hdi.get(&self.name) {
+            Some(&n) => n,
+            _ => 0,
+        };
+        result
+    }
+}
+
+struct Statistics {
+    hdi: HashMap<String, i64>,
+}
+
 fn city_sort_incr(cs: &mut Vec<City>) {
     cs.sort_by_key(|city| city.population);
+}
+
+fn city_sort_stat_desc(cs: &mut Vec<City>, stat: &Statistics) {
+    cs.sort_by_key(|city| -city.get_stat(stat));
 }
 
 fn increment_func(x: u32) -> u32 {
@@ -105,6 +124,16 @@ fn main() {
         },
     ];
     city_sort_incr(&mut cs);
+    println!("Cities after sort: {:?}", cs);
+
+    let dict = Statistics {
+        hdi: HashMap::from([
+            ("foo".to_string(), 75),
+            ("bar".to_string(), 87),
+            ("baz".to_string(), 62),
+        ]),
+    };
+    city_sort_stat_desc(&mut cs, &dict);
     println!("Cities after sort: {:?}", cs);
 }
 
