@@ -33,8 +33,20 @@ fn city_sort_incr(cs: &mut Vec<City>) {
     cs.sort_by_key(|city| city.population);
 }
 
-fn city_sort_stat_desc(cs: &mut Vec<City>, stat: &Statistics) {
-    cs.sort_by_key(|city| -city.get_stat(stat));
+fn city_sort_stat_desc(cs: &mut Vec<City>, stat: Statistics) {
+    cs.sort_by_key(|city| -city.get_stat(&stat));
+}
+
+fn city_sort_stat_desc_thread(
+    mut cs: Vec<City>,
+    stat: Statistics,
+) -> thread::JoinHandle<Vec<City>> {
+    let key_fn = move |city: &City| -> i64 { -city.get_stat(&stat) };
+
+    thread::spawn(move || {
+        cs.sort_by_key(key_fn);
+        cs
+    })
 }
 
 fn increment_func(x: u32) -> u32 {
@@ -124,7 +136,7 @@ fn main() {
         },
     ];
     city_sort_incr(&mut cs);
-    println!("Cities after sort: {:?}", cs);
+    println!("Cities after sort by population: {:?}", cs);
 
     let dict = Statistics {
         hdi: HashMap::from([
@@ -133,8 +145,11 @@ fn main() {
             ("baz".to_string(), 62),
         ]),
     };
-    city_sort_stat_desc(&mut cs, &dict);
-    println!("Cities after sort: {:?}", cs);
+    //city_sort_stat_desc(&mut cs, dict);
+    //println!("Cities after sort by hdi: {:?}", cs);
+
+    let h = city_sort_stat_desc_thread(cs, dict);
+    h.join().expect("Could not join the sort thread");
 }
 
 // 一个fn的例子
