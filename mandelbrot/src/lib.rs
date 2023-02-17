@@ -1,5 +1,6 @@
 use image::{png::PNGEncoder, ColorType};
 use num::Complex;
+use std::iter::successors;
 use std::{fs::File, io::Error, str::FromStr};
 
 /// Parse a string slice `s` containing two values, seperated by a delimiter `d` to a tuple
@@ -23,6 +24,7 @@ pub fn get_complex(s: &str) -> Option<Complex<f64>> {
 
 /// 曼德博集合是使序列不延伸至无限大的所有复数c的集合
 /// return None if c is a member
+/*
 fn is_mandelbrot_set_member(c: Complex<f64>, max_iter: usize) -> Option<usize> {
     let mut z = Complex { re: 0.0, im: 0.0 };
     for i in 0..max_iter {
@@ -35,6 +37,16 @@ fn is_mandelbrot_set_member(c: Complex<f64>, max_iter: usize) -> Option<usize> {
 
     // iteration exhausted, z still inside radius 2 => could be a member
     None
+}
+*/
+
+fn is_mandelbrot_set_member_adv(c: Complex<f64>, max_iter: usize) -> Option<usize> {
+    let z = Complex { re: 0.0, im: 0.0 };
+    successors(Some(z), |&z| Some(z * z + c))
+        .take(max_iter)
+        .enumerate()
+        .find(|&(_i, z)| z.norm_sqr() > 4.0)
+        .map(|(i, _z)| i)
 }
 
 /// Map a pixel's coordiantes to a Complex
@@ -73,7 +85,7 @@ pub fn render(
         for col in 0..pixel_range.0 {
             let cp = pixel2complex(pixel_range, complex_range, (col, row));
 
-            pixels[row * pixel_range.0 + col] = match is_mandelbrot_set_member(cp, 255) {
+            pixels[row * pixel_range.0 + col] = match is_mandelbrot_set_member_adv(cp, 255) {
                 None => 0,
                 Some(iter) => 255 - iter as u8,
             };
