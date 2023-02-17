@@ -1,3 +1,4 @@
+use std::iter::from_fn;
 use std::ops::Add;
 
 pub trait Positive {
@@ -32,6 +33,16 @@ where
     }
 }
 
+pub fn fib_list(n: usize) -> Vec<u32> {
+    let mut binome = (0, 1);
+    from_fn(move || {
+        binome = (binome.1, binome.0 + binome.1);
+        Some(binome.0)
+    })
+    .take(n)
+    .collect()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -41,5 +52,6 @@ mod tests {
         assert_eq!(fib::<u32>(8), 21);
         assert_eq!(fib::<u64>(10), 55);
         assert_eq!(fib::<f32>(9), 34.0);
+        assert_eq!(fib_list(5), vec![1, 1, 2, 3, 5]);
     }
 }
