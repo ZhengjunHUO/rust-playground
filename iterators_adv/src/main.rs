@@ -1,4 +1,5 @@
 use std::iter::{from_fn, successors};
+use std::str::FromStr;
 
 fn main() {
     // #1 Generate a vec with random value
@@ -14,4 +15,22 @@ fn main() {
     let part = String::from_iter(sayit.drain(1..5));
     assert_eq!(sayit, "Rocks");
     assert_eq!(part, "ustR");
+
+    // #4 map & filter
+    let text1 = "   foo     \n     Rust \n  fufu  \nbar ".to_string();
+    let trimed: Vec<&str> = text1
+        .lines()
+        .map(str::trim)
+        .filter(|s| *s != "Rust")
+        .collect();
+    assert_eq!(trimed, vec!["foo", "fufu", "bar"]);
+    println!("Ownership not taken: {:?}", text1);
+
+    // #5 filter_map
+    let text2 = "foo123 \n  -45 fufu\n bar 67 baz";
+    let fm: Vec<i32> = text2
+        .split_whitespace()
+        .filter_map(|n| i32::from_str(n).ok())
+        .collect();
+    assert_eq!(fm, vec![-45, 67]);
 }
