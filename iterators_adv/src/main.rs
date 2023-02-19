@@ -1,5 +1,5 @@
 use std::collections::{BTreeMap, BTreeSet};
-use std::iter::{from_fn, successors, Peekable};
+use std::iter::{from_fn, once, repeat, successors, Peekable};
 use std::str::FromStr;
 
 fn main() {
@@ -139,6 +139,23 @@ fn main() {
     let indexed_primes = primes.iter().enumerate().collect::<Vec<_>>();
     let zipped_primes = (0..9).zip(primes.iter()).collect::<Vec<_>>();
     assert_eq!(indexed_primes, zipped_primes);
+
+    // #12 repeat, once, cycle, etc.
+    // 用m3替换3的倍数，用m5替换5的倍数
+    let m3s_m5s = repeat("")
+        .take(2)
+        .chain(once("m3"))
+        .cycle()
+        .zip(repeat("").take(4).chain(once("m5")).cycle());
+
+    let m3_m5 = (1..50).zip(m3s_m5s).map(|tuple| match tuple {
+        (i, ("", "")) => i.to_string(),
+        (_, (m3, m5)) => format!("{}{}", m3, m5),
+    });
+
+    for m in m3_m5 {
+        println!("{}", m);
+    }
 }
 
 fn parse_num<I>(p: &mut Peekable<I>) -> u32
