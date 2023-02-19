@@ -81,7 +81,7 @@ fn main() {
         "LEARN RUST".to_string()
     );
 
-    // take_while & by_ref & skip_while
+    // #7 take_while & by_ref & skip_while
     let mail = "To: Huo\r\nFrom: Fufu\r\n\r\nCoucou!";
     let mut lines = mail.lines();
     assert_eq!(
@@ -104,13 +104,25 @@ fn main() {
         vec!["Coucou!"]
     );
 
-    // Peekable
+    // #8 Peekable
     let mut p = "3840x2160".chars().peekable();
     assert_eq!(parse_num(&mut p), 3840);
     // Peekable上的其他方法（如next）知道调用peek方法的当前位置
     assert_eq!(p.next(), Some('x'));
     assert_eq!(parse_num(&mut p), 2160);
     assert_eq!(p.next(), None);
+
+    // #9 DoubleEndedIterator & Reversible
+    // 首尾有双指针l和r，如果l>r则开始返回None
+    let mut dei = groups.iter();
+    assert_eq!(dei.next().unwrap().0, &"Fufu");
+    assert_eq!(dei.next_back().unwrap().0, &"Rust");
+    assert_eq!(dei.next().unwrap().0, &"Huo");
+    assert_eq!(dei.next_back(), None);
+    assert_eq!(dei.next(), None);
+
+    let mut targets_rev = targets.iter().rev();
+    assert_eq!(targets_rev.next(), Some(&"Fufu"));
 }
 
 fn parse_num<I>(p: &mut Peekable<I>) -> u32
