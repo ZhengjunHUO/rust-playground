@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::iter::{from_fn, successors, Peekable};
 use std::str::FromStr;
 
@@ -123,6 +123,22 @@ fn main() {
 
     let mut targets_rev = targets.iter().rev();
     assert_eq!(targets_rev.next(), Some(&"Fufu"));
+
+    // #10 chain
+    let primes = vec![2, 3, 5, 7, 11, 13, 17, 19, 23];
+    assert_eq!(
+        (2..4)
+            .chain(BTreeSet::from([5, 7, 11, 13]))
+            .chain(vec![17, 19, 23])
+            .collect::<Vec<i32>>(),
+        primes
+    );
+
+    // #11 Enumerate && zip
+    // zip是enumerate的通用形式
+    let indexed_primes = primes.iter().enumerate().collect::<Vec<_>>();
+    let zipped_primes = (0..9).zip(primes.iter()).collect::<Vec<_>>();
+    assert_eq!(indexed_primes, zipped_primes);
 }
 
 fn parse_num<I>(p: &mut Peekable<I>) -> u32
