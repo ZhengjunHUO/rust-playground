@@ -1,3 +1,4 @@
+use std::collections::BTreeMap;
 use std::iter::{from_fn, successors};
 use std::str::FromStr;
 
@@ -33,4 +34,31 @@ fn main() {
         .filter_map(|n| i32::from_str(n).ok())
         .collect();
     assert_eq!(fm, vec![-45, 67]);
+
+    // #6 flat_map & flatten
+    let mut groups = BTreeMap::new();
+    groups.insert("Rust", vec!["rustic", "rusty", "rustacean"]);
+    groups.insert("Fufu", vec!["fuku", "neko"]);
+    groups.insert("Huo", vec!["foo", "bar", "baz"]);
+
+    let targets = vec!["Huo", "Fufu"];
+    assert_eq!(
+        targets.iter().flat_map(|s| &groups[s]).collect::<Vec<_>>(),
+        vec![&"foo", &"bar", &"baz", &"fuku", &"neko"]
+    );
+
+    // flatten
+    assert_eq!(
+        groups.values().cloned().flatten().collect::<Vec<_>>(),
+        vec![
+            "fuku",
+            "neko",
+            "foo",
+            "bar",
+            "baz",
+            "rustic",
+            "rusty",
+            "rustacean"
+        ]
+    );
 }
