@@ -36,6 +36,7 @@ fn main() {
     assert_eq!(fm, vec![-45, 67]);
 
     // #6 flat_map & flatten
+    // flat_map #1
     let mut groups = BTreeMap::new();
     groups.insert("Rust", vec!["rustic", "rusty", "rustacean"]);
     groups.insert("Fufu", vec!["fuku", "neko"]);
@@ -47,7 +48,7 @@ fn main() {
         vec![&"foo", &"bar", &"baz", &"fuku", &"neko"]
     );
 
-    // flatten
+    // flatten #1
     assert_eq!(
         groups.values().cloned().flatten().collect::<Vec<_>>(),
         vec![
@@ -60,5 +61,23 @@ fn main() {
             "rusty",
             "rustacean"
         ]
+    );
+
+    // flatten #2
+    assert_eq!(
+        vec![None, None, Some("Rust"), Some("Huo"), None, Some("Rocks")]
+            .into_iter()
+            .flatten()
+            .collect::<Vec<_>>(),
+        vec!["Rust", "Huo", "Rocks"]
+    );
+
+    // flat_map #2
+    assert_eq!(
+        "Learn Rust"
+            .chars()
+            .flat_map(char::to_uppercase)
+            .collect::<String>(),
+        "LEARN RUST".to_string()
     );
 }
