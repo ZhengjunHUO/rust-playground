@@ -80,4 +80,27 @@ fn main() {
             .collect::<String>(),
         "LEARN RUST".to_string()
     );
+
+    // take_while & by_ref & skip_while
+    let mail = "To: Huo\r\nFrom: Fufu\r\n\r\nCoucou!";
+    let mut lines = mail.lines();
+    assert_eq!(
+        lines
+            .by_ref()
+            .take_while(|l| !l.is_empty())
+            .collect::<Vec<_>>(),
+        vec!["To: Huo", "From: Fufu"]
+    );
+
+    for l in lines {
+        println!("Continue reading the mail's body: {}", l);
+    }
+
+    assert_eq!(
+        mail.lines()
+            .skip_while(|l| !l.is_empty())
+            .skip(1)
+            .collect::<Vec<_>>(),
+        vec!["Coucou!"]
+    );
 }
