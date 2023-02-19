@@ -1,5 +1,5 @@
 use std::collections::BTreeMap;
-use std::iter::{from_fn, successors};
+use std::iter::{from_fn, successors, Peekable};
 use std::str::FromStr;
 
 fn main() {
@@ -103,4 +103,28 @@ fn main() {
             .collect::<Vec<_>>(),
         vec!["Coucou!"]
     );
+
+    // Peekable
+    let mut p = "3840x2160".chars().peekable();
+    assert_eq!(parse_num(&mut p), 3840);
+    // Peekable上的其他方法（如next）知道调用peek方法的当前位置
+    assert_eq!(p.next(), Some('x'));
+    assert_eq!(parse_num(&mut p), 2160);
+    assert_eq!(p.next(), None);
+}
+
+fn parse_num<I>(p: &mut Peekable<I>) -> u32
+where
+    I: Iterator<Item = char>,
+{
+    let mut result = 0;
+    loop {
+        match p.peek() {
+            Some(v) if v.is_digit(10) => {
+                result = result * 10 + v.to_digit(10).unwrap();
+            }
+            _ => return result,
+        }
+        p.next();
+    }
 }
