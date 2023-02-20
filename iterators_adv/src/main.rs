@@ -1,5 +1,6 @@
+use self::BinaryTree::*;
 use std::collections::{BTreeMap, BTreeSet};
-use std::iter::{from_fn, once, repeat, successors, Iterator, Peekable};
+use std::iter::{from_fn, once, repeat, successors, IntoIterator, Iterator, Peekable};
 use std::str::FromStr;
 
 fn main() {
@@ -165,8 +166,24 @@ fn main() {
         print!("{} ", i);
     }
     println!();
+
+    // #14 Implement Iterator for a generic binary tree
+    let mut tree = BinaryTree::NoTree;
+    tree.append("huo");
+    tree.append("fufu");
+    tree.append("bar");
+    tree.append("foo");
+    tree.append("baz");
+
+    assert_eq!(
+        tree.into_iter().map(|s| *s).collect::<Vec<_>>(),
+        // Call also call this
+        //tree.iter().map(|s| *s).collect::<Vec<_>>(),
+        vec!["bar", "baz", "foo", "fufu", "huo"]
+    );
 }
 
+// impl iterator for simple struct
 struct RangeU32 {
     begin: u32,
     end: u32,
@@ -186,6 +203,84 @@ impl Iterator for RangeU32 {
     }
 }
 
+// impl iterator for generic struct
+// copied from binary_tree crate, since we can't implement a foreign trait on a foreign struct
+enum BinaryTree<T> {
+    NoTree,
+    Tree(Box<TreeNode<T>>),
+}
+
+struct TreeNode<T> {
+    content: T,
+    left_child: BinaryTree<T>,
+    right_child: BinaryTree<T>,
+}
+
+impl<T: Ord> BinaryTree<T> {
+    pub fn append(&mut self, content: T) {
+        match *self {
+            BinaryTree::NoTree => {
+                *self = BinaryTree::Tree(Box::new(TreeNode {
+                    content,
+                    left_child: BinaryTree::NoTree,
+                    right_child: BinaryTree::NoTree,
+                }))
+            }
+            BinaryTree::Tree(ref mut node) => {
+                if node.content >= content {
+                    node.left_child.append(content);
+                } else {
+                    node.right_child.append(content);
+                }
+            }
+        }
+    }
+}
+
+// call iter() to return;
+// turn a BinaryTree to TreeIter (will iterator over it)
+struct TreeIter<'a, T> {
+    to_visit: Vec<&'a TreeNode<T>>,
+}
+
+impl<'a, T: 'a> TreeIter<'a, T> {
+    fn add_left_edge(&mut self, mut tree: &'a BinaryTree<T>) {
+        while let Tree(ref node) = *tree {
+            self.to_visit.push(node);
+            tree = &node.left_child;
+        }
+    }
+}
+
+impl<T> BinaryTree<T> {
+    fn iter(&self) -> TreeIter<T> {
+        let mut iter = TreeIter {
+            to_visit: Vec::new(),
+        };
+        iter.add_left_edge(self);
+        iter
+    }
+}
+
+impl<'a, T: 'a> IntoIterator for &'a BinaryTree<T> {
+    type Item = &'a T;
+    type IntoIter = TreeIter<'a, T>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.iter()
+    }
+}
+
+impl<'a, T> Iterator for TreeIter<'a, T> {
+    type Item = &'a T;
+    fn next(&mut self) -> Option<Self::Item> {
+        let node = self.to_visit.pop()?;
+        self.add_left_edge(&node.right_child);
+        Some(&node.content)
+    }
+}
+
+// auxiliaire method for Peekable
 fn parse_num<I>(p: &mut Peekable<I>) -> u32
 where
     I: Iterator<Item = char>,
