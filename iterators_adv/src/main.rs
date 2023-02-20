@@ -1,5 +1,5 @@
 use std::collections::{BTreeMap, BTreeSet};
-use std::iter::{from_fn, once, repeat, successors, Peekable};
+use std::iter::{from_fn, once, repeat, successors, Iterator, Peekable};
 use std::str::FromStr;
 
 fn main() {
@@ -153,8 +153,36 @@ fn main() {
         (_, (m3, m5)) => format!("{}{}", m3, m5),
     });
 
-    for m in m3_m5 {
+    for m in m3_m5.take(10) {
         println!("{}", m);
+    }
+
+    // #13 Implement Iterator
+    let rg = RangeU32 { begin: 3, end: 6 };
+
+    // the standard library provides a blanket implementation of IntoIterator for every type that implements Iterator
+    for i in rg {
+        print!("{} ", i);
+    }
+    println!();
+}
+
+struct RangeU32 {
+    begin: u32,
+    end: u32,
+}
+
+impl Iterator for RangeU32 {
+    type Item = u32;
+
+    fn next(&mut self) -> Option<u32> {
+        if self.begin >= self.end {
+            return None;
+        }
+
+        let result = Some(self.begin);
+        self.begin += 1;
+        result
     }
 }
 
