@@ -9,9 +9,10 @@ fn grep<B>(pattern: &str, br: B) -> io::Result<()>
 where
     B: BufRead,
 {
-    let lines = br.lines();
-    for line in lines {
-        let l = line?;
+    // use collect to turn a Vec<io::Result<String>> to io::Result<Vec<String>>
+    // to avoid do let line = l?; in the for loop
+    let lines = br.lines().collect::<io::Result<Vec<String>>>()?;
+    for l in lines {
         if l.contains(pattern) {
             println!("{}", l);
         }
