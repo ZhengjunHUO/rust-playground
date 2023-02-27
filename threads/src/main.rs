@@ -1,3 +1,4 @@
+use rand::{thread_rng, Rng};
 use std::sync::mpsc;
 use std::thread;
 use std::time::Duration;
@@ -65,5 +66,33 @@ fn main() {
 
     for r in rx {
         println!("[Main] Receive msg from thread: {}", r);
+    }
+
+    // Fork-join parallelism
+    // primitive multi-thread job traitment
+    let nthread = 3;
+    let tasks: Vec<u32> = vec![1, 2, 3, 4, 5, 6];
+    let mut handlers = vec![];
+    //let chunks = tasks.chunks(tasks.len().div_ceil(nthread)).map(|v| v.to_vec()).collect::<Vec<Vec<u32>>>();
+    let chunks = tasks
+        .chunks(tasks.len() / nthread)
+        .map(|v| v.to_vec())
+        .collect::<Vec<Vec<u32>>>();
+    for ids in chunks {
+        handlers.push(thread::spawn(move || handle_task(ids)));
+    }
+
+    for h in handlers {
+        h.join().unwrap();
+    }
+}
+
+fn handle_task(task_ids: Vec<u32>) {
+    println!("Handling tasks: {:?}", task_ids);
+    let mut rng = thread_rng();
+    for task_id in task_ids {
+        println!("[Task {}] Working in progress ...", task_id);
+        thread::sleep(Duration::from_secs(rng.gen_range(0..=5)));
+        println!("[Task {}] All done, quit ...", task_id);
     }
 }
