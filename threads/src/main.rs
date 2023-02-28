@@ -1,6 +1,7 @@
 use rand::{thread_rng, Rng};
 use rayon::prelude::*;
 use std::collections::HashMap;
+use std::iter::successors;
 use std::sync::{mpsc, Arc};
 use std::thread;
 use std::time::Duration;
@@ -78,8 +79,9 @@ fn main() {
             .zip([1, 2, 3, 4].into_iter())
             .collect::<HashMap<&str, u32>>(),
     );
-    let nthread = 3;
-    let tasks: Vec<u32> = vec![1, 2, 3, 4, 5, 6, 7, 8];
+    let nthread = 8;
+    //let tasks: Vec<u32> = vec![1, 2, 3, 4, 5, 6, 7, 8];
+    let tasks: Vec<u32> = successors(Some(1), |n| Some(n + 1)).take(18).collect();
     let mut handlers = vec![];
 
     //let chunks = tasks.chunks(tasks.len().div_ceil(nthread)).map(|v| v.to_vec()).collect::<Vec<Vec<u32>>>();
