@@ -1,5 +1,6 @@
 use rand::{thread_rng, Rng};
-use std::sync::mpsc;
+use std::collections::HashMap;
+use std::sync::{mpsc, Arc};
 use std::thread;
 use std::time::Duration;
 
@@ -70,16 +71,25 @@ fn main() {
 
     // Fork-join parallelism
     // primitive multi-thread job traitment
+    let dict = Arc::new(
+        ["huo", "fufu", "foo", "bar"]
+            .into_iter()
+            .zip([1, 2, 3, 4].into_iter())
+            .collect::<HashMap<&str, u32>>(),
+    );
     let nthread = 3;
-    let tasks: Vec<u32> = vec![1, 2, 3, 4, 5, 6];
+    let tasks: Vec<u32> = vec![1, 2, 3, 4, 5, 6, 7, 8];
     let mut handlers = vec![];
+
     //let chunks = tasks.chunks(tasks.len().div_ceil(nthread)).map(|v| v.to_vec()).collect::<Vec<Vec<u32>>>();
     let chunks = tasks
-        .chunks(tasks.len() / nthread)
+        .chunks(tasks.len() / nthread + 1)
         .map(|v| v.to_vec())
         .collect::<Vec<Vec<u32>>>();
     for ids in chunks {
-        handlers.push(thread::spawn(move || handle_task(ids)));
+        // use Arc to solve the ownership movement problem for threads
+        let d = dict.clone();
+        handlers.push(thread::spawn(move || handle_task(ids, &d)));
     }
 
     for h in handlers {
@@ -87,8 +97,9 @@ fn main() {
     }
 }
 
-fn handle_task(task_ids: Vec<u32>) {
+fn handle_task(task_ids: Vec<u32>, dict: &HashMap<&str, u32>) {
     println!("Handling tasks: {:?}", task_ids);
+    println!("Looking into dictionary sized {}", dict.len());
     let mut rng = thread_rng();
     for task_id in task_ids {
         println!("[Task {}] Working in progress ...", task_id);
