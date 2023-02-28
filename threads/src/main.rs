@@ -1,4 +1,5 @@
 use rand::{thread_rng, Rng};
+use rayon::prelude::*;
 use std::collections::HashMap;
 use std::sync::{mpsc, Arc};
 use std::thread;
@@ -70,7 +71,7 @@ fn main() {
     }
 
     // Fork-join parallelism
-    // primitive multi-thread job traitment
+    // multi-thread job traitment using Arc
     let dict = Arc::new(
         ["huo", "fufu", "foo", "bar"]
             .into_iter()
@@ -86,6 +87,7 @@ fn main() {
         .chunks(tasks.len() / nthread + 1)
         .map(|v| v.to_vec())
         .collect::<Vec<Vec<u32>>>();
+    println!("[INFO] Running with thread::spawn ...");
     for ids in chunks {
         // use Arc to solve the ownership movement problem for threads
         let d = dict.clone();
@@ -95,6 +97,19 @@ fn main() {
     for h in handlers {
         h.join().unwrap();
     }
+    println!("[INFO] Done.\n");
+
+    // using Rayon
+    println!("[INFO] Running with Rayon ...");
+    let partitions = tasks
+        .chunks(1)
+        .map(|v| v.to_vec())
+        .collect::<Vec<Vec<u32>>>();
+    //let _ = partitions.par_iter().map(|task_id| handle_task(task_id.to_vec(), &dict)).collect::<Vec<_>>();
+    partitions
+        .par_iter()
+        .for_each(|task_id| handle_task(task_id.to_vec(), &dict));
+    println!("[INFO] Done.");
 }
 
 fn handle_task(task_ids: Vec<u32>, dict: &HashMap<&str, u32>) {
