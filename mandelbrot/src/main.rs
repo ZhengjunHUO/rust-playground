@@ -1,5 +1,6 @@
-use crossbeam;
+//use crossbeam;
 use mandelbrot::{get_complex, get_pair, pixel2complex, render, save_to_img};
+use rayon::prelude::*;
 use std::{env, process::exit};
 
 fn main() {
@@ -23,9 +24,11 @@ fn main() {
 
     let mut pixels = vec![0; canvas.0 * canvas.1];
 
-    // Single thread rendering
+    // #1 Single thread rendering
     // render(canvas, (upper_left, lower_right), &mut pixels);
 
+    // #2 Multi thread rendering using crossbeam (manually divided)
+    /*
     let workers = 10;
     let rows_per_worker = canvas.1 / workers + 1;
 
@@ -49,6 +52,18 @@ fn main() {
         }
     })
     .unwrap();
+    */
+
+    // #3 Multi thread rendering using rayon
+    let sections: Vec<(usize, &mut [u8])> = pixels.chunks_mut(canvas.0).enumerate().collect();
+    sections.into_par_iter().for_each(|(i, sec)| {
+        let top = i;
+        let canvas_range = (canvas.0, 1);
+
+        let cpx_upper_left = pixel2complex(canvas, (upper_left, lower_right), (0, top));
+        let cpx_lower_right = pixel2complex(canvas, (upper_left, lower_right), (canvas.0, top + 1));
+        render(canvas_range, (cpx_upper_left, cpx_lower_right), sec);
+    });
 
     save_to_img(&args[1], canvas, &pixels).expect("Failed writing to PNG !");
 }
