@@ -1,8 +1,8 @@
 pub mod mpmc {
-    use std::sync::{Arc, Mutex};
     use std::sync::mpsc::{self, Receiver, Sender};
+    use std::sync::{Arc, Mutex};
 
-    pub struct SharedReceiver<T>(Arc<Mutex<Receiver<T>>>);
+    pub struct SharedReceiver<T>(pub Arc<Mutex<Receiver<T>>>);
     impl<T> Iterator for SharedReceiver<T> {
         type Item = T;
 
