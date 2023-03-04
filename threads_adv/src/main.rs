@@ -1,35 +1,8 @@
 use rand::prelude::*;
 use std::iter::successors;
-use std::sync::mpsc;
 use std::thread;
 use std::time;
-use threads_adv::mpmc;
-
-pub trait OffThread: Iterator {
-    // turn self iterator to a iterator in a thread
-    fn off_thread(self) -> mpsc::IntoIter<Self::Item>;
-}
-
-impl<T> OffThread for T
-where
-    T: Iterator + Send + 'static,
-    T::Item: Send + 'static,
-{
-    fn off_thread(self) -> mpsc::IntoIter<Self::Item> {
-        let (tx, rx) = mpsc::sync_channel(4096);
-
-        thread::spawn(move || {
-            for i in self {
-                if tx.send(i).is_err() {
-                    break;
-                }
-            }
-        });
-
-        // Receiver implements IntoIterator trait
-        rx.into_iter()
-    }
-}
+use threads_adv::{mpmc, paral::OffThread};
 
 fn main() {
     // #1 run task in concurrent pipeline
