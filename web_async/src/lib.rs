@@ -1,5 +1,23 @@
 use async_std::io::prelude::*;
 use async_std::{net, task};
+use surf;
+
+pub async fn req_get_batch_surf(reqs: &[String]) -> Vec<Result<String, surf::Error>> {
+    let mut hs = vec![];
+    let mut rslt = vec![];
+
+    let client = surf::Client::new();
+    for r in reqs {
+        let req = client.get(&r).recv_string();
+        hs.push(task::spawn(req));
+    }
+
+    for h in hs {
+        rslt.push(h.await);
+    }
+
+    rslt
+}
 
 pub async fn req_get_batch(reqs: Vec<(String, u16, String)>) -> Vec<std::io::Result<String>> {
     let mut hs = vec![];

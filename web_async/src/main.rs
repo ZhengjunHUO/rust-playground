@@ -1,5 +1,5 @@
 use async_std::task;
-use web_async::req_get_batch;
+use web_async::{req_get_batch, req_get_batch_surf};
 
 fn main() {
     // block on single request
@@ -19,7 +19,22 @@ fn main() {
     // examine the result
     for r in rslt {
         match r {
-            Ok(resp) => println!("**********\r\n{}", resp.len()),
+            Ok(resp) => println!("**********\r\n{}\r\n", resp.len()),
+            Err(e) => eprintln!("Failed to Get: {}", e),
+        }
+    }
+
+    // Using surf framework
+    let rs = &[
+        "http://ifconfig.me".to_string(),
+        "http://www.baidu.com".to_string(),
+        "https://www.google.com".to_string(),
+    ];
+
+    let results = task::block_on(req_get_batch_surf(rs));
+    for result in results {
+        match result {
+            Ok(resp) => println!("**********\r\n{}\r\n", resp),
             Err(e) => eprintln!("Failed to Get: {}", e),
         }
     }

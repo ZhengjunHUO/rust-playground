@@ -7,3 +7,4 @@ edition = "2021"
 
 [dependencies]
 async-std = { version = "1.12.0", features = ["unstable"] }
+surf = "2.3.2"
