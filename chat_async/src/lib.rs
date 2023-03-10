@@ -1,24 +1,33 @@
 pub mod utils;
 
 use serde::{Deserialize, Serialize};
+use std::sync::Arc;
 
 #[derive(Debug, Deserialize, PartialEq, Serialize)]
 pub enum ProtoClient {
-    Reg { room: String },
-    Envoy { room: String, content: String },
+    Reg {
+        room: Arc<String>,
+    },
+    Envoy {
+        room: Arc<String>,
+        content: Arc<String>,
+    },
 }
 
 #[derive(Debug, Deserialize, PartialEq, Serialize)]
 pub enum ProtoServer {
-    Envoy { room: String, content: String },
+    Envoy {
+        room: Arc<String>,
+        content: Arc<String>,
+    },
     Error(String),
 }
 
 #[test]
 fn test_proto_client() {
     let msg = ProtoClient::Envoy {
-        room: "Programmer".to_string(),
-        content: "Who is rustacean here?".to_string(),
+        room: Arc::new("Programmer".to_string()),
+        content: Arc::new("Who is rustacean here?".to_string()),
     };
 
     let marshalled = serde_json::to_string(&msg).unwrap();
