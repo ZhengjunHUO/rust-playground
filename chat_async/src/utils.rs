@@ -17,7 +17,7 @@ where
     Ok(())
 }
 
-pub async fn recv_and_unmarshal<R, D>(orig: R) -> impl Stream<Item = Result<D>>
+pub fn recv_and_unmarshal<R, D>(orig: R) -> impl Stream<Item = Result<D>>
 where
     R: io::BufRead + Unpin,
     D: DeserializeOwned,

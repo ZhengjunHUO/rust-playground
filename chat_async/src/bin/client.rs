@@ -1,7 +1,11 @@
 use async_std::prelude::*;
-use async_std::{io, net};
-use chat_async::{protocol::ProtoClient, utils};
+use async_std::{io, net, task};
+use chat_async::{
+    protocol::{ProtoClient, ProtoServer},
+    utils,
+};
 use lazy_static::lazy_static;
+use std::env;
 use std::sync::{Arc, Mutex};
 
 lazy_static! {
@@ -9,10 +13,22 @@ lazy_static! {
 }
 
 fn main() -> utils::Result<()> {
-    Ok(())
+    let ep = env::args()
+        .nth(1)
+        .expect("Wait for an endpoint, example:\n  localhost:8080");
+    task::block_on(async {
+        let conn = net::TcpStream::connect(ep).await?;
+        conn.set_nodelay(true)?;
+
+        let send_fn = send(conn.clone());
+        let recv_fn = recv(conn);
+
+        recv_fn.race(send_fn).await?;
+        Ok(())
+    })
 }
 
-async fn post(mut post_to_server: net::TcpStream) -> utils::Result<()> {
+async fn send(mut send_to_server: net::TcpStream) -> utils::Result<()> {
     println!(
         "<Usage>: \n  1) Join a room\n  $ checkout <ROOM>\n  2) Send message\n  $ <MESSAGE>\n"
     );
@@ -25,8 +41,26 @@ async fn post(mut post_to_server: net::TcpStream) -> utils::Result<()> {
             None => continue,
         };
 
-        utils::marshal_and_send(&mut post_to_server, &req).await?;
-        post_to_server.flush().await?;
+        utils::marshal_and_send(&mut send_to_server, &req).await?;
+        send_to_server.flush().await?;
+    }
+
+    Ok(())
+}
+
+async fn recv(recv_from_server: net::TcpStream) -> utils::Result<()> {
+    let br = io::BufReader::new(recv_from_server);
+    let mut s = utils::recv_and_unmarshal(br);
+
+    while let Some(msg) = s.next().await {
+        match msg? {
+            ProtoServer::Envoy { room, content } => {
+                println!("[{}] {}", room, content);
+            }
+            ProtoServer::Error(err) => {
+                println!("[ERROR] Server: {}", err);
+            }
+        }
     }
 
     Ok(())
