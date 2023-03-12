@@ -1,6 +1,6 @@
 use async_std::prelude::*;
 use async_std::{io, net};
-use chat_async::{utils, ProtoClient};
+use chat_async::{protocol::ProtoClient, utils};
 use lazy_static::lazy_static;
 use std::sync::{Arc, Mutex};
 
@@ -13,7 +13,9 @@ fn main() -> utils::Result<()> {
 }
 
 async fn post(mut post_to_server: net::TcpStream) -> utils::Result<()> {
-    println!("<Usage>: \n  1) Join a room\n  $ checkout <ROOM>\n  2) Send message\n  $ <MESSAGE>\n");
+    println!(
+        "<Usage>: \n  1) Join a room\n  $ checkout <ROOM>\n  2) Send message\n  $ <MESSAGE>\n"
+    );
 
     let mut inputs = io::BufReader::new(io::stdin()).lines();
     while let Some(content) = inputs.next().await {

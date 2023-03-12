@@ -1,6 +1,6 @@
-use async_std::prelude::*;
 use async_std::io;
-use serde::Serialize;
+use async_std::prelude::*;
+use serde::{de::DeserializeOwned, Serialize};
 use std::marker::Unpin;
 
 pub type Error = Box<dyn std::error::Error + Send + Sync + 'static>;
@@ -15,4 +15,16 @@ where
     s.push('\n');
     dest.write_all(s.as_bytes()).await?;
     Ok(())
+}
+
+pub async fn recv_and_unmarshal<R, D>(orig: R) -> impl Stream<Item = Result<D>>
+where
+    R: io::BufRead + Unpin,
+    D: DeserializeOwned,
+{
+    orig.lines().map(|line| -> Result<D> {
+        let rslt = line?;
+        let d = serde_json::from_str::<D>(&rslt)?;
+        Ok(d)
+    })
 }
