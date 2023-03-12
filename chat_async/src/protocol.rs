@@ -38,3 +38,31 @@ fn test_proto_client() {
         msg
     );
 }
+
+#[test]
+fn test_race() {
+    use async_std::future;
+    use async_std::prelude::*;
+    use async_std::task::block_on;
+
+    block_on(async {
+        let a = future::pending();
+        let b = future::ready(1u8);
+        let c = future::ready(2u8);
+
+        // Awaits multiple futures simultaneously, returning the output of the first future that completes.
+        let f = a.race(c).race(b);
+        let rslt = f.await;
+        assert_eq!(rslt, 2u8);
+    });
+
+    block_on(async {
+        let a = future::pending();
+        let b = future::ready(1u8);
+        let c = future::ready(2u8);
+
+        let f = a.race(b).race(c);
+        let rslt = f.await;
+        assert_eq!(rslt, 1u8);
+    });
+}
