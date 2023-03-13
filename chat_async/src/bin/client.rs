@@ -81,7 +81,7 @@ fn parse_input(input: &str) -> Option<ProtoClient> {
         }
         return Some(ProtoClient::Envoy {
             room: Arc::new(room_name.to_string()),
-            content: Arc::new(rest.to_string()),
+            content: Arc::new(input.to_string()),
         });
     }
 }
