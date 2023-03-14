@@ -13,16 +13,20 @@ lazy_static! {
 }
 
 fn main() -> utils::Result<()> {
+    // reads in user specified ip:port to connect to
     let ep = env::args()
         .nth(1)
         .expect("Wait for an endpoint, example:\n  localhost:8080");
+
     task::block_on(async {
         let conn = net::TcpStream::connect(ep).await?;
         conn.set_nodelay(true)?;
 
+        // split send and receive channel
         let send_fn = send(conn.clone());
         let recv_fn = recv(conn);
 
+        // awaits two futures simultaneously, returning the output of the first future that completes.
         recv_fn.race(send_fn).await?;
         Ok(())
     })
@@ -34,13 +38,16 @@ async fn send(mut send_to_server: net::TcpStream) -> utils::Result<()> {
     );
 
     let mut inputs = io::BufReader::new(io::stdin()).lines();
+    // waits for client's input from stdin
     while let Some(content) = inputs.next().await {
         let input = content?;
+        // parse the input
         let req = match parse_input(&input) {
             Some(r) => r,
             None => continue,
         };
 
+        // sends the serialized to server
         utils::marshal_and_send(&mut send_to_server, &req).await?;
         send_to_server.flush().await?;
     }

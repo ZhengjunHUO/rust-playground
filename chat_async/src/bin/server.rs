@@ -11,18 +11,21 @@ use std::sync::{Arc, Mutex};
 use tokio::sync::broadcast::{self, error::RecvError};
 
 fn main() -> utils::Result<()> {
+    // reads in user specified ip:port to listen on
     let ep = env::args()
         .nth(1)
         .expect("Wait for an endpoint, example:\n  localhost:8080");
 
-    // create a struct to holds rooms
+    // creates a struct to holds rooms
     let room_dict = Arc::new(RoomMap::new());
 
     task::block_on(async {
+        // gets listener on ip:port
         let l = net::TcpListener::bind(ep).await?;
 
-        // Returns a stream of incoming connections
+        // returns a stream of incoming connections
         let mut stream = l.incoming();
+        // wait for new connection comming in
         while let Some(s) = stream.next().await {
             let conn = s?;
             let point_to_room_dict = room_dict.clone();
@@ -54,11 +57,15 @@ impl Room {
         Room { name, sender }
     }
 
+    // called when client wants to enter a room
+    // attach client-provided stream to broadcast messages to client later
     pub fn attach(&self, reply: Arc<Reply>) {
         let recvr = self.sender.subscribe();
         task::spawn(handle_receiver(self.name.clone(), recvr, reply));
     }
 
+    // called when some client in room sends a message
+    // use broadcast::Sender to broadcast it to others
     pub fn send(&self, content: Arc<String>) {
         let _rslt = self.sender.send(content);
     }
@@ -69,6 +76,8 @@ async fn handle_receiver(
     mut recv: broadcast::Receiver<Arc<String>>,
     reply: Arc<Reply>,
 ) {
+    // subscribes to some Room, constructs reply from server
+    // sends it back to client using the TcpStream "reply"
     loop {
         let message = match recv.recv().await {
             Ok(content) => ProtoServer::Envoy {
@@ -109,8 +118,11 @@ impl RoomMap {
 }
 
 pub async fn handle(conn: TcpStream, room_dict: Arc<RoomMap>) -> utils::Result<()> {
+    // splits egress stream from igress
+    // used to write message back to client
     let reply_chan = Arc::new(Reply::new(conn.clone()));
 
+    // prepares a stream returning unmarshalled request from client
     let br = io::BufReader::new(conn);
     let mut s = utils::recv_and_unmarshal(br);
 
@@ -119,14 +131,19 @@ pub async fn handle(conn: TcpStream, room_dict: Arc<RoomMap>) -> utils::Result<(
 
         println!("[DEBUG] Recieve msg: {:?}", msg);
         let rslt = match msg {
+            // case client wants to join to a chat room
             ProtoClient::Reg { room } => {
                 let r = room_dict.get_or_create(room);
+                // attach egress stream (write back to client) to the specific room
                 r.attach(reply_chan.clone());
                 Ok(())
             }
 
+            // case client wants to send a message across the room he entered
             ProtoClient::Envoy { room, content } => match room_dict.get(&room) {
                 Some(r) => {
+                    // broadcast::Sender will send the content to all recievers subscribed
+                    // (other clients in the same room)
                     r.send(content);
                     Ok(())
                 }

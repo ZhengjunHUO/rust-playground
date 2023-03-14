@@ -17,6 +17,7 @@ where
     Ok(())
 }
 
+// shapes the incoming data stream to struct
 pub fn recv_and_unmarshal<R, D>(orig: R) -> impl Stream<Item = Result<D>>
 where
     R: io::BufRead + Unpin,
