@@ -1,4 +1,5 @@
 #![feature(trace_macros)]
+#![recursion_limit = "256"]
 
 use test_macro::{json, Json};
 
