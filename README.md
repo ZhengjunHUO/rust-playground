@@ -1,7 +1,11 @@
 # rust-playground
 
-When unstable features engaged, before running cargo do
+### When unstable features engaged, use nightly build:
 ```sh
 $ rustup override set nightly
 ```
-to use nightly build
+
+### See the println in cargo test
+```sh
+cargo test -- --nocapture
+```
