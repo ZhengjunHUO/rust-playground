@@ -1,5 +1,7 @@
 use std::collections::HashMap;
 
+pub mod macros;
+
 #[derive(Clone, Debug, PartialEq)]
 pub enum Json {
     Null,
@@ -44,26 +46,6 @@ impl<'a> From<&'a str> for Json {
     fn from(s: &'a str) -> Self {
         Json::String(s.to_string())
     }
-}
-
-#[macro_export]
-macro_rules! json {
-    (null) => {
-        Json::Null
-    };
-    ([ $( $elem:tt ),* ]) => {
-        Json::Array(<[_]>::into_vec(Box::new([ $( json!($elem) ),* ])))
-    };
-    ([ $( $elem:tt ),* ,]) => {   // support an optional extra comma at the end of array
-        json!([$( $elem ),*])
-    };
-    ({ $( $key:tt : $value:tt ),* }) => {
-        Json::Obj(Box::new(vec![ $( ($key.to_string(), json!($value)) ),* ].into_iter().collect()))
-    };
-    ({ $( $key:tt : $value:tt ),* ,}) => {
-        json!({$( $key : $value ),*})
-    };
-    ( $prim:tt ) => { Json::from($prim) };  // cover Bool, Num, String
 }
 
 #[test]
