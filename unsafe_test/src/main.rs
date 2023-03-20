@@ -13,6 +13,11 @@ fn main() {
     split_ref();
     use_c_lib();
     increm_counter(1);
+    raw_ptr_distance();
+
+    // Only dereferencing a raw pointer is unsafe.
+    assert!(!option_to_raw_ptr(Some(&8)).is_null());
+    assert!(option_to_raw_ptr::<usize>(None).is_null());
 }
 
 fn increm_counter(n: u32) {
@@ -66,8 +71,26 @@ fn deref_raw_pointer() {
     let rp_m = &mut n as *mut i32;
 
     unsafe {
-        *rp_m = 100;
-        println!("rp: {}", *rp);
-        println!("rp mutable: {}", *rp_m);
+        *rp_m += *rp;
+        assert_eq!(*rp, 20);
+        assert_eq!(*rp_m, 20);
+    }
+}
+
+fn option_to_raw_ptr<T>(o: Option<&T>) -> *const T {
+    match o {
+        Some(v) => v as *const T,
+        None => std::ptr::null(),
+    }
+}
+
+fn raw_ptr_distance() {
+    let list = vec!["huo", "rustacean", "fufu"];
+    let head: *const &str = &list[0];
+    let tail: *const &str = &list[list.len()-1];
+    unsafe {
+        assert_eq!(tail.offset_from(head), 2);
+        assert_eq!(head.offset_from(tail), -2);
+        assert_eq!(head.add(2), tail);
     }
 }
