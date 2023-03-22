@@ -1,4 +1,5 @@
 use std::ops::Range;
+use std::ptr::{copy, copy_nonoverlapping, drop_in_place, read, write};
 
 pub struct GapBuffer<T> {
     // 分配一块有capacity的内存，直接使用raw pointer操作数据
@@ -61,12 +62,105 @@ impl<T> GapBuffer<T> {
         None
     }
 
-    pub fn insert_iter(&mut self, iter: impl Iterator<Item = T>) {
-        // TO IMPLEMENT
+    pub fn move_insert_point_to(&mut self, pos: usize) {
+        if pos > self.len() {
+            panic!("Index {} out of range {}", pos, self.len())
+        }
+
+        unsafe {
+            // 在gap前方插入，需要将gap前移，路径上的内容移动到gap后方
+            if pos < self.gap.start {
+                let count = self.gap.start - pos;
+                copy(
+                    self.get_ptr_at(pos),
+                    self.get_mut_ptr_at(self.gap.end - count),
+                    count,
+                );
+            }
+
+            // 需要将gap首部后移至pos，路径上的内容移动到gap前方
+            if pos > self.gap.start {
+                let count = pos - self.gap.start;
+                copy(
+                    self.get_ptr_at(self.gap.end),
+                    self.get_mut_ptr_at(self.gap.start),
+                    count,
+                );
+            }
+
+            self.gap = pos..pos + self.gap.len();
+        }
     }
 
-    pub fn move_insert_point_to(&mut self, pos: usize) {
-        // TO IMPLEMENT
+    pub fn insert(&mut self, elem: T) {
+        if self.gap.len() == 0 {
+            self.double_bufsize();
+        }
+
+        unsafe {
+            write(self.get_mut_ptr_at(self.gap.start), elem);
+        }
+        self.gap.start += 1;
+    }
+
+    pub fn insert_iter(&mut self, iter: impl Iterator<Item = T>) {
+        for elem in iter {
+            self.insert(elem);
+        }
+    }
+
+    // 删除插入点处的元素，即在gap区域之后的第一个元素
+    pub fn remove_from_insert_point(&mut self) -> Option<T> {
+        if self.gap.end == self.cap() {
+            return None;
+        }
+
+        let rslt = unsafe { read(self.get_ptr_at(self.gap.end)) };
+        self.gap.end += 1;
+        Some(rslt)
+    }
+
+    pub fn double_bufsize(&mut self) {
+        let mut new_cap = self.cap() * 2;
+        // 第一次插入元素触发，初值为4
+        if new_cap == 0 {
+            new_cap = 4;
+        }
+
+        let mut doubled_chunk = Vec::with_capacity(new_cap);
+        // 新增的空间用来扩展gap，其右边界右移
+        let new_gap = self.gap.start..self.gap.end + (doubled_chunk.capacity() - self.cap());
+
+        unsafe {
+            // 把原本在gap前的内容copy到新buffer的头部
+            copy_nonoverlapping(
+                self.get_ptr_at(0),
+                doubled_chunk.as_mut_ptr(),
+                self.gap.start,
+            );
+            // 把原本在gap后的内容copy到新buffer的尾部
+            copy_nonoverlapping(
+                self.get_ptr_at(self.gap.end),
+                doubled_chunk.as_mut_ptr().offset(new_gap.end as isize),
+                self.cap() - self.gap.end,
+            );
+        }
+
+        self.chunk = doubled_chunk;
+        self.gap = new_gap;
+    }
+}
+
+impl<T> Drop for GapBuffer<T> {
+    fn drop(&mut self) {
+        unsafe {
+            for i in 0..self.gap.start {
+                drop_in_place(self.get_mut_ptr_at(i))
+            }
+            for i in self.gap.end..self.cap() {
+                drop_in_place(self.get_mut_ptr_at(i))
+            }
+        }
     }
 }
 
@@ -82,8 +176,17 @@ mod tests {
         assert_eq!(gb.pos(), 0);
 
         gb.insert_iter("A rustacean here ?".chars());
-        //assert_eq!(gb.len(), 18);
+        assert_eq!(gb.len(), 18);
+        assert_eq!(gb.cap(), 32);
+        assert_eq!(gb.pos(), 18);
+
         gb.move_insert_point_to(2);
+        assert_eq!(gb.pos(), 2);
+
         gb.insert_iter("skillful ".chars());
+        assert_eq!(gb.len(), 27);
+        assert_eq!(gb.cap(), 32);
+        assert_eq!(gb.get(11), Some(&'r'));
+        assert_eq!(gb.get(26), Some(&'?'));
     }
 }
