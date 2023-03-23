@@ -87,7 +87,7 @@ fn option_to_raw_ptr<T>(o: Option<&T>) -> *const T {
 fn raw_ptr_distance() {
     let list = vec!["huo", "rustacean", "fufu"];
     let head: *const &str = &list[0];
-    let tail: *const &str = &list[list.len()-1];
+    let tail: *const &str = &list[list.len() - 1];
     unsafe {
         assert_eq!(tail.offset_from(head), 2);
         assert_eq!(head.offset_from(tail), -2);
