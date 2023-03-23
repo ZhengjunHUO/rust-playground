@@ -12,7 +12,7 @@ fn test_ref_flag() {
 }
 
 #[test]
-fn test_foreign() {
+fn test_foreign_strlen() {
     use crate::foreign::strlen;
 
     let s = "Feed me to C func!";

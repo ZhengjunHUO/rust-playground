@@ -1,4 +1,5 @@
 use std::slice;
+use unsafe_test::foreign::print_env_vars;
 
 static mut COUNTER: u32 = 99;
 
@@ -15,6 +16,7 @@ fn main() {
     increm_counter(1);
     raw_ptr_distance();
 
+    print_env_vars();
     // Only dereferencing a raw pointer is unsafe.
     assert!(!option_to_raw_ptr(Some(&8)).is_null());
     assert!(option_to_raw_ptr::<usize>(None).is_null());
