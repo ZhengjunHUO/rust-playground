@@ -1,10 +1,6 @@
-use std::os::raw::c_int;
+pub mod raw;
 
-#[link(name = "git2")]
-extern {
-    pub fn git_libgit2_init() -> c_int;
-    pub fn git_libgit2_shutdown() -> c_int;
-}
+use crate::raw::*;
 
 fn main() {
     unsafe {
