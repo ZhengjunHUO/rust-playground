@@ -1,12 +1,45 @@
 use crate::raw::*;
-use crate::utils::check;
+use crate::utils::{check, print_commit};
+use std::ffi::CString;
+use std::os::raw::c_char;
+use std::{mem, ptr};
 
 pub mod raw;
 mod utils;
 
 fn main() {
+    let path_to_repo = std::env::args()
+        .skip(1)
+        .next()
+        .expect("Wait for a path to git repo");
+    let path = CString::new(path_to_repo).expect("Invalid path");
+
     unsafe {
         check("init libgit", git_libgit2_init());
-        git_libgit2_shutdown();
+
+        let mut repo = ptr::null_mut();
+        check("open repo", git_repository_open(&mut repo, path.as_ptr()));
+
+        let ref_name = b"HEAD\0".as_ptr() as *const c_char;
+        let oid = {
+            let mut oid = mem::MaybeUninit::uninit();
+            check(
+                "checkout HEAD",
+                git_reference_name_to_id(oid.as_mut_ptr(), repo, ref_name),
+            );
+            oid.assume_init()
+        };
+        let mut commit = ptr::null_mut();
+        check(
+            "checkout commit",
+            git_commit_lookup(&mut commit, repo, &oid),
+        );
+
+        print_commit(commit);
+
+        // clean up
+        git_commit_free(commit);
+        git_repository_free(repo);
+        check("fin libgit", git_libgit2_shutdown());
     }
 }
