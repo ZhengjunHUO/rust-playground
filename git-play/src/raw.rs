@@ -30,6 +30,7 @@ pub type git_time_t = i64;
 
 #[repr(C)]
 pub struct git_repository {
+    // simulate a C private type; used by libgit2 via raw pointer
     _private: [u8; 0],
 }
 #[repr(C)]

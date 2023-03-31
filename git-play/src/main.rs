@@ -11,7 +11,7 @@ fn main() {
     let path_to_repo = std::env::args()
         .skip(1)
         .next()
-        .expect("Wait for a path to git repo");
+        .expect("Wait for a path to git repo as arg");
     let path = CString::new(path_to_repo).expect("Invalid path");
 
     unsafe {
