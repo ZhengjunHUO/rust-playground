@@ -22,6 +22,7 @@ extern "C" {
     pub fn git_commit_author(commit: *const git_commit) -> *const git_signature;
     pub fn git_commit_message(commit: *const git_commit) -> *const c_char;
     pub fn git_commit_free(commit: *mut git_commit);
+    pub fn git_oid_fmt(out: *mut c_char, id: *const git_oid) -> c_int;
 }
 
 pub const GIT_OID_RAWSZ: usize = 20;

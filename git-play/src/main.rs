@@ -1,3 +1,5 @@
+#![feature(maybe_uninit_uninit_array, maybe_uninit_slice)]
+
 use crate::raw::*;
 use crate::utils::{check, print_commit};
 use std::ffi::CString;
@@ -29,6 +31,18 @@ fn main() {
             );
             oid.assume_init()
         };
+
+        let mut buf: [mem::MaybeUninit<u8>; 40] = mem::MaybeUninit::uninit_array();
+        check(
+            "get commit's sha",
+            git_oid_fmt(buf.as_mut_ptr() as *mut c_char, &oid),
+        );
+        let commit_sha = mem::MaybeUninit::slice_assume_init_ref(&buf[..40]);
+        println!(
+            "commit {}",
+            std::string::String::from_utf8_lossy(commit_sha)
+        );
+
         let mut commit = ptr::null_mut();
         check(
             "checkout commit",
