@@ -115,6 +115,7 @@ name = "git-play"
 version = "0.1.0"
 dependencies = [
  "chrono",
+ "libc",
 ]
 
 [[package]]

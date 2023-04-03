@@ -1,10 +1,35 @@
-use crate::raw;
+use super::{raw, Error, Result};
 use chrono::{DateTime, Local};
 use std::ffi::CStr;
 use std::os::raw::c_int;
-use std::process::exit;
+//use std::process::exit;
 use std::time::{Duration, UNIX_EPOCH};
 
+pub fn check(msg: &'static str, exit_status: c_int) -> Result<c_int> {
+    if exit_status >= 0 {
+        return Ok(exit_status);
+    }
+
+    unsafe {
+        // retrieve git_err structure for the latest error details
+        let err = &*raw::giterr_last();
+
+        let content = format!(
+            "Error occurred when {}: {} [{}]",
+            msg,
+            CStr::from_ptr(err.message).to_string_lossy(),
+            err.klass
+        );
+
+        Err(Error {
+            code: exit_status as i32,
+            message: content,
+            klass: err.klass as i32,
+        })
+    }
+}
+
+/*
 pub fn check(msg: &'static str, exit_status: c_int) -> c_int {
     if exit_status < 0 {
         unsafe {
@@ -24,6 +49,7 @@ pub fn check(msg: &'static str, exit_status: c_int) -> c_int {
 
     exit_status
 }
+*/
 
 pub unsafe fn print_commit(commit: *const raw::git_commit) {
     let author = raw::git_commit_author(commit);
