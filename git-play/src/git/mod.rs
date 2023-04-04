@@ -142,6 +142,23 @@ pub struct Oid {
     pub raw: raw::git_oid,
 }
 
+impl Oid {
+    pub fn sha(&self) -> Option<String> {
+        unsafe {
+            let mut buf: [mem::MaybeUninit<u8>; 40] = mem::MaybeUninit::uninit_array();
+            if let Err(e) = utils::check(
+                "get commit's sha",
+                raw::git_oid_fmt(buf.as_mut_ptr() as *mut c_char, &self.raw),
+            ) {
+                eprintln!("{}", e);
+                return None;
+            }
+            let commit_sha = mem::MaybeUninit::slice_assume_init_ref(&buf[..40]);
+            Some(std::string::String::from_utf8_lossy(commit_sha).to_string())
+        }
+    }
+}
+
 // wrapper for raw git_commit, should not outlive the repo it comes from
 pub struct Commit<'r> {
     raw_ptr: *mut raw::git_commit,

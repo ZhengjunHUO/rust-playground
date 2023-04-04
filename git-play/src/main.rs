@@ -16,7 +16,8 @@ fn main() -> Result<()> {
     let commit = repo.fetch_commit(&oid)?;
     let author = commit.author();
     println!(
-        "Author: {} <{}>\n\n{}\n",
+        "commit {}\nAuthor: {} <{}>\n\n{}\n",
+        oid.sha().unwrap_or("none".to_string()),
         author.name().unwrap_or("none"),
         author.email().unwrap_or("none"),
         commit.message().unwrap_or("none"),
@@ -39,9 +40,7 @@ fn main() -> Result<()> {
             )?;
             oid.assume_init()
         };
-    */
 
-    /*
         let mut buf: [mem::MaybeUninit<u8>; 40] = mem::MaybeUninit::uninit_array();
         check(
             "get commit's sha",
