@@ -16,6 +16,8 @@ fn main() -> Result<()> {
         .expect("Wait for a path to git repo as arg");
     let path = CString::new(path_to_repo).expect("Invalid path");
 
+    //let mut repo = Repo::open(path_to_repo).unwrap();
+
     unsafe {
         check("init libgit", git_libgit2_init())?;
 
