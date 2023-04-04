@@ -1,5 +1,5 @@
-pub mod raw;
-pub mod utils;
+mod raw;
+mod utils;
 
 use libc;
 use std::{
@@ -51,24 +51,7 @@ impl error::Error for Error {}
 
 pub type Result<T> = result::Result<T, Error>;
 
-pub struct Oid {
-    pub raw: raw::git_oid,
-}
-
-pub struct Commit<'r> {
-    raw_ptr: *mut raw::git_commit,
-    _lifetime_holder: PhantomData<&'r Repo>,
-}
-
-impl<'r> Drop for Commit<'r> {
-    fn drop(&mut self) {
-        unsafe {
-            raw::git_commit_free(self.raw_ptr);
-        }
-    }
-}
-
-// wrapper the raw git_repository, providing a safe interface
+// wrap the raw git_repository, providing a safe interface
 pub struct Repo {
     raw_ptr: *mut raw::git_repository,
 }
@@ -111,7 +94,8 @@ impl Repo {
         }
     }
 
-    pub fn fetch_commit<'r>(&'r self, oid: &Oid) -> Result<Commit<'r>> {
+    //pub fn fetch_commit<'r>(&'r self, oid: &Oid) -> Result<Commit<'r>> {
+    pub fn fetch_commit(&self, oid: &Oid) -> Result<Commit> {
         let mut commit = ptr::null_mut();
         unsafe {
             utils::check(
@@ -150,5 +134,58 @@ extern "C" fn shutdown_lib() {
             eprintln!("{}", e);
             process::abort();
         }
+    }
+}
+
+// wrapper for raw git_oid
+pub struct Oid {
+    pub raw: raw::git_oid,
+}
+
+// wrapper for raw git_commit, should not outlive the repo it comes from
+pub struct Commit<'r> {
+    raw_ptr: *mut raw::git_commit,
+    _lifetime_holder: PhantomData<&'r Repo>,
+}
+
+impl<'r> Commit<'r> {
+    pub fn author(&self) -> Signature {
+        unsafe {
+            Signature {
+                raw: raw::git_commit_author(self.raw_ptr),
+                _lifetime_holder: PhantomData,
+            }
+        }
+    }
+
+    pub fn message(&self) -> Option<&str> {
+        unsafe {
+            let msg = raw::git_commit_message(self.raw_ptr);
+            utils::ptr_char_to_str(self, msg)
+        }
+    }
+}
+
+impl<'r> Drop for Commit<'r> {
+    fn drop(&mut self) {
+        unsafe {
+            raw::git_commit_free(self.raw_ptr);
+        }
+    }
+}
+
+// wrapper for raw git_signature, should not outlive the commit it comes from
+pub struct Signature<'c> {
+    raw: *const raw::git_signature,
+    _lifetime_holder: PhantomData<&'c str>,
+}
+
+impl<'c> Signature<'c> {
+    pub fn name(&self) -> Option<&str> {
+        unsafe { utils::ptr_char_to_str(self, (*self.raw).name) }
+    }
+
+    pub fn email(&self) -> Option<&str> {
+        unsafe { utils::ptr_char_to_str(self, (*self.raw).email) }
     }
 }

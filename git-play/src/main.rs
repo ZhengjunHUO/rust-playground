@@ -1,11 +1,6 @@
 #![feature(maybe_uninit_uninit_array, maybe_uninit_slice)]
 
-use crate::git::raw::*;
-use crate::git::utils::*;
 use crate::git::Result;
-use std::ffi::CString;
-use std::os::raw::c_char;
-use std::{mem, ptr};
 
 mod git;
 
@@ -14,10 +9,21 @@ fn main() -> Result<()> {
         .skip(1)
         .next()
         .expect("Wait for a path to git repo as arg");
-    let path = CString::new(path_to_repo).expect("Invalid path");
+    //let path = CString::new(path_to_repo).expect("Invalid path");
 
-    //let mut repo = Repo::open(path_to_repo).unwrap();
+    let repo = git::Repo::open(&path_to_repo)?;
+    let oid = repo.reference_name_to_id("HEAD")?;
+    let commit = repo.fetch_commit(&oid)?;
+    let author = commit.author();
+    println!(
+        "Author: {} <{}>\n\n{}\n",
+        author.name().unwrap_or("none"),
+        author.email().unwrap_or("none"),
+        commit.message().unwrap_or("none"),
+    );
+    Ok(())
 
+    /*
     unsafe {
         check("init libgit", git_libgit2_init())?;
 
@@ -33,7 +39,9 @@ fn main() -> Result<()> {
             )?;
             oid.assume_init()
         };
+    */
 
+    /*
         let mut buf: [mem::MaybeUninit<u8>; 40] = mem::MaybeUninit::uninit_array();
         check(
             "get commit's sha",
@@ -57,7 +65,6 @@ fn main() -> Result<()> {
         git_commit_free(commit);
         git_repository_free(repo);
         check("fin libgit", git_libgit2_shutdown())?;
-
-        Ok(())
     }
+    */
 }

@@ -1,10 +1,10 @@
 use super::{raw, Error, Result};
-use chrono::{DateTime, Local};
+//use chrono::{DateTime, Local};
 use std::ffi::{CStr, CString};
-use std::os::raw::c_int;
+use std::os::raw::{c_char, c_int};
 use std::path::Path;
 //use std::process::exit;
-use std::time::{Duration, UNIX_EPOCH};
+//use std::time::{Duration, UNIX_EPOCH};
 
 pub fn check(msg: &'static str, exit_status: c_int) -> Result<c_int> {
     if exit_status >= 0 {
@@ -50,7 +50,6 @@ pub fn check(msg: &'static str, exit_status: c_int) -> c_int {
 
     exit_status
 }
-*/
 
 pub unsafe fn print_commit(commit: *const raw::git_commit) {
     let author = raw::git_commit_author(commit);
@@ -71,9 +70,19 @@ pub unsafe fn print_commit(commit: *const raw::git_commit) {
         content
     );
 }
+*/
 
 #[cfg(unix)]
 pub fn path_to_cstring(path: &Path) -> Result<CString> {
     use std::os::unix::ffi::OsStrExt;
     Ok(CString::new(path.as_os_str().as_bytes())?)
+}
+
+//pub unsafe fn ptr_char_to_str<'a, T: 'a>(_owner: &'a T, ptr_char: *const c_char) -> Option<&'a str> {
+pub unsafe fn ptr_char_to_str<T>(_owner: &T, ptr_char: *const c_char) -> Option<&str> {
+    if ptr_char.is_null() {
+        return None;
+    }
+
+    CStr::from_ptr(ptr_char).to_str().ok()
 }
