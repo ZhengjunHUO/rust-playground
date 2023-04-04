@@ -1,7 +1,8 @@
 use super::{raw, Error, Result};
 use chrono::{DateTime, Local};
-use std::ffi::CStr;
+use std::ffi::{CStr, CString};
 use std::os::raw::c_int;
+use std::path::Path;
 //use std::process::exit;
 use std::time::{Duration, UNIX_EPOCH};
 
@@ -69,4 +70,10 @@ pub unsafe fn print_commit(commit: *const raw::git_commit) {
         date.format("%a %b  %d %H:%M:%S %Y %z").to_string(),
         content
     );
+}
+
+#[cfg(unix)]
+pub fn path_to_cstring(path: &Path) -> Result<CString> {
+    use std::os::unix::ffi::OsStrExt;
+    Ok(CString::new(path.as_os_str().as_bytes())?)
 }
