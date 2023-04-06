@@ -16,10 +16,11 @@ fn main() -> Result<()> {
     let commit = repo.fetch_commit(&oid)?;
     let author = commit.author();
     println!(
-        "commit {}\nAuthor: {} <{}>\n\n{}\n",
+        "commit {}\nAuthor: {} <{}>\nDate:   {}\n\n{}\n",
         oid.sha().unwrap_or("none".to_string()),
         author.name().unwrap_or("none"),
         author.email().unwrap_or("none"),
+        author.datetime().unwrap_or("none".to_string()),
         commit.message().unwrap_or("none"),
     );
     Ok(())

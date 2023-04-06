@@ -1,6 +1,7 @@
 mod raw;
 mod utils;
 
+use chrono::{DateTime, Local};
 use libc;
 use std::{
     error,
@@ -12,6 +13,7 @@ use std::{
     path::Path,
     process, ptr, result,
     sync::Once,
+    time::{Duration, UNIX_EPOCH},
 };
 
 #[derive(Debug)]
@@ -204,5 +206,17 @@ impl<'c> Signature<'c> {
 
     pub fn email(&self) -> Option<&str> {
         unsafe { utils::ptr_char_to_str(self, (*self.raw).email) }
+    }
+
+    pub fn datetime(&self) -> Option<String> {
+        unsafe {
+            let secs = (*self.raw).when.time as u64;
+            if secs == 0 {
+                return None;
+            }
+
+            let datetime = DateTime::<Local>::from(UNIX_EPOCH + Duration::from_secs(secs));
+            Some(datetime.format("%a %b  %d %H:%M:%S %Y %z").to_string())
+        }
     }
 }
