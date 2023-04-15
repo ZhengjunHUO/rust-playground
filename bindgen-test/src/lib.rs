@@ -27,7 +27,7 @@ mod tests {
                 r if r == (BZ_MEM_ERROR as _) => panic!("BZ_MEM_ERROR"),     // -3
                 r if r == (BZ_CONFIG_ERROR as _) => panic!("BZ_CONFIG_ERROR"), // -9
                 r if r == (BZ_OK as _) => {}                                 // 0
-                r => panic!("Init failed, return error code: {}", r),
+                r => panic!("Init compress stream failed, return error code: {}", r),
             }
 
             // 2. compress text
@@ -48,13 +48,52 @@ mod tests {
                 r => panic!("Compress failed, return error code: {}", r),
             }
 
-            // 3. compress finish
+            // 3. close compress stream
             let res = BZ2_bzCompressEnd(&mut stream as *mut _);
             match res {
                 r if r == (BZ_PARAM_ERROR as _) => panic!("BZ_PARAM_ERROR"), // -2
                 r if r == (BZ_OK as _) => {}                                 // 0
-                r => panic!("Compress end failed, return error code: {}", r),
+                r => panic!("Close compress stream failed, return error code: {}", r),
             }
+
+            // 4. init decompress bz stream
+            let mut stream_de: bz_stream = mem::zeroed();
+            let res = BZ2_bzDecompressInit(&mut stream_de as *mut _, 4, 0);
+            match res {
+                r if r == (BZ_PARAM_ERROR as _) => panic!("BZ_PARAM_ERROR"), // -2
+                r if r == (BZ_MEM_ERROR as _) => panic!("BZ_MEM_ERROR"),     // -3
+                r if r == (BZ_CONFIG_ERROR as _) => panic!("BZ_CONFIG_ERROR"), // -9
+                r if r == (BZ_OK as _) => {}                                 // 0
+                r => panic!("Init decompress stream failed, return error code: {}", r),
+            }
+
+            // 5. decompress compressed text
+            stream_de.next_in = compressed.as_ptr() as *mut _;
+            stream_de.avail_in = compressed.len() as _;
+            stream_de.next_out = decompressed.as_mut_ptr() as *mut _;
+            stream_de.avail_out = decompressed.len() as _;
+
+            let res = BZ2_bzDecompress(&mut stream_de as *mut _);
+            match res {
+                r if r == (BZ_PARAM_ERROR as _) => panic!("BZ_PARAM_ERROR"), // -2
+                r if r == (BZ_MEM_ERROR as _) => panic!("BZ_MEM_ERROR"),     // -3
+                r if r == (BZ_DATA_ERROR as _) => panic!("BZ_DATA_ERROR"),   // -4
+                r if r == (BZ_DATA_ERROR_MAGIC as _) => panic!("BZ_DATA_ERROR_MAGIC"), // -5
+                r if r == (BZ_OK as _) => panic!("BZ_OK"),                   // 0
+                r if r == (BZ_STREAM_END as _) => {}                         // 4
+                r => panic!("Decompress failed, return error code: {}", r),
+            }
+
+            // 6. close decompress stream
+            let res = BZ2_bzDecompressEnd(&mut stream_de as *mut _);
+            match res {
+                r if r == (BZ_PARAM_ERROR as _) => panic!("BZ_PARAM_ERROR"), // -2
+                r if r == (BZ_OK as _) => {}                                 // 0
+                r => panic!("Close decompress stream failed, return error code: {}", r),
+            }
+
+            // 7. check if origin text equals to the compressed && decompressed result
+            assert_eq!(text, &decompressed[..]);
         }
     }
 }
