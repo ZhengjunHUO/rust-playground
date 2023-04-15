@@ -1,0 +1,10 @@
+When we compile a BPF (Berkeley Packet Filter) program using Clang, several things happen under the hood:
+
+1. Parsing: The Clang front-end parses the BPF code and generates an Abstract Syntax Tree (AST), which is a representation of the program's syntax in a tree-like data structure.
+2. Optimization: The Clang optimizer applies a number of optimizations to the AST, such as dead code elimination, constant folding, and strength reduction.
+3. Code generation: The Clang backend generates LLVM IR (Intermediate Representation) code from the optimized AST. LLVM IR is a low-level, platform-independent representation of the code that can be further optimized and translated into machine code for specific target architectures.
+4. BPF object file generation: The LLVM IR is then processed by the BPF-specific backend, which generates a BPF object file in the ELF (Executable and Linkable Format) format. This file contains the compiled BPF program and any necessary metadata.
+5. Verification: The BPF verifier analyzes the generated BPF object file to ensure that the program is safe and conforms to the BPF program restrictions. This includes verifying that the program does not exceed a certain size limit, and that it does not contain any forbidden instructions or access memory outside of its allowed range.
+6. JIT or loading into the kernel: The BPF program can then either be loaded directly into the kernel using system calls or, in some cases, JIT-compiled to machine code and executed by a user-space program.
+
+Overall, the Clang compiler plays a key role in the process of compiling BPF programs, from parsing the code to generating optimized LLVM IR and generating the BPF object file. The BPF-specific backend and verifier ensure that the generated code is safe and conforms to the BPF program restrictions, while also providing the necessary metadata to the kernel for proper execution.
