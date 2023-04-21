@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+pub mod captures;
 pub mod macros;
 
 #[derive(Clone, Debug, PartialEq)]
