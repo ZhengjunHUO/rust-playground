@@ -44,3 +44,11 @@ macro_rules! check_attribute {
         concat!("unknown attribute: ", stringify!($($item)*))
     };
 }
+
+#[macro_export]
+macro_rules! fetch_head_recusive {
+    () => { "" };
+    ($head:tt $($rest:tt)*) => {
+        concat!("[", stringify!($head), "]\n", fetch_head_recusive!($($rest)*))
+    };
+}
