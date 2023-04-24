@@ -46,9 +46,17 @@ macro_rules! check_attribute {
 }
 
 #[macro_export]
-macro_rules! fetch_head_recusive {
+macro_rules! pop_head {
     () => { "" };
     ($head:tt $($rest:tt)*) => {
-        concat!("[", stringify!($head), "]\n", fetch_head_recusive!($($rest)*))
+        concat!("[", stringify!($head), "]\n", pop_head!($($rest)*))
+    };
+}
+
+#[macro_export]
+macro_rules! pop_tail {
+    () => { "" };
+    ($head:tt $($rest:tt)*) => {
+        concat!(pop_tail!($($rest)*), "[", stringify!($head), "]\n")
     };
 }

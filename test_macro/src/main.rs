@@ -3,12 +3,13 @@
 
 use test_macro::{
     capture_then_check_attribute, capture_then_check_tokens, capture_then_stringify,
-    check_attribute, check_tokens, fetch_head_recusive, json, Json,
+    check_attribute, check_tokens, json, pop_head, pop_tail, Json,
 };
 
 fn main() {
     trace_macros!(true);
-    println!(fetch_head_recusive!(foo bar baz));
+    println!(pop_head!(foo bar baz));
+    println!(pop_tail!(foo bar baz));
     trace_macros!(false);
 
     let list = vec![4, 5, 6];
