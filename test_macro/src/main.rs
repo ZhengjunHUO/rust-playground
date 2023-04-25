@@ -3,7 +3,7 @@
 
 use test_macro::{
     capture_then_check_attribute, capture_then_check_tokens, capture_then_stringify,
-    check_attribute, check_tokens, json, pop_head, pop_tail, print_fibo, Json,
+    check_attribute, check_tokens, expr_len, json, pop_head, pop_tail, print_fibo, Json,
 };
 
 fn main() {
