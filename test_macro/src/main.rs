@@ -3,7 +3,7 @@
 
 use test_macro::{
     capture_then_check_attribute, capture_then_check_tokens, capture_then_stringify,
-    check_attribute, check_tokens, json, pop_head, pop_tail, Json,
+    check_attribute, check_tokens, json, pop_head, pop_tail, print_fibo, Json,
 };
 
 fn main() {
@@ -50,4 +50,10 @@ fn main() {
         capture_then_check_attribute!(#[macro_export]),
         capture_then_check_attribute!(#[test]),
     );
+
+    println!("[DEBUG] Print fibonacci sequence:");
+    let f = print_fibo![a[n]: u64 = 0, 1 => a[n-1] + a[n-2]];
+    for elem in f.take(15) {
+        println!("{}", elem)
+    }
 }
