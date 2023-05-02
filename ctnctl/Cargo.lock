@@ -104,8 +104,10 @@ dependencies = [
 name = "ctnctl"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "libbpf-cargo",
  "libbpf-rs",
+ "libc",
 ]
 
 [[package]]

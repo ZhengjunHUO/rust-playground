@@ -6,7 +6,9 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+anyhow = "1.0.71"
 libbpf-rs = "0.20.1"
+libc = "0.2.142"
 
 [build-dependencies]
 libbpf-cargo = "0.20.1"
