@@ -25,7 +25,7 @@ fn increase_rlimit() -> Result<()> {
 
 fn main() -> Result<()> {
     let ctn_id = "252491db736e3ece6bccbb019c2953d4fa4907f3ba3e3742b00913674fc3e45a";
-    let ip = "8.8.8.8";
+    let ip = "8.8.4.4";
 
     let builder = CgroupFwSkelBuilder::default();
     increase_rlimit()?;
@@ -60,7 +60,7 @@ fn main() -> Result<()> {
 
     // Apply a rule
     let ip_parsed = Ipv4Addr::from_str(&ip)?;
-    let key = u32::from(ip_parsed).to_ne_bytes();
+    let key = u32::from(ip_parsed).to_be_bytes();
     let value = u8::from(true).to_ne_bytes();
     eg_fw_map.update(&key, &value, MapFlags::ANY)?;
 
