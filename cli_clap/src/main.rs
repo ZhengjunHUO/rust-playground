@@ -1,4 +1,4 @@
-use clap::{Args, Parser, Subcommand};
+use clap::{Args, Parser, Subcommand, ValueEnum};
 use std::path::PathBuf;
 
 #[derive(Parser)]
@@ -14,11 +14,13 @@ struct Cmd {
 
     // 识别为带value的Option
     // 只接受--config (long)
+    /// Specify the path to configuration file
     #[arg(long, value_name = "/PATH/TO/CONFIG")]
     config: Option<PathBuf>,
 
     // 类别u8加上Count, 识别为不带value的Option
     // 统计出现次数
+    /// Adjust the verbosity level
     #[arg(short, long, action = clap::ArgAction::Count)]
     verbose: u8,
 
@@ -35,11 +37,22 @@ enum SubCmd {
         all: bool,
 
         // 类别为字符串，识别为带value的Option
-        #[arg(long)]
-        inline: Option<String>,
+        #[arg(long, default_value = "always")]
+        inline: String,
     },
     /// Provide extra config files to override the default one
     Override(OverrideArgs),
+    /// Specify which environment should be deployed to
+    Deploy {
+        #[arg(short, long, value_enum)]
+        infra: Infra,
+    },
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
+enum Infra {
+    K8s,
+    Baremetal,
 }
 
 #[derive(Args)]
@@ -67,13 +80,16 @@ fn main() {
     match &cmd.subcmd {
         Some(SubCmd::Valid { all, inline }) => {
             if *all {
-                println!("[Debug] Valid all, inline: {:?} !", inline.as_deref());
+                println!("[Debug] Valid all, inline: {:?} !", inline);
             } else {
-                println!("[Debug] Valid by default, inline: {:?}!", inline.as_deref());
+                println!("[Debug] Valid by default, inline: {:?}!", inline);
             }
         }
         Some(SubCmd::Override(oa)) => {
             println!("[Debug] Delta files: {:?}", oa.delta);
+        }
+        Some(SubCmd::Deploy { infra }) => {
+            println!("[Debug] Will deployed to: {:?}", infra);
         }
         None => {}
     }
