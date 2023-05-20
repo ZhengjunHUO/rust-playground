@@ -1,4 +1,4 @@
-use clap::{Parser, Subcommand};
+use clap::{Args, Parser, Subcommand};
 use std::path::PathBuf;
 
 #[derive(Parser)]
@@ -6,6 +6,7 @@ use std::path::PathBuf;
 #[command(author = "ZhengjunHUO <firelouiszj@hotmail.com>")]
 #[command(version = "0.1.0")]
 #[command(about = "explore clap", long_about = None)]
+#[command(propagate_version = true)]
 struct Cmd {
     // 子命令
     #[command(subcommand)]
@@ -27,6 +28,7 @@ struct Cmd {
 
 #[derive(Subcommand)]
 enum SubCmd {
+    /// Validate the given configuration file
     Valid {
         // 类别为布尔值，识别为不带value的Option
         #[arg(short, long)]
@@ -34,12 +36,16 @@ enum SubCmd {
 
         // 类别为字符串，识别为带value的Option
         #[arg(long)]
-        inline: String,
+        inline: Option<String>,
     },
-    Override {
-        // 类别为Vec, 可以接受数个Arguments
-        delta: Vec<PathBuf>,
-    },
+    /// Provide extra config files to override the default one
+    Override(OverrideArgs),
+}
+
+#[derive(Args)]
+struct OverrideArgs {
+    // 类别为Vec, 可以接受数个Arguments
+    delta: Vec<PathBuf>,
 }
 
 // eg. ./target/debug/cli_clap -vvv --config /etc/hosts huo valid -a --inline never
@@ -61,13 +67,13 @@ fn main() {
     match &cmd.subcmd {
         Some(SubCmd::Valid { all, inline }) => {
             if *all {
-                println!("[Debug] Valid all, inline: {} !", inline);
+                println!("[Debug] Valid all, inline: {:?} !", inline.as_deref());
             } else {
-                println!("[Debug] Valid by default, inline: {}!", inline);
+                println!("[Debug] Valid by default, inline: {:?}!", inline.as_deref());
             }
         }
-        Some(SubCmd::Override { delta }) => {
-            println!("[Debug] Delta files: {:?}", delta);
+        Some(SubCmd::Override(oa)) => {
+            println!("[Debug] Delta files: {:?}", oa.delta);
         }
         None => {}
     }
