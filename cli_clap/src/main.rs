@@ -1,4 +1,5 @@
-use clap::{Args, Parser, Subcommand, ValueEnum};
+use clap::{Args, Parser, Subcommand};
+//use clap::ValueEnum;
 use std::ops::RangeInclusive;
 use std::path::PathBuf;
 
@@ -9,6 +10,7 @@ const PORT_RANGE: RangeInclusive<usize> = 1001..=65535;
 #[command(author = "ZhengjunHUO <firelouiszj@hotmail.com>")]
 #[command(version = "0.1.0")]
 #[command(about = "explore clap", long_about = None)]
+// 子命令也会继承根命令的版本(-V)
 #[command(propagate_version = true)]
 struct Cmd {
     // 子命令
@@ -47,7 +49,9 @@ enum SubCmd {
     Override(OverrideArgs),
     /// Specify which environment should be deployed to
     Deploy {
-        #[arg(short, long, value_enum)]
+        //#[arg(short, long, value_enum)]
+        //infra: Infra,
+        #[command(flatten)]
         infra: Infra,
 
         /// Tcp port the app will listen on
@@ -60,10 +64,24 @@ enum SubCmd {
     },
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
-enum Infra {
-    K8S,
-    Baremetal,
+//#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
+//enum Infra {
+//    K8S,
+//    Baremetal,
+//}
+
+// 必须声明任意一种option
+#[derive(Args, Debug)]
+#[group(required = true, multiple = false)]
+struct Infra {
+    #[arg(long)]
+    k8s: bool,
+
+    #[arg(long)]
+    docker: bool,
+
+    #[arg(long)]
+    baremetal: bool,
 }
 
 #[derive(Args)]
@@ -74,6 +92,7 @@ struct OverrideArgs {
 
 // eg. ./target/debug/cli_clap -vvv --config /etc/hosts huo valid -a --inline never
 // eg. ./target/debug/cli_clap override d1.conf d2.conf d3.conf
+// eg. ./target/debug/cli_clap deploy --k8s
 fn main() {
     let cmd = Cmd::parse();
 
@@ -104,7 +123,12 @@ fn main() {
             tcp_port,
             udp_port,
         }) => {
-            println!("[Debug] Will deployed to: {:?}", infra);
+            match (infra.k8s, infra.docker, infra.baremetal) {
+                (true, _, _) => println!("[Debug] Will deployed on kubernetes"),
+                (_, true, _) => println!("[Debug] Will deployed on docker"),
+                (_, _, true) => println!("[Debug] Will deployed on baremetal"),
+                _ => (),
+            };
             println!("[Debug] Will listen on tcp port {:?}", tcp_port);
             println!("[Debug] Will listen on udp port {:?}", udp_port);
         }
