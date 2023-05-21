@@ -1,4 +1,4 @@
-use clap::{Args, Parser, Subcommand};
+use clap::{Args, CommandFactory, Parser, Subcommand};
 //use clap::ValueEnum;
 use std::ops::RangeInclusive;
 use std::path::PathBuf;
@@ -73,8 +73,8 @@ enum SubCmd {
 //}
 
 // 必须声明任意一种option
+//#[group(required = true, multiple = false)]
 #[derive(Args, Debug)]
-#[group(required = true, multiple = false)]
 struct Infra {
     #[arg(long)]
     k8s: bool,
@@ -126,10 +126,20 @@ fn main() {
             udp_port,
         }) => {
             match (infra.k8s, infra.docker, infra.baremetal) {
-                (true, _, _) => println!("[Debug] Will deployed on kubernetes"),
-                (_, true, _) => println!("[Debug] Will deployed on docker"),
-                (_, _, true) => println!("[Debug] Will deployed on baremetal"),
-                _ => (),
+                (true, false, false) => println!("[Debug] Will deployed on kubernetes"),
+                (false, true, false) => println!("[Debug] Will deployed on docker"),
+                (false, false, true) => println!("[Debug] Will deployed on baremetal"),
+                //_ => (),
+                // 移除struct Infra的#[group(required = true, multiple = false)]
+                // 自定义validate的规则和错误信息
+                _ => {
+                    let mut cmmd = Cmd::command();
+                    cmmd.error(
+                        clap::error::ErrorKind::ArgumentConflict,
+                        "One (and only one) option <--k8s|--docker|--baremetal> is required.",
+                    )
+                    .exit();
+                }
             };
             println!("[Debug] Will listen on tcp port {:?}", tcp_port);
             println!("[Debug] Will listen on udp port {:?}", udp_port);
