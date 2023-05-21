@@ -19,8 +19,9 @@ struct Cmd {
 
     // 识别为带value的Option
     // 只接受--config (long)
+    // 依赖于target
     /// Specify the path to configuration file
-    #[arg(long, value_name = "/PATH/TO/CONFIG")]
+    #[arg(long, requires = "cible", value_name = "/PATH/TO/CONFIG")]
     config: Option<PathBuf>,
 
     // 类别u8加上Count, 识别为不带value的Option
@@ -30,6 +31,7 @@ struct Cmd {
     verbose: u8,
 
     // 识别为Argument
+    #[arg(group = "cible")]
     target: Option<String>,
 }
 
