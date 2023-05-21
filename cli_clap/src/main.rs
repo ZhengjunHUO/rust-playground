@@ -164,3 +164,8 @@ fn validate_port(s: &str) -> Result<u16, String> {
         ))
     }
 }
+
+#[test]
+fn test_cli() {
+    Cmd::command().debug_assert()
+}
