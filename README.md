@@ -14,3 +14,8 @@ $ rustc -Zunpretty=expanded src/main.rs
 ```sh
 cargo test -- --nocapture
 ```
+
+### Build package's doc
+```sh
+cargo doc [--no-deps] --open
+```
