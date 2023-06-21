@@ -9,6 +9,7 @@ edition = "2021"
 anyhow = "1.0.71"
 clickhouse = "0.11.5"
 serde = { version = "1.0.164", features = ["derive"] }
+serde_repr = "0.1.12"
 tokio = { version = "1.28.1", features = ["rt", "rt-multi-thread"] }
 
 [dev-dependencies]
