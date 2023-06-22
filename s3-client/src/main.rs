@@ -6,11 +6,13 @@ use std::env;
 
 #[tokio::main]
 async fn main() -> Result<()> {
+    let bucket_name = std::env::args().nth(1).expect("No bucket name given");
     let access_key = env::var("GCS_ACCESS_KEY")?;
     let secret_key = env::var("GCS_SECRET_KEY")?;
 
+    // Prepare existing bucket
     let bucket = Bucket::new(
-        "test-ckh-backup",
+        &bucket_name,
         Region::Custom {
             region: "eu".to_owned(),
             endpoint: "https://storage.googleapis.com".to_owned(),
@@ -22,17 +24,44 @@ async fn main() -> Result<()> {
     let path = "test.txt";
     let content = b"Rust rocks!";
 
+    // Create
     let resp = bucket.put_object(path, content).await?;
     assert_eq!(resp.status_code(), 200);
     println!("[DEBUG] Object uploaded to the bucket.");
 
+    // Read
     let resp = bucket.get_object(path).await?;
     assert_eq!(resp.status_code(), 200);
     assert_eq!(content, resp.as_slice());
     println!("[DEBUG] Object retrieved.");
 
+    // List all objects in bucket
+    let results = bucket
+        .list(String::default(), Some("/".to_string()))
+        // 只能显示bucket中的文件，如/test.txt，忽略文件夹
+        //.list("/".to_string(), Some("/".to_string()))
+        .await?;
+
+    for res in results {
+        println!("[DEBUG] In bucket {}", res.name);
+        match res.common_prefixes {
+            Some(items) => {
+                for item in items {
+                    println!("  - {}", item.prefix);
+                }
+            }
+            None => (),
+        }
+
+        for ct in res.contents {
+            println!("  - {}", ct.key);
+        }
+    }
+
+    // Delete
     let resp = bucket.delete_object(path).await?;
     assert_eq!(resp.status_code(), 204);
     println!("[DEBUG] Object deleted.");
+
     Ok(())
 }

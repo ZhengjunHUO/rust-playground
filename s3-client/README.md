@@ -1,3 +1,4 @@
+## Usage
 ```sh
-GCS_ACCESS_KEY=<key> GCS_SECRET_KEY=<secret> ./target/debug/s3-client 
+GCS_ACCESS_KEY=<key> GCS_SECRET_KEY=<secret> ./target/debug/s3-client <BUCKET_NAME>
 ```
