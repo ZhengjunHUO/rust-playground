@@ -38,8 +38,6 @@ async fn main() -> Result<()> {
     // List all objects in bucket
     let results = bucket
         .list(String::default(), Some("/".to_string()))
-        // 只能显示bucket中的文件，如/test.txt，忽略文件夹
-        //.list("/".to_string(), Some("/".to_string()))
         .await?;
 
     for res in results {
