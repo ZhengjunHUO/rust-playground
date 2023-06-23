@@ -56,6 +56,7 @@ fn main() -> Result<()> {
     })
     */
 
+    // CRUD
     rt.block_on(async {
         println!("[DEBUG] Drop table if exsit ...");
         client
@@ -103,4 +104,21 @@ fn main() -> Result<()> {
 
         Ok(())
     })
+
+    /* restoration
+    let bucket_url = "https://storage.googleapis.com/test-ckh-backup/mtms-d1/";
+    let access_key = std::env::var("GCS_ACCESS_KEY")?;
+    let secret_key = std::env::var("GCS_SECRET_KEY")?;
+    let restore_query = format!(
+        "RESTORE TABLE shard_mtms AS shard_mtms FROM S3('{}', '{}', '{}')",
+        bucket_url, access_key, secret_key
+    );
+
+    rt.block_on(async {
+        println!("[DEBUG] Restore table ...");
+        client.query(&restore_query).execute().await?;
+
+        Ok(())
+    })
+    */
 }
