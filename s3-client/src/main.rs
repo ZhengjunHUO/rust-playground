@@ -1,7 +1,7 @@
-use anyhow::Result;
+use anyhow::{bail, Result};
 use s3::creds::Credentials;
 use s3::region::Region;
-use s3::Bucket;
+use s3::{Bucket, BucketConfiguration};
 use std::env;
 
 #[tokio::main]
@@ -21,6 +21,25 @@ async fn main() -> Result<()> {
     )?
     .with_path_style();
 
+    /*
+    // Create a new bucket
+    let create_resp = Bucket::create(
+        &bucket_name,
+        Region::Custom {
+            region: "eu".to_owned(),
+            endpoint: "https://storage.googleapis.com".to_owned(),
+        },
+        Credentials::new(Some(&access_key), Some(&secret_key), None, None, None).unwrap(),
+        BucketConfiguration::default()
+    ).await?;
+
+    if !create_resp.success() {
+        bail!("Failed to create bucket: {}", create_resp.response_text);
+    }
+
+    let bucket = create_resp.bucket;
+    */
+
     let path = "test.txt";
     let content = b"Rust rocks!";
 
@@ -37,6 +56,8 @@ async fn main() -> Result<()> {
 
     // List all objects in bucket
     let results = bucket
+        // list the content of a sub bucket
+        //.list("mtms-util/".to_string(), Some("/".to_string()))
         .list(String::default(), Some("/".to_string()))
         .await?;
 
