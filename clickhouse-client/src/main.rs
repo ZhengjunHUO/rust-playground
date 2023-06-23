@@ -129,14 +129,14 @@ async fn backup_incr(client: Client, base_path: &str, incr_path: &str) -> Result
     Ok(())
 }
 
-async fn restore(client: Client) -> Result<()> {
+async fn restore(client: Client, path: &str) -> Result<()> {
     // restoration
-    let bucket_url = "https://storage.googleapis.com/test-ckh-backup/mtms-d1/";
+    let bucket_url = "https://storage.googleapis.com/";
     let access_key = std::env::var("GCS_ACCESS_KEY")?;
     let secret_key = std::env::var("GCS_SECRET_KEY")?;
     let restore_query = format!(
-        "RESTORE TABLE shard_mtms AS shard_mtms FROM S3('{}', '{}', '{}')",
-        bucket_url, access_key, secret_key
+        "RESTORE TABLE shard_mtms AS shard_mtms FROM S3('{}{}', '{}', '{}')",
+        bucket_url, path, access_key, secret_key
     );
 
     println!("[DEBUG] Restore table ...");
@@ -152,8 +152,9 @@ fn main() -> Result<()> {
     //        .with_database("default");
     let rt = Runtime::new().unwrap();
 
-    let path = "test-ckh-backup/mtms-20230622/";
+    //let path = "test-ckh-backup/mtms-20230622/";
     //rt.block_on(async { backup(client, path).await })
     let path_incr = "test-ckh-backup/mtms-20230623/";
-    rt.block_on(async { backup_incr(client, path, path_incr).await })
+    //rt.block_on(async { backup_incr(client, path, path_incr).await })
+    rt.block_on(async { restore(client, path_incr).await })
 }
