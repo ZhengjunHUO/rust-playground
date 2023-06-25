@@ -27,3 +27,12 @@ $ sudo dnf install musl-gcc
 $ sudo ln -s /bin/g++ /bin/musl-g++
 $ RUSTFLAGS='-C target-feature=+crt-static' cargo build --release --target x86_64-unknown-linux-musl
 ```
+
+### Using tokio
+- [chat_async](https://github.com/ZhengjunHUO/rust-playground/tree/main/chat_async)
+- [ckh-client](https://github.com/ZhengjunHUO/rust-playground/tree/main/ckh-client)
+- [clickhouse-client](https://github.com/ZhengjunHUO/rust-playground/tree/main/clickhouse-client)
+- [docker](https://github.com/ZhengjunHUO/rust-playground/tree/main/docker)
+- [k8s](https://github.com/ZhengjunHUO/rust-playground/tree/main/k8s)
+- [redis-server](https://github.com/ZhengjunHUO/rust-playground/tree/main/redis-server)
+- [s3-client](https://github.com/ZhengjunHUO/rust-playground/tree/main/s3-client)
