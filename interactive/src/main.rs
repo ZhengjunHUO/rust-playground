@@ -1,7 +1,50 @@
+use chrono::Duration;
 use inquire::autocompletion::{Autocomplete, Replacement};
 use inquire::error::CustomUserError;
 use inquire::validator::Validation;
+use inquire::DateSelect;
 use inquire::Text;
+
+#[derive(Clone)]
+pub struct EmotionCompleter {
+    feelings: Vec<&'static str>,
+}
+
+impl EmotionCompleter {
+    fn filter_candidates(&self, input: &str) -> Vec<String> {
+        let pattern = input.to_lowercase();
+
+        self.feelings
+            .iter()
+            .filter(|s| s.starts_with(&pattern))
+            .map(|s| String::from(*s))
+            .collect()
+    }
+}
+
+impl Autocomplete for EmotionCompleter {
+    fn get_suggestions(&mut self, input: &str) -> Result<Vec<String>, CustomUserError> {
+        Ok(self.filter_candidates(input))
+    }
+
+    fn get_completion(
+        &mut self,
+        input: &str,
+        highlighted_suggestion: Option<String>,
+    ) -> Result<Replacement, CustomUserError> {
+        Ok(match highlighted_suggestion {
+            Some(suggestion) => Replacement::Some(suggestion),
+            None => {
+                let list = self.filter_candidates(input);
+                if list.len() == 0 {
+                    Replacement::None
+                } else {
+                    Replacement::Some(list[0].clone())
+                }
+            }
+        })
+    }
+}
 
 fn main() {
     let validator = |input: &str| {
@@ -220,7 +263,7 @@ fn main() {
             "worthless",
             "worthy",
             "yearning",
-        ], //.iter().map(|&s| s.into()).collect(),
+        ],
     };
 
     let resp = Text::new("How do you feel now ?")
@@ -235,45 +278,14 @@ fn main() {
         Ok(feeling) => println!("You feel {}", feeling),
         Err(err) => println!("Error retrieving your response: {}", err),
     }
-}
 
-#[derive(Clone)]
-pub struct EmotionCompleter {
-    feelings: Vec<&'static str>,
-}
-
-impl EmotionCompleter {
-    fn filter_candidates(&self, input: &str) -> Vec<String> {
-        let pattern = input.to_lowercase();
-
-        self.feelings
-            .iter()
-            .filter(|s| s.starts_with(&pattern))
-            .map(|s| String::from(*s))
-            .collect()
-    }
-}
-
-impl Autocomplete for EmotionCompleter {
-    fn get_suggestions(&mut self, input: &str) -> Result<Vec<String>, CustomUserError> {
-        Ok(self.filter_candidates(input))
-    }
-
-    fn get_completion(
-        &mut self,
-        input: &str,
-        highlighted_suggestion: Option<String>,
-    ) -> Result<Replacement, CustomUserError> {
-        Ok(match highlighted_suggestion {
-            Some(suggestion) => Replacement::Some(suggestion),
-            None => {
-                let list = self.filter_candidates(input);
-                if list.len() == 0 {
-                    Replacement::None
-                } else {
-                    Replacement::Some(list[0].clone())
-                }
-            }
-        })
-    }
+    let tomorrow = chrono::Utc::now().naive_utc().date() + Duration::days(1);
+    let deadline = tomorrow + Duration::days(6);
+    let chosen = DateSelect::new("Ready to face the enemy ? Tell me when (in a week): ")
+        .with_default(tomorrow)
+        .with_min_date(tomorrow)
+        .with_max_date(deadline)
+        .prompt()
+        .unwrap();
+    println!("See you then, at {:?}", chosen);
 }
