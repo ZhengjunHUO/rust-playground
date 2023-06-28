@@ -12,12 +12,17 @@ $ rustc -Zunpretty=expanded src/main.rs
 
 ### See the println in cargo test
 ```sh
-cargo test -- --nocapture
+$ cargo test -- --nocapture
 ```
 
-### Build package's doc
+### Docs
 ```sh
-cargo doc [--no-deps] --open
+# Check std doc
+$ rustup component add rust-docs
+$ rustup doc
+
+# Current crate's doc
+$ cargo doc [--no-deps] --open
 ```
 
 ### Static C runtime linkage
@@ -29,6 +34,7 @@ $ RUSTFLAGS='-C target-feature=+crt-static' cargo build --release --target x86_6
 ```
 
 ### Using tokio
+- [async_tasks](https://github.com/ZhengjunHUO/rust-playground/tree/main/async_tasks)
 - [chat_async](https://github.com/ZhengjunHUO/rust-playground/tree/main/chat_async)
 - [ckh-client](https://github.com/ZhengjunHUO/rust-playground/tree/main/ckh-client)
 - [clickhouse-client](https://github.com/ZhengjunHUO/rust-playground/tree/main/clickhouse-client)
