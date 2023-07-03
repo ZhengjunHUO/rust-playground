@@ -42,3 +42,13 @@ $ RUSTFLAGS='-C target-feature=+crt-static' cargo build --release --target x86_6
 - [k8s](https://github.com/ZhengjunHUO/rust-playground/tree/main/k8s)
 - [redis-server](https://github.com/ZhengjunHUO/rust-playground/tree/main/redis-server)
 - [s3-client](https://github.com/ZhengjunHUO/rust-playground/tree/main/s3-client)
+
+### Aya BPF prerequis
+```sh
+$ rustup install stable
+$ rustup toolchain install nightly --component rust-src
+$ cargo install bpf-linker
+$ cargo install cargo-generate
+$ sudo apt install libssl-dev linux-tools-common
+$ cargo generate https://github.com/aya-rs/aya-template
+```
