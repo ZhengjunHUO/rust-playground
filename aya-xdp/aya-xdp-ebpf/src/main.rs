@@ -1,7 +1,7 @@
 #![no_std]
 #![no_main]
 
-use aya_bpf::{bindings::xdp_action, macros::xdp, programs::XdpContext};
+use aya_bpf::{bindings::xdp_action, macros::{map, xdp}, maps::HashMap, programs::XdpContext};
 use aya_log_ebpf::info;
 use core::mem;
 use network_types::{
@@ -18,6 +18,9 @@ pub fn aya_xdp(ctx: XdpContext) -> u32 {
         Err(_) => xdp_action::XDP_ABORTED,
     }
 }
+
+#[map(name = "INGRESS_FILTER")]
+static mut INGRESS_FILTER: HashMap<u32, u32> = HashMap::<u32, u32>::pinned(128, 0);
 
 fn try_aya_xdp(ctx: XdpContext) -> Result<u32, ()> {
     let ethhdr: *const EthHdr = ptr_at(&ctx, 0)?;
@@ -50,12 +53,22 @@ fn try_aya_xdp(ctx: XdpContext) -> Result<u32, ()> {
         _ => return Ok(xdp_action::XDP_PASS),
     };
 
+    let (action, action_literal) = if blacklisted(source_addr) {
+        (xdp_action::XDP_DROP, "drop")
+    } else {
+        (xdp_action::XDP_PASS, "pass")
+    };
+
     info!(
         &ctx,
-        "{} in {:i}:{} > {:i}:{}", proto, source_addr, source_port, dest_addr, dest_port
+        "{} in {:i}:{} > {:i}:{} [{}]", proto, source_addr, source_port, dest_addr, dest_port, action_literal
     );
 
-    Ok(xdp_action::XDP_PASS)
+    Ok(action)
+}
+
+fn blacklisted(addr: u32) -> bool {
+    unsafe { INGRESS_FILTER.get(&addr).is_some() }
 }
 
 #[inline(always)]
