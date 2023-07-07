@@ -1,7 +1,7 @@
 use anyhow::Result;
 use clickhouse_rs::{row, types::Block, ClientHandle, Pool};
-use futures_util::StreamExt;
-use std::env;
+use futures_util::{StreamExt, TryStreamExt};
+use std::{env, future};
 
 async fn insert(mut client: ClientHandle) -> Result<()> {
     let mut block = Block::with_capacity(5);
@@ -12,6 +12,21 @@ async fn insert(mut client: ClientHandle) -> Result<()> {
     block.push(row! { foo: 9_u32 })?;
 
     client.insert("bar_db", block).await?;
+    Ok(())
+}
+
+async fn show_tables(mut client: ClientHandle) -> Result<()> {
+    client
+        .query(r"show tables")
+        //.stream_blocks()
+        //.try_for_each(|block| {
+        //    println!("Result: {:?}", block);
+        .stream()
+        .try_for_each(|row| {
+            println!("Found table {} !", row.get::<&str, usize>(0).unwrap());
+            future::ready(Ok(()))
+        })
+        .await?;
     Ok(())
 }
 
@@ -47,7 +62,8 @@ async fn crud(mut client: ClientHandle) -> Result<()> {
 
 async fn get_client() -> Result<ClientHandle> {
     let endpoint =
-        env::var("DATABASE_URL").unwrap_or_else(|_| "tcp://127.0.0.1:9000?compression=lz4".into());
+        //env::var("DATABASE_URL").unwrap_or_else(|_| "tcp://127.0.0.1:9000?compression=lz4".into());
+        env::var("DATABASE_URL").unwrap_or_else(|_| "tcp://127.0.0.1:31000?compression=lz4".into());
 
     let pool = Pool::new(endpoint);
     Ok(pool.get_handle().await?)
@@ -60,5 +76,6 @@ async fn main() -> Result<()> {
 
     let client = get_client().await?;
     //crud(client).await
-    insert(client).await
+    //insert(client).await
+    show_tables(client).await
 }
