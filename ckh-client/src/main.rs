@@ -1,11 +1,21 @@
-use clickhouse_rs::{row, types::Block, Pool};
+use anyhow::Result;
+use clickhouse_rs::{row, types::Block, ClientHandle, Pool};
 use futures_util::StreamExt;
-use std::{env, error::Error};
+use std::env;
 
-async fn execute(database_url: String) -> Result<(), Box<dyn Error>> {
-    env::set_var("RUST_LOG", "clickhouse_rs=debug");
-    env_logger::init();
+async fn insert(mut client: ClientHandle) -> Result<()> {
+    let mut block = Block::with_capacity(5);
+    block.push(row! { foo: 1_u32 })?;
+    block.push(row! { foo: 3_u32 })?;
+    block.push(row! { foo: 5_u32 })?;
+    block.push(row! { foo: 7_u32 })?;
+    block.push(row! { foo: 9_u32 })?;
 
+    client.insert("bar_db", block).await?;
+    Ok(())
+}
+
+async fn crud(mut client: ClientHandle) -> Result<()> {
     let ddl = r"
         CREATE TABLE IF NOT EXISTS payment (
             customer_id  UInt32,
@@ -20,13 +30,10 @@ async fn execute(database_url: String) -> Result<(), Box<dyn Error>> {
     block.push(row! { customer_id: 7_u32, amount:  8_u32, account_name: None::<&str> })?;
     block.push(row! { customer_id: 9_u32, amount: 10_u32, account_name: Some("bar") })?;
 
-    let pool = Pool::new(database_url);
-
-    let mut client = pool.get_handle().await?;
     client.execute(ddl).await?;
     client.insert("payment", block).await?;
-    let mut stream = client.query("SELECT * FROM payment").stream();
 
+    let mut stream = client.query("SELECT * FROM payment").stream();
     while let Some(row) = stream.next().await {
         let row = row?;
         let id: u32 = row.get("customer_id")?;
@@ -38,9 +45,20 @@ async fn execute(database_url: String) -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
+async fn get_client() -> Result<ClientHandle> {
+    let endpoint =
+        env::var("DATABASE_URL").unwrap_or_else(|_| "tcp://127.0.0.1:9000?compression=lz4".into());
+
+    let pool = Pool::new(endpoint);
+    Ok(pool.get_handle().await?)
+}
+
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn Error>> {
-    let database_url =
-        env::var("DATABASE_URL").unwrap_or_else(|_| "tcp://ckh.huo.io:9000?compression=lz4".into());
-    execute(database_url).await
+async fn main() -> Result<()> {
+    env::set_var("RUST_LOG", "clickhouse_rs=debug");
+    env_logger::init();
+
+    let client = get_client().await?;
+    //crud(client).await
+    insert(client).await
 }
