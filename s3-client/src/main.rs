@@ -66,6 +66,43 @@ async fn crud(bucket: Bucket) -> Result<()> {
     Ok(())
 }
 
+async fn create_objs(bucket: Bucket) -> Result<()> {
+    let prefix = "test";
+    let content = b"Rust rocks!";
+
+    for x in 0..100 {
+        let resp = bucket.put_object(format!("{}{}", prefix, x), content).await?;
+        assert_eq!(resp.status_code(), 200);
+        println!("[DEBUG] Object {} uploaded to the bucket.", x);
+    }
+
+    Ok(())
+}
+
+async fn list_all_objs(bucket: Bucket) -> Result<()> {
+    let results = bucket
+        .list(String::default(), Some("/".to_string()))
+        .await?;
+
+    for res in results {
+        println!("[DEBUG] In bucket {}", res.name);
+        match res.common_prefixes {
+            Some(items) => {
+                for item in items {
+                    println!("  - {}", item.prefix);
+                }
+            }
+            None => (),
+        }
+
+        for ct in res.contents {
+            println!("  - {}", ct.key);
+        }
+    }
+
+    Ok(())
+}
+
 #[tokio::main]
 async fn main() -> Result<()> {
     /*
@@ -90,5 +127,7 @@ async fn main() -> Result<()> {
     let bucket = create_resp.bucket;
     */
     let bucket = prepare_client().await?;
-    crud(bucket).await
+    //create_objs(bucket).await
+    //crud(bucket).await
+    list_all_objs(bucket).await
 }
