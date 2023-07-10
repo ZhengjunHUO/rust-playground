@@ -79,9 +79,9 @@ async fn create_objs(bucket: Bucket) -> Result<()> {
     Ok(())
 }
 
-async fn list_all_objs(bucket: Bucket) -> Result<()> {
+async fn list_all_objs(bucket: Bucket, path: String) -> Result<()> {
     let results = bucket
-        .list(String::default(), Some("/".to_string()))
+        .list(path, Some("/".to_string()))
         .await?;
 
     for res in results {
@@ -129,5 +129,6 @@ async fn main() -> Result<()> {
     let bucket = prepare_client().await?;
     //create_objs(bucket).await
     //crud(bucket).await
-    list_all_objs(bucket).await
+    //list_all_objs(bucket, "mtms-util/".to_string()).await
+    list_all_objs(bucket, String::default()).await
 }
