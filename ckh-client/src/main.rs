@@ -62,8 +62,8 @@ async fn crud(mut client: ClientHandle) -> Result<()> {
 
 async fn get_client() -> Result<ClientHandle> {
     let endpoint =
-        //env::var("DATABASE_URL").unwrap_or_else(|_| "tcp://127.0.0.1:9000?compression=lz4".into());
-        env::var("DATABASE_URL").unwrap_or_else(|_| "tcp://127.0.0.1:31000?compression=lz4".into());
+        env::var("DATABASE_URL").unwrap_or_else(|_| "tcp://127.0.0.1:9000?compression=lz4".into());
+        //env::var("DATABASE_URL").unwrap_or_else(|_| "tcp://<USERNAME>:<PASSWORD>@<IP>:<PORT>/<DATABASE>?compression=lz4".into());
 
     let pool = Pool::new(endpoint);
     Ok(pool.get_handle().await?)
