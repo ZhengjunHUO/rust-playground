@@ -1,17 +1,16 @@
-use anyhow::{bail, Result};
+use anyhow::Result;
 use s3::creds::Credentials;
 use s3::region::Region;
-use s3::{Bucket, BucketConfiguration};
+use s3::Bucket;
 use std::env;
 
-#[tokio::main]
-async fn main() -> Result<()> {
+async fn prepare_client() -> Result<Bucket> {
     let bucket_name = std::env::args().nth(1).expect("No bucket name given");
     let access_key = env::var("GCS_ACCESS_KEY")?;
     let secret_key = env::var("GCS_SECRET_KEY")?;
 
     // Prepare existing bucket
-    let bucket = Bucket::new(
+    Ok(Bucket::new(
         &bucket_name,
         Region::Custom {
             region: "eu".to_owned(),
@@ -19,27 +18,10 @@ async fn main() -> Result<()> {
         },
         Credentials::new(Some(&access_key), Some(&secret_key), None, None, None).unwrap(),
     )?
-    .with_path_style();
+    .with_path_style())
+}
 
-    /*
-    // Create a new bucket
-    let create_resp = Bucket::create(
-        &bucket_name,
-        Region::Custom {
-            region: "eu".to_owned(),
-            endpoint: "https://storage.googleapis.com".to_owned(),
-        },
-        Credentials::new(Some(&access_key), Some(&secret_key), None, None, None).unwrap(),
-        BucketConfiguration::default()
-    ).await?;
-
-    if !create_resp.success() {
-        bail!("Failed to create bucket: {}", create_resp.response_text);
-    }
-
-    let bucket = create_resp.bucket;
-    */
-
+async fn crud(bucket: Bucket) -> Result<()> {
     let path = "test.txt";
     let content = b"Rust rocks!";
 
@@ -81,6 +63,32 @@ async fn main() -> Result<()> {
     let resp = bucket.delete_object(path).await?;
     assert_eq!(resp.status_code(), 204);
     println!("[DEBUG] Object deleted.");
-
     Ok(())
+}
+
+#[tokio::main]
+async fn main() -> Result<()> {
+    /*
+    // Create a new bucket
+    use s3::BucketConfiguration;
+    use anyhow::Result;
+
+    let create_resp = Bucket::create(
+        &bucket_name,
+        Region::Custom {
+            region: "eu".to_owned(),
+            endpoint: "https://storage.googleapis.com".to_owned(),
+        },
+        Credentials::new(Some(&access_key), Some(&secret_key), None, None, None).unwrap(),
+        BucketConfiguration::default()
+    ).await?;
+
+    if !create_resp.success() {
+        bail!("Failed to create bucket: {}", create_resp.response_text);
+    }
+
+    let bucket = create_resp.bucket;
+    */
+    let bucket = prepare_client().await?;
+    crud(bucket).await
 }
