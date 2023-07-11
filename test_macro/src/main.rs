@@ -3,7 +3,8 @@
 
 use test_macro::{
     capture_then_check_attribute, capture_then_check_tokens, capture_then_stringify,
-    check_attribute, check_tokens, expr_len, json, pop_head, pop_tail, print_fibo, Json,
+    check_attribute, check_tokens, expr_len, json, pop_head, pop_tail, print_fibo, vec_string,
+    Json,
 };
 
 fn main() {
@@ -56,4 +57,7 @@ fn main() {
     for elem in f.take(15) {
         println!("{}", elem)
     }
+
+    let rslt = vec_string!["foo", "bar", "baz"];
+    println!("{:?}", rslt);
 }

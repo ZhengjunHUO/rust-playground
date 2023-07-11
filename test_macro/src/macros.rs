@@ -21,3 +21,8 @@ macro_rules! json {
     };
     ( $prim:tt ) => { $crate::Json::from($prim) };  // cover Bool, Num, String
 }
+
+#[macro_export]
+macro_rules! vec_string {
+    ($( $elem:expr ),*) => { vec![$($elem.to_string()),*] };
+}
