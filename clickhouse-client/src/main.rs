@@ -29,6 +29,11 @@ enum Level {
     Error = 4,
 }
 
+#[derive(Row, Deserialize)]
+struct TableName {
+    name: String,
+}
+
 fn now() -> u64 {
     UNIX_EPOCH
         .elapsed()
@@ -145,6 +150,28 @@ async fn restore(client: Client, path: &str) -> Result<()> {
     Ok(())
 }
 
+async fn show_tables(client: Client) -> Result<()> {
+    /*
+        let mut cursor = client.query("show tables").fetch::<TableName<'_>>()?;
+
+        while let Some(row) = cursor.next().await? {
+            println!("{}", row.name);
+        }
+    */
+    let mut rows: Vec<String> = client
+        .query("show tables")
+        .fetch_all::<TableName>()
+        .await?
+        .into_iter()
+        .map(|r| r.name)
+        .collect();
+    for row in rows {
+        println!("{}", row);
+    }
+
+    Ok(())
+}
+
 fn main() -> Result<()> {
     let client = Client::default().with_url("http://ckh.huo.io:80");
     //        .with_user("rafal")
@@ -152,9 +179,12 @@ fn main() -> Result<()> {
     //        .with_database("default");
     let rt = Runtime::new().unwrap();
 
+    /*
     //let path = "test-ckh-backup/mtms-20230622/";
     //rt.block_on(async { backup(client, path).await })
     let path_incr = "test-ckh-backup/mtms-20230623/";
     //rt.block_on(async { backup_incr(client, path, path_incr).await })
     rt.block_on(async { restore(client, path_incr).await })
+    */
+    rt.block_on(async { show_tables(client).await })
 }
