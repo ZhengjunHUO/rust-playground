@@ -37,6 +37,16 @@ fn main() {
     let addr = Ipv4Addr::new(192, 168, 0, 10);
     assert_eq!(addr, vec_to_ipv4(vec![192, 168, 0, 10]).unwrap());
     assert_eq!(addr, Ipv4Addr::from_str("192.168.0.10").unwrap());
+
+    // 6) [u8; 2] to u16
+    let bytes: [u8; 2] = [10, 20];
+    // 0x140A
+    assert_eq!(u16::from_le_bytes(bytes), 5130);
+    // 0x0A14
+    assert_eq!(u16::from_be_bytes(bytes), 2580);
+
+    // 7)
+    assert_eq!(build_array(), [10, 20, 30, 40, 0, 2, 0, 4]);
 }
 
 // Vec<u8> to Ipv4Addr
@@ -46,4 +56,20 @@ fn vec_to_ipv4(vec: Vec<u8>) -> Option<Ipv4Addr> {
     } else {
         None
     }
+}
+
+// build a [u8; 8] from a [u8; 4] plus two u16
+fn build_array() -> [u8; 8] {
+    let array1: [u8; 4] = [10, 20, 30, 40];
+    let value1: u16 = 512;
+    let value2: u16 = 1024;
+
+    let bytes1: [u8; 2] = value1.to_le_bytes();
+    let bytes2: [u8; 2] = value2.to_le_bytes();
+
+    let mut result: [u8; 8] = [0; 8];
+    result[..4].copy_from_slice(&array1);
+    result[4..6].copy_from_slice(&bytes1);
+    result[6..8].copy_from_slice(&bytes2);
+    result
 }
