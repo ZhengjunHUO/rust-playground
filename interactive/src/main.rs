@@ -3,8 +3,7 @@ use inquire::autocompletion::{Autocomplete, Replacement};
 use inquire::error::CustomUserError;
 use inquire::formatter::DateFormatter;
 use inquire::validator::Validation;
-use inquire::DateSelect;
-use inquire::Text;
+use inquire::{Confirm, DateSelect, Text};
 
 #[derive(Clone)]
 pub struct EmotionCompleter {
@@ -280,6 +279,17 @@ fn main() {
         Err(err) => println!("Error retrieving your response: {}", err),
     }
 
+    let answer = Confirm::new("Ready to face the enemy ?")
+        .with_default(false)
+        .with_help_message("Don't hesitate for too long !")
+        .prompt();
+
+    match answer {
+        Ok(true) => println!("Good."),
+        Ok(false) => println!("What a coward ! But you have no choice."),
+        Err(e) => println!("Error occurred: {}", e),
+    }
+
     /*
     let tomorrow = chrono::Utc::now().naive_utc().date() + Duration::days(1);
     let deadline = tomorrow + Duration::days(6);
@@ -301,10 +311,11 @@ fn main() {
     };
 
     let formatter: DateFormatter = &|v| v.format("%Y%m%d").to_string();
-    let start = NaiveDate::parse_from_str("20230501", "%Y%m%d").unwrap();
-    let end = chrono::Utc::now().naive_utc().date() - Duration::days(1);
-    let chosen = DateSelect::new("Ready to face the enemy ? Tell me when: ")
-        .with_default(end)
+    let start = chrono::Utc::now().naive_utc().date() + Duration::days(1);
+    //let end = NaiveDate::parse_from_str("20240501", "%Y%m%d").unwrap();
+    let end = chrono::Utc::now().naive_utc().date() + Duration::weeks(10);
+    let chosen = DateSelect::new("Tell me when: ")
+        .with_default(start)
         .with_min_date(start)
         .with_max_date(end)
         .with_formatter(formatter)
