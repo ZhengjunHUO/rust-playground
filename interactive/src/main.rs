@@ -1,6 +1,7 @@
-use chrono::Duration;
+use chrono::{Datelike, Duration, NaiveDate, Weekday};
 use inquire::autocompletion::{Autocomplete, Replacement};
 use inquire::error::CustomUserError;
+use inquire::formatter::DateFormatter;
 use inquire::validator::Validation;
 use inquire::DateSelect;
 use inquire::Text;
@@ -279,6 +280,7 @@ fn main() {
         Err(err) => println!("Error retrieving your response: {}", err),
     }
 
+    /*
     let tomorrow = chrono::Utc::now().naive_utc().date() + Duration::days(1);
     let deadline = tomorrow + Duration::days(6);
     let chosen = DateSelect::new("Ready to face the enemy ? Tell me when (in a week): ")
@@ -287,5 +289,27 @@ fn main() {
         .with_max_date(deadline)
         .prompt()
         .unwrap();
-    println!("See you then, at {:?}", chosen);
+    */
+    let validator = |d: NaiveDate| {
+        if d.weekday() == Weekday::Sat || d.weekday() == Weekday::Sun {
+            Ok(Validation::Invalid(
+                "Enemies are off during the weekends, choose another day please".into(),
+            ))
+        } else {
+            Ok(Validation::Valid)
+        }
+    };
+
+    let formatter: DateFormatter = &|v| v.format("%Y%m%d").to_string();
+    let start = NaiveDate::parse_from_str("20230501", "%Y%m%d").unwrap();
+    let end = chrono::Utc::now().naive_utc().date() - Duration::days(1);
+    let chosen = DateSelect::new("Ready to face the enemy ? Tell me when: ")
+        .with_default(end)
+        .with_min_date(start)
+        .with_max_date(end)
+        .with_formatter(formatter)
+        .with_validator(validator)
+        .prompt()
+        .unwrap();
+    println!("See you then, at {}", chosen.format("%Y%m%d"));
 }
