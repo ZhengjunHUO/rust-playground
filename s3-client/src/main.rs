@@ -103,6 +103,12 @@ async fn list_all_objs(bucket: Bucket, path: String) -> Result<()> {
     Ok(())
 }
 
+async fn get_obj(bucket: Bucket, path: String) -> Result<()> {
+    let resp = bucket.get_object(path).await?;
+    println!("[DEBUG] Object retrieved [{}]: {}", resp.status_code(), resp.to_string()?);
+    Ok(())
+}
+
 #[tokio::main]
 async fn main() -> Result<()> {
     /*
@@ -130,5 +136,6 @@ async fn main() -> Result<()> {
     //create_objs(bucket).await
     //crud(bucket).await
     //list_all_objs(bucket, "mtms-util/".to_string()).await
-    list_all_objs(bucket, String::default()).await
+    //list_all_objs(bucket, String::default()).await
+    get_obj(bucket, String::from("shard_rafal_logging/latest")).await
 }
