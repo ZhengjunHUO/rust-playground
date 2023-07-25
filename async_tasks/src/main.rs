@@ -1,3 +1,4 @@
+use indicatif::ProgressBar;
 use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
 use std::collections::VecDeque;
@@ -92,6 +93,7 @@ async fn main() {
     for line in read_to_string(path).unwrap().lines() {
         table_list.push_back(line.to_string())
     }
+    let num_job = table_list.len() as u64;
 
     let tables = Arc::new(Mutex::new(table_list));
 
@@ -108,6 +110,7 @@ async fn main() {
     }
     senders.push(tx);
 
+    let ind = ProgressBar::new(num_job);
     for (i, ep) in eps.into_iter().enumerate() {
         let list = tables.clone();
         tasks.push(tokio::spawn(handle(
@@ -127,8 +130,12 @@ async fn main() {
 
     println!("[main] Receiving message !");
     while let Some(msg) = rx.recv().await {
-        println!("{}", msg);
+        ind.println(format!("{}", msg));
+        if msg.find("Done").is_some() {
+            ind.inc(1);
+        }
     }
+    ind.finish_with_message("Complete");
 
     //println!("{:?}", rslt);
     println!("[main] All done!");
