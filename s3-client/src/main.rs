@@ -1,11 +1,11 @@
 use anyhow::{bail, Result};
+use async_recursion::async_recursion;
 use s3::creds::Credentials;
 use s3::region::Region;
 use s3::Bucket;
 use std::env;
 
-async fn prepare_client() -> Result<Bucket> {
-    let bucket_name = std::env::args().nth(1).expect("No bucket name given");
+async fn prepare_client(bucket_name: String) -> Result<Bucket> {
     let access_key = env::var("GCS_ACCESS_KEY")?;
     let secret_key = env::var("GCS_SECRET_KEY")?;
 
@@ -81,7 +81,7 @@ async fn create_objs(bucket: Bucket) -> Result<()> {
     Ok(())
 }
 
-async fn list_all_objs(bucket: Bucket, path: String) -> Result<()> {
+async fn list_all_objs(bucket: &Bucket, path: String) -> Result<()> {
     let results = bucket.list(path, Some("/".to_string())).await?;
 
     for res in results {
@@ -103,6 +103,32 @@ async fn list_all_objs(bucket: Bucket, path: String) -> Result<()> {
     Ok(())
 }
 
+#[async_recursion]
+async fn list_all_objs_recursive(bucket: &Bucket, path: String) -> Result<()> {
+    let results = bucket.list(path.clone(), Some("/".to_string())).await?;
+
+    for res in results {
+        println!("[DEBUG] Dir under: {}", path);
+        match res.common_prefixes {
+            Some(items) => {
+                for item in items {
+                    println!("  -> {}", item.prefix);
+                    list_all_objs_recursive(bucket, item.prefix).await?;
+                }
+            }
+            None => (),
+        }
+
+        println!("[DEBUG] File under: {}", path);
+        for ct in res.contents {
+            println!("  - {}", ct.key);
+            let _ = del_obj(bucket, ct.key).await;
+        }
+    }
+
+    Ok(())
+}
+
 async fn get_obj(bucket: &Bucket, path: String) -> Result<String> {
     match bucket.get_object(path).await {
         Ok(resp) => {
@@ -115,7 +141,7 @@ async fn get_obj(bucket: &Bucket, path: String) -> Result<String> {
             Ok(rslt)
         }
         Err(e) => {
-            bail!("Got error from get_object: {}", e);
+            bail!("Got error from get_obj: {}", e);
         }
     }
 }
@@ -131,7 +157,24 @@ async fn put_obj(bucket: &Bucket, path: String, content: &[u8]) -> Result<()> {
             Ok(())
         }
         Err(e) => {
-            bail!("Got error from put_object: {}", e);
+            bail!("Got error from put_obj: {}", e);
+        }
+    }
+}
+
+async fn del_obj(bucket: &Bucket, path: String) -> Result<()> {
+    match bucket.delete_object(path).await {
+        Ok(resp) => {
+            println!(
+                "[DEBUG] Get response [{}]: {}",
+                resp.status_code(),
+                resp.to_string()?
+            );
+            Ok(())
+        }
+        Err(e) => {
+            println!("[DEBUG] Got error from del_obj: {}", e);
+            bail!("{}", e);
         }
     }
 }
@@ -159,12 +202,15 @@ async fn main() -> Result<()> {
 
     let bucket = create_resp.bucket;
     */
-    let bucket = prepare_client().await?;
+    let bucket_name = std::env::args().nth(1).expect("No bucket name given");
+    let bucket = prepare_client(bucket_name).await?;
     //create_objs(bucket).await
     //crud(bucket).await
     //list_all_objs(bucket, "mtms-util/".to_string()).await
-    //list_all_objs(bucket, String::default()).await
+    //list_all_objs(&bucket, String::default()).await;
+    //list_all_objs(&bucket, String::from("data/")).await;
 
+    /*
     let path_to_file = "shard_rafal_logging/latest";
     match get_obj(&bucket, String::from(path_to_file)).await {
         Ok(content) => {
@@ -176,6 +222,18 @@ async fn main() -> Result<()> {
     let content = b"202309012345";
     put_obj(&bucket, String::from(path_to_file), content).await?;
     get_obj(&bucket, String::from(path_to_file)).await?;
+    */
+
+    /*
+    let path_to_file = "empty/shard_rafal_logging_latest";
+    match del_obj(&bucket, String::from(path_to_file)).await {
+        Ok(_) => (),
+        Err(e) => println!("{}", e),
+    }
+    */
+
+    //list_all_objs_recursive(&bucket, String::from("shard_rafal_logging_latest")).await;
+    list_all_objs_recursive(&bucket, String::from("data/")).await;
 
     Ok(())
 }
