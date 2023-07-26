@@ -1,4 +1,4 @@
-use anyhow::Result;
+use anyhow::{bail, Result};
 use s3::creds::Credentials;
 use s3::region::Region;
 use s3::Bucket;
@@ -71,7 +71,9 @@ async fn create_objs(bucket: Bucket) -> Result<()> {
     let content = b"Rust rocks!";
 
     for x in 0..100 {
-        let resp = bucket.put_object(format!("{}{}", prefix, x), content).await?;
+        let resp = bucket
+            .put_object(format!("{}{}", prefix, x), content)
+            .await?;
         assert_eq!(resp.status_code(), 200);
         println!("[DEBUG] Object {} uploaded to the bucket.", x);
     }
@@ -80,9 +82,7 @@ async fn create_objs(bucket: Bucket) -> Result<()> {
 }
 
 async fn list_all_objs(bucket: Bucket, path: String) -> Result<()> {
-    let results = bucket
-        .list(path, Some("/".to_string()))
-        .await?;
+    let results = bucket.list(path, Some("/".to_string())).await?;
 
     for res in results {
         println!("[DEBUG] In bucket {}", res.name);
@@ -103,10 +103,37 @@ async fn list_all_objs(bucket: Bucket, path: String) -> Result<()> {
     Ok(())
 }
 
-async fn get_obj(bucket: Bucket, path: String) -> Result<()> {
-    let resp = bucket.get_object(path).await?;
-    println!("[DEBUG] Object retrieved [{}]: {}", resp.status_code(), resp.to_string()?);
-    Ok(())
+async fn get_obj(bucket: &Bucket, path: String) -> Result<String> {
+    match bucket.get_object(path).await {
+        Ok(resp) => {
+            let rslt = resp.to_string()?;
+            println!(
+                "[DEBUG] Object retrieved [{}]: {}",
+                resp.status_code(),
+                rslt
+            );
+            Ok(rslt)
+        }
+        Err(e) => {
+            bail!("Got error from get_object: {}", e);
+        }
+    }
+}
+
+async fn put_obj(bucket: &Bucket, path: String, content: &[u8]) -> Result<()> {
+    match bucket.put_object(path, content).await {
+        Ok(resp) => {
+            println!(
+                "[DEBUG] Get response [{}]: {}",
+                resp.status_code(),
+                resp.to_string()?
+            );
+            Ok(())
+        }
+        Err(e) => {
+            bail!("Got error from put_object: {}", e);
+        }
+    }
 }
 
 #[tokio::main]
@@ -137,5 +164,18 @@ async fn main() -> Result<()> {
     //crud(bucket).await
     //list_all_objs(bucket, "mtms-util/".to_string()).await
     //list_all_objs(bucket, String::default()).await
-    get_obj(bucket, String::from("shard_rafal_logging/latest")).await
+
+    let path_to_file = "shard_rafal_logging/latest";
+    match get_obj(&bucket, String::from(path_to_file)).await {
+        Ok(content) => {
+            println!("Read content from {}: {}", path_to_file, content);
+        }
+        Err(e) => println!("{} doesn't exist: {}", path_to_file, e),
+    }
+
+    let content = b"202309012345";
+    put_obj(&bucket, String::from(path_to_file), content).await?;
+    get_obj(&bucket, String::from(path_to_file)).await?;
+
+    Ok(())
 }
