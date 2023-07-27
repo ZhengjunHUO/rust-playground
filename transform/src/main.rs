@@ -21,6 +21,10 @@ fn main() {
     let expected: Vec<u8> = Vec::from("TrustRust");
     assert_eq!(&buf, &expected);
 
+    // 2b) str to &[u8]
+    let origin_str = "Rusty";
+    assert_eq!(b"Rusty", origin_str.as_bytes());
+
     // 3) Vec<u8> to String
     let restored = String::from_utf8_lossy(&expected).to_string();
     assert_eq!(String::from("TrustRust"), restored);

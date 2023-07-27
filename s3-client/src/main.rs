@@ -203,7 +203,9 @@ async fn main() -> Result<()> {
     let bucket = create_resp.bucket;
     */
     let bucket_name = std::env::args().nth(1).expect("No bucket name given");
-    let path = std::env::args().nth(2).expect("The object's path is required");
+    let path = std::env::args()
+        .nth(2)
+        .expect("The object's path is required");
     let bucket = prepare_client(bucket_name).await?;
     //create_objs(&bucket).await
     //crud(&bucket).await
