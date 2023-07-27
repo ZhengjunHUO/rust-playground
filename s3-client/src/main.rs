@@ -21,7 +21,7 @@ async fn prepare_client(bucket_name: String) -> Result<Bucket> {
     .with_path_style())
 }
 
-async fn crud(bucket: Bucket) -> Result<()> {
+async fn crud(bucket: &Bucket) -> Result<()> {
     let path = "test.txt";
     let content = b"Rust rocks!";
 
@@ -66,7 +66,7 @@ async fn crud(bucket: Bucket) -> Result<()> {
     Ok(())
 }
 
-async fn create_objs(bucket: Bucket) -> Result<()> {
+async fn create_objs(bucket: &Bucket) -> Result<()> {
     let prefix = "test";
     let content = b"Rust rocks!";
 
@@ -104,7 +104,7 @@ async fn list_all_objs(bucket: &Bucket, path: String) -> Result<()> {
 }
 
 #[async_recursion]
-async fn list_all_objs_recursive(bucket: &Bucket, path: String) -> Result<()> {
+async fn del_obj_recursive(bucket: &Bucket, path: String) -> Result<()> {
     let results = bucket.list(path.clone(), Some("/".to_string())).await?;
 
     for res in results {
@@ -113,7 +113,7 @@ async fn list_all_objs_recursive(bucket: &Bucket, path: String) -> Result<()> {
             Some(items) => {
                 for item in items {
                     println!("  -> {}", item.prefix);
-                    list_all_objs_recursive(bucket, item.prefix).await?;
+                    let _ = del_obj_recursive(bucket, item.prefix).await?;
                 }
             }
             None => (),
@@ -203,10 +203,11 @@ async fn main() -> Result<()> {
     let bucket = create_resp.bucket;
     */
     let bucket_name = std::env::args().nth(1).expect("No bucket name given");
+    let path = std::env::args().nth(2).expect("The object's path is required");
     let bucket = prepare_client(bucket_name).await?;
-    //create_objs(bucket).await
-    //crud(bucket).await
-    //list_all_objs(bucket, "mtms-util/".to_string()).await
+    //create_objs(&bucket).await
+    //crud(&bucket).await
+    //list_all_objs(&bucket, "mtms-util/".to_string()).await
     //list_all_objs(&bucket, String::default()).await;
     //list_all_objs(&bucket, String::from("data/")).await;
 
@@ -232,8 +233,8 @@ async fn main() -> Result<()> {
     }
     */
 
-    //list_all_objs_recursive(&bucket, String::from("shard_rafal_logging_latest")).await;
-    list_all_objs_recursive(&bucket, String::from("data/")).await;
+    //del_obj_recursive(&bucket, String::from("shard_rafal_logging_latest")).await;
+    del_obj_recursive(&bucket, path).await?;
 
     Ok(())
 }
