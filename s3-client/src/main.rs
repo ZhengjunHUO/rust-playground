@@ -1,5 +1,8 @@
+#![allow(dead_code)]
+
 use anyhow::{bail, Result};
 use async_recursion::async_recursion;
+use log::debug;
 use s3::creds::Credentials;
 use s3::region::Region;
 use s3::Bucket;
@@ -133,7 +136,12 @@ async fn list_obj_recursive(
 
         println!("{}  [DEBUG] Doc under: {}", indent, path);
         for ct in res.contents {
-            println!("{}  - {}", indent, ct.key);
+            println!(
+                "{}  - {} [{}]",
+                indent,
+                ct.key,
+                get_obj(bucket, format!("{}", ct.key)).await?
+            );
         }
     }
 
@@ -170,7 +178,7 @@ async fn get_obj(bucket: &Bucket, path: String) -> Result<String> {
     match bucket.get_object(path).await {
         Ok(resp) => {
             let rslt = resp.to_string()?;
-            println!(
+            debug!(
                 "[DEBUG] Object retrieved [{}]: {}",
                 resp.status_code(),
                 rslt
@@ -246,6 +254,7 @@ async fn main() -> Result<()> {
     let bucket = prepare_client(bucket_name).await?;
     //create_objs(&bucket).await
     //crud(&bucket).await
+    //list_all_objs(&bucket, String::default()).await;
     //list_all_objs(&bucket, "mtms-util/".to_string()).await
     //list_all_objs(&bucket, String::from("data/")).await;
 
@@ -273,8 +282,7 @@ async fn main() -> Result<()> {
 
     //del_obj_recursive(&bucket, String::from("shard_rafal_logging_latest")).await;
     //del_obj_recursive(&bucket, path).await?;
-    //list_obj_recursive(&bucket, path, 2, String::default()).await?;
-    list_all_objs(&bucket, String::default()).await;
+    list_obj_recursive(&bucket, path, 2, String::default()).await?;
 
     Ok(())
 }
