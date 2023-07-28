@@ -90,6 +90,7 @@ async fn list_all_objs(bucket: &Bucket, path: String) -> Result<()> {
             Some(items) => {
                 for item in items {
                     println!("  - {}", item.prefix);
+                    get_obj(bucket, format!("{}latest", item.prefix)).await?;
                 }
             }
             None => (),
@@ -97,6 +98,42 @@ async fn list_all_objs(bucket: &Bucket, path: String) -> Result<()> {
 
         for ct in res.contents {
             println!("  - {}", ct.key);
+        }
+    }
+
+    Ok(())
+}
+
+#[async_recursion]
+async fn list_obj_recursive(
+    bucket: &Bucket,
+    path: String,
+    level: u8,
+    indent: String,
+) -> Result<()> {
+    if level == 0 {
+        return Ok(());
+    }
+
+    let results = bucket.list(path.clone(), Some("/".to_string())).await?;
+
+    for res in results {
+        println!("{}  [DEBUG] Dir under: {}", indent, path);
+        match res.common_prefixes {
+            Some(items) => {
+                for item in items {
+                    println!("{}  -> {}", indent, item.prefix);
+                    let _ =
+                        list_obj_recursive(bucket, item.prefix, level - 1, format!("{}  ", indent))
+                            .await?;
+                }
+            }
+            None => (),
+        }
+
+        println!("{}  [DEBUG] Doc under: {}", indent, path);
+        for ct in res.contents {
+            println!("{}  - {}", indent, ct.key);
         }
     }
 
@@ -210,7 +247,6 @@ async fn main() -> Result<()> {
     //create_objs(&bucket).await
     //crud(&bucket).await
     //list_all_objs(&bucket, "mtms-util/".to_string()).await
-    //list_all_objs(&bucket, String::default()).await;
     //list_all_objs(&bucket, String::from("data/")).await;
 
     /*
@@ -236,7 +272,9 @@ async fn main() -> Result<()> {
     */
 
     //del_obj_recursive(&bucket, String::from("shard_rafal_logging_latest")).await;
-    del_obj_recursive(&bucket, path).await?;
+    //del_obj_recursive(&bucket, path).await?;
+    //list_obj_recursive(&bucket, path, 2, String::default()).await?;
+    list_all_objs(&bucket, String::default()).await;
 
     Ok(())
 }
