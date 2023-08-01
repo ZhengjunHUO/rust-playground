@@ -49,8 +49,11 @@ fn main() {
     // 0x0A14
     assert_eq!(u16::from_be_bytes(bytes), 2580);
 
-    // 7)
+    // 7) [u8; 4] + 2 * u16 => [u8; 8]
     assert_eq!(build_array(), [10, 20, 30, 40, 0, 2, 0, 4]);
+
+    // 8) String to int
+    assert_eq!(String::from("18").parse::<usize>().unwrap(), 18);
 }
 
 // Vec<u8> to Ipv4Addr
