@@ -92,8 +92,7 @@ async fn list_all_objs(bucket: &Bucket, path: String) -> Result<()> {
         match res.common_prefixes {
             Some(items) => {
                 for item in items {
-                    println!("  - {}", item.prefix);
-                    get_obj(bucket, format!("{}latest", item.prefix)).await?;
+                    println!("  - {}\n    [{}]", item.prefix, get_obj(bucket, format!("{}latest", item.prefix)).await?);
                 }
             }
             None => (),
@@ -179,7 +178,7 @@ async fn get_obj(bucket: &Bucket, path: String) -> Result<String> {
         Ok(resp) => {
             let rslt = resp.to_string()?;
             debug!(
-                "[DEBUG] Object retrieved [{}]: {}",
+                "Object retrieved [{}]: {}",
                 resp.status_code(),
                 rslt
             );
@@ -254,7 +253,7 @@ async fn main() -> Result<()> {
     let bucket = prepare_client(bucket_name).await?;
     //create_objs(&bucket).await
     //crud(&bucket).await
-    //list_all_objs(&bucket, String::default()).await;
+    let _ = list_all_objs(&bucket, path).await;
     //list_all_objs(&bucket, "mtms-util/".to_string()).await
     //list_all_objs(&bucket, String::from("data/")).await;
 
@@ -282,7 +281,7 @@ async fn main() -> Result<()> {
 
     //del_obj_recursive(&bucket, String::from("shard_rafal_logging_latest")).await;
     //del_obj_recursive(&bucket, path).await?;
-    list_obj_recursive(&bucket, path, 2, String::default()).await?;
+    //list_obj_recursive(&bucket, path, 2, String::default()).await?;
 
     Ok(())
 }
