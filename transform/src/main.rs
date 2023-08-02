@@ -5,6 +5,9 @@ use std::str::FromStr;
 fn main() {
     // 1) Option<String> to Option<&str>
     let test = Some("Rusty".to_owned());
+    // as_ref把Option<String>转变为Option<&String>, as_str()再将&String转为&str
+    assert_eq!(test.as_ref().map(|s| s.as_str()), Some("Rusty"));
+    // 也可用as_deref()一步到位
     assert_eq!(test.as_deref(), Some("Rusty"));
 
     let test_deref = "Rusty".to_owned();
@@ -12,6 +15,10 @@ fn main() {
     assert_eq!(test_deref.deref(), "Rusty");
     // *x返回Target = str, 需要再取&
     assert_eq!(&*test_deref, "Rusty");
+
+    // 1b) Option<&T> to Option<T>
+    assert_eq!(Some("rustacean").map(|s| s.to_string()), Some(String::from("rustacean")));
+    assert_eq!(Some(&88).cloned(), Some(88));
 
     // 2) String to Vec<u8> (String consumed)
     //let buf: Vec<u8> = String::from("TrustRust").into_bytes();
