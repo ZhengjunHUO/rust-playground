@@ -15,6 +15,11 @@ $ rustc -Zunpretty=expanded src/main.rs
 $ cargo test -- --nocapture
 ```
 
+### Find out crate's dependencies
+```sh
+$ cargo tree --target=x86_64-unknown-linux-musl -i openssl-sys
+```
+
 ### Docs
 ```sh
 # Check std doc
@@ -35,7 +40,7 @@ $ sudo apt install musl-tools pkg-config
 $ sudo ln -s /bin/g++ /bin/musl-g++
 $ RUSTFLAGS='-C target-feature=+crt-static' cargo build --release --target x86_64-unknown-linux-musl
 ```
-Error caused by libssl during build
+Error caused by libssl during build (useful command $ pkg-config --libs --cflags openssl)
 ```
   run pkg_config fail: pkg-config has not been configured to support cross-compilation.
 
