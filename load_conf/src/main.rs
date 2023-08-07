@@ -1,17 +1,30 @@
+#![allow(dead_code)]
+
 use config_file::FromConfigFile;
 use serde::Deserialize;
+use serde_valid::Validate;
 
-#[allow(non_snake_case)]
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Validate)]
 struct Config {
-    podName: String,
-    ingressRules: Rules,
-    egressRules: Rules,
+    #[validate(
+        pattern = r"^([a-zA-Z0-9-]+-)+[a-zA-Z0-9]+$",
+        message = "The full name should be like: <CLIENT-NAME>-<PROJECT-NAME>"
+    )]
+    full_name: String,
+    alias: Option<String>,
+    #[validate(maximum = 100)]
+    serial_no: u8,
+    #[validate]
+    ingress_rules: Rules,
+    #[validate]
+    egress_rules: Rules,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Validate)]
 struct Rules {
+    #[validate(min_items = 2)]
     l3: Vec<String>,
+    #[validate(min_items = 1)]
     l4: Vec<L4Entry>,
 }
 
@@ -22,6 +35,14 @@ struct L4Entry {
 }
 
 fn main() {
-    let conf = Config::from_config_file("config/conf.yaml").unwrap();
-    println!("Config file's content: {:?}", conf);
+    match Config::from_config_file("config/conf.yaml") {
+        Ok(conf) => {
+            if let Err(e) = conf.validate() {
+                println!("Validator: {}", e.to_string());
+            } else {
+                println!("Config file's content:\n    {:?}", conf);
+            }
+        }
+        Err(e) => println!("Error occurred when reading the config: {:?}", e),
+    }
 }

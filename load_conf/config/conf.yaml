@@ -1,10 +1,12 @@
-podName: ctn2
-ingressRules:
+full_name: ctn2
+alias: ctn2
+serial_no: 18
+ingress_rules:
   l3: []
   l4:
   - ip: 172.17.0.2
     port: 8000
-egressRules:
+egress_rules:
   l3:
     - 8.8.8.8
   l4: []
