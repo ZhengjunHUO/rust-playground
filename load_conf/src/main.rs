@@ -2,7 +2,16 @@
 
 use config_file::FromConfigFile;
 use serde::Deserialize;
+use serde_valid::validation::Error::Custom;
 use serde_valid::Validate;
+
+fn odd_only(val: &u8) -> Result<(), serde_valid::validation::Error> {
+    if val % 2 == 0 {
+        return Err(Custom(String::from("Only odd number is accepted !")));
+    }
+
+    Ok(())
+}
 
 #[derive(Deserialize, Debug, Validate)]
 struct Config {
@@ -12,7 +21,7 @@ struct Config {
     )]
     full_name: String,
     alias: Option<String>,
-    #[validate(maximum = 100)]
+    #[validate(custom(odd_only))]
     serial_no: u8,
     #[validate]
     ingress_rules: Rules,
@@ -22,7 +31,7 @@ struct Config {
 
 #[derive(Deserialize, Debug, Validate)]
 struct Rules {
-    #[validate(min_items = 2)]
+    #[validate(min_items = 1)]
     l3: Vec<String>,
     #[validate(min_items = 1)]
     l4: Vec<L4Entry>,
