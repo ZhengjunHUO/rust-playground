@@ -1,17 +1,52 @@
 #![feature(trace_macros)]
 #![recursion_limit = "256"]
 
+use std::env;
 use test_macro::{
     capture_then_check_attribute, capture_then_check_tokens, capture_then_stringify,
-    check_attribute, check_tokens, expr_len, json, pop_head, pop_tail, print_fibo, vec_string,
-    Json,
+    check_attribute, check_tokens, expr_len, json, pop_head, pop_tail, print_fibo,
+    rendered_from_env, vec_string, Json,
 };
 
+#[allow(dead_code)]
+struct Config {
+    id: String,
+    attr: Attribute,
+}
+
+struct Attribute {
+    access_key: Option<String>,
+    secret_key: Option<String>,
+}
+
+impl Config {
+    pub fn render(&mut self) {
+        trace_macros!(true);
+        rendered_from_env!(self.attr.access_key, "GCS_ACCESS_KEY");
+        rendered_from_env!(self.attr.secret_key, "GCS_SECRET_KEY");
+        trace_macros!(false);
+    }
+}
+
 fn main() {
-    trace_macros!(true);
+    let mut config = Config {
+        id: "Test".into(),
+        attr: Attribute {
+            access_key: None,
+            secret_key: None,
+        },
+    };
+
+    config.render();
+    println!(
+        "access_key: {:?}, secret_key: {:?}",
+        config.attr.access_key, config.attr.secret_key
+    );
+
+    //trace_macros!(true);
     println!(pop_head!(foo bar baz));
     println!(pop_tail!(foo bar baz));
-    trace_macros!(false);
+    //trace_macros!(false);
 
     let list = vec![4, 5, 6];
     println!("sum: {}", list.iter().sum::<u64>());

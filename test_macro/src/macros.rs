@@ -26,3 +26,12 @@ macro_rules! json {
 macro_rules! vec_string {
     ($( $elem:expr ),*) => { vec![$($elem.to_string()),*] };
 }
+
+#[macro_export]
+macro_rules! rendered_from_env {
+    ($target:expr, $envname:literal) => {
+        if let Ok(val) = env::var($envname) {
+            $target = Some(val);
+        }
+    };
+}
