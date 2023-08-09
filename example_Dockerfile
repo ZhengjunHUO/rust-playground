@@ -1,0 +1,22 @@
+FROM ubuntu:20.04 as builder
+
+RUN apt update && DEBIAN_FRONTEND=noninteractive TZ=Etc/UTC apt install -y curl libssl-dev g++ musl-tools pkg-config build-essential
+RUN ln -s /bin/g++ /bin/musl-g++
+ARG UID=1000
+ARG GID=1000
+RUN groupadd -g ${GID} -o rustacean && useradd -u ${UID} -g ${GID} -m rustacean
+
+USER rustacean
+WORKDIR /home/rustacean/
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+ENV PATH=/home/rustacean/.cargo/bin:$PATH
+RUN rustup target add x86_64-unknown-linux-musl
+COPY --chown=rustacean:rustacean . .
+RUN RUSTFLAGS='-C target-feature=+crt-static' cargo build --release --target x86_64-unknown-linux-musl
+
+FROM alpine:3.18.2
+ARG UID=1000
+RUN adduser -u ${UID} -s /bin/sh -D rustacean
+COPY --from=builder /home/rustacean/target/x86_64-unknown-linux-musl/release/<YOUR_BINARY> /home/rustacean/
+USER rustacean
+ENTRYPOINT [ "/home/rustacean/<YOUR_BINARY>" ]
