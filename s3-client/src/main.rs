@@ -92,7 +92,11 @@ async fn list_all_objs(bucket: &Bucket, path: String) -> Result<()> {
         match res.common_prefixes {
             Some(items) => {
                 for item in items {
-                    println!("  - {}\n    [{}]", item.prefix, get_obj(bucket, format!("{}latest", item.prefix)).await?);
+                    println!(
+                        "  - {}\n    [{}]",
+                        item.prefix,
+                        get_obj(bucket, format!("{}latest", item.prefix)).await?
+                    );
                 }
             }
             None => (),
@@ -177,11 +181,7 @@ async fn get_obj(bucket: &Bucket, path: String) -> Result<String> {
     match bucket.get_object(path).await {
         Ok(resp) => {
             let rslt = resp.to_string()?;
-            debug!(
-                "Object retrieved [{}]: {}",
-                resp.status_code(),
-                rslt
-            );
+            debug!("Object retrieved [{}]: {}", resp.status_code(), rslt);
             Ok(rslt)
         }
         Err(e) => {
@@ -253,19 +253,19 @@ async fn main() -> Result<()> {
     let bucket = prepare_client(bucket_name).await?;
     //create_objs(&bucket).await
     //crud(&bucket).await
-    let _ = list_all_objs(&bucket, path).await;
+    //let _ = list_all_objs(&bucket, path).await;
     //list_all_objs(&bucket, "mtms-util/".to_string()).await
     //list_all_objs(&bucket, String::from("data/")).await;
 
-    /*
-    let path_to_file = "shard_rafal_logging/latest";
-    match get_obj(&bucket, String::from(path_to_file)).await {
+    match get_obj(&bucket, path.clone()).await {
         Ok(content) => {
-            println!("Read content from {}: {}", path_to_file, content);
+            println!("Read content from {}: {}", path, content);
         }
-        Err(e) => println!("{} doesn't exist: {}", path_to_file, e),
+        Err(e) => println!("{} doesn't exist: {}", path, e),
     }
 
+    /*
+    let path_to_file = "shard_rafal_logging/latest";
     let content = b"202309012345";
     put_obj(&bucket, String::from(path_to_file), content).await?;
     get_obj(&bucket, String::from(path_to_file)).await?;
