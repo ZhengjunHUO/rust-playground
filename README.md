@@ -1,5 +1,11 @@
 # rust-playground
 
+### Installation / Upgrade
+```sh
+$ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+$ rustup update
+```
+
 ### When unstable features engaged, use nightly build
 ```sh
 $ rustup override set nightly
@@ -36,7 +42,7 @@ $ rustup target add x86_64-unknown-linux-musl
 # Fedora
 $ sudo dnf install musl-gcc
 # Ubuntu
-$ sudo apt install musl-tools pkg-config
+$ sudo apt install build-essential libssl-dev g++ musl-tools pkg-config
 $ sudo ln -s /bin/g++ /bin/musl-g++
 $ RUSTFLAGS='-C target-feature=+crt-static' cargo build --release --target x86_64-unknown-linux-musl
 ```
