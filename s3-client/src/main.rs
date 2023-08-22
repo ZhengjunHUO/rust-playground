@@ -92,11 +92,14 @@ async fn list_all_objs(bucket: &Bucket, path: String) -> Result<()> {
         match res.common_prefixes {
             Some(items) => {
                 for item in items {
-                    println!(
-                        "  - {}\n    [{}]",
-                        item.prefix,
-                        get_obj(bucket, format!("{}latest", item.prefix)).await?
-                    );
+                    match get_obj(bucket, format!("{}latest", item.prefix)).await {
+                        Ok(content) => println!(
+                                "  - {}\n    [{}]",
+                                item.prefix,
+                                content,
+                            ),
+                        Err(_) => (),
+                    }
                 }
             }
             None => (),
@@ -124,7 +127,7 @@ async fn list_obj_recursive(
     let results = bucket.list(path.clone(), Some("/".to_string())).await?;
 
     for res in results {
-        println!("{}  [DEBUG] Dir under: {}", indent, path);
+        //println!("{}  [DEBUG] Dir under: {}", indent, path);
         match res.common_prefixes {
             Some(items) => {
                 for item in items {
@@ -137,7 +140,7 @@ async fn list_obj_recursive(
             None => (),
         }
 
-        println!("{}  [DEBUG] Doc under: {}", indent, path);
+        //println!("{}  [DEBUG] Doc under: {}", indent, path);
         for ct in res.contents {
             println!(
                 "{}  - {} [{}]",
@@ -257,12 +260,14 @@ async fn main() -> Result<()> {
     //list_all_objs(&bucket, "mtms-util/".to_string()).await
     //list_all_objs(&bucket, String::from("data/")).await;
 
+    /*
     match get_obj(&bucket, path.clone()).await {
         Ok(content) => {
             println!("Read content from {}: {}", path, content);
         }
         Err(e) => println!("{} doesn't exist: {}", path, e),
     }
+    */
 
     /*
     let path_to_file = "shard_rafal_logging/latest";
@@ -281,7 +286,7 @@ async fn main() -> Result<()> {
 
     //del_obj_recursive(&bucket, String::from("shard_rafal_logging_latest")).await;
     //del_obj_recursive(&bucket, path).await?;
-    //list_obj_recursive(&bucket, path, 2, String::default()).await?;
+    list_obj_recursive(&bucket, path, 2, String::default()).await?;
 
     Ok(())
 }
