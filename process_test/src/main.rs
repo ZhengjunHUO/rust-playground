@@ -1,10 +1,12 @@
 use std::collections::HashMap;
 use std::env;
+use std::fs::File;
 use std::process::{Command, Stdio};
 
 fn main() {
-    print_filtered_envs();
-    piped_cmd();
+    //print_filtered_envs();
+    //piped_cmd();
+    save_to_file();
 }
 
 fn print_filtered_envs() {
@@ -44,4 +46,17 @@ fn piped_cmd() {
         .wait_with_output()
         .expect("Failed to wait grep's output");
     println!("Result: {}", String::from_utf8_lossy(&out.stdout));
+}
+
+fn save_to_file() {
+    // $ echo -n hello > /tmp/hello.tmp
+    let file = File::create("/tmp/hello.tmp").unwrap();
+    let stdio = Stdio::from(file);
+
+    Command::new("echo")
+        .arg("-n")
+        .arg("hello")
+        .stdout(stdio)
+        .spawn()
+        .expect("echo failed to exec");
 }
