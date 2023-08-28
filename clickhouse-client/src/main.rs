@@ -1,8 +1,9 @@
 use anyhow::Result;
 use clickhouse::{Client, Row};
+use hyper_tls::HttpsConnector;
 use serde::{Deserialize, Serialize};
 use serde_repr::{Deserialize_repr, Serialize_repr};
-use std::time::UNIX_EPOCH;
+use std::time::{Duration, UNIX_EPOCH};
 use tokio::runtime::Runtime;
 
 #[derive(Row, Deserialize)]
@@ -173,12 +174,24 @@ async fn show_tables(client: Client) -> Result<()> {
 }
 
 fn main() -> Result<()> {
-    let client = Client::default().with_url("http://ckh.huo.io:80");
+    /* HTTP only client
+    let client = Client::default().with_url("https://ckh-0-0.huo.io:443");
     //        .with_user("rafal")
     //        .with_password("thisIsDevPassword")
     //        .with_database("default");
-    let rt = Runtime::new().unwrap();
+    */
 
+    // HTTP/HTTPS client
+    let https_conn = HttpsConnector::new();
+    let https_client = hyper::Client::builder()
+        .pool_idle_timeout(Duration::from_secs(30))
+        //.http2_only(true)
+        //.build_http();
+        .build::<_, hyper::Body>(https_conn);
+    let client = Client::with_http_client(https_client).with_url("https://ckh-0-0.huo.io:443");
+    //let client = Client::with_http_client(https_client).with_url("http://ckh-0-0.huo.io:80");
+
+    let rt = Runtime::new().unwrap();
     /*
     //let path = "test-ckh-backup/mtms-20230622/";
     //rt.block_on(async { backup(client, path).await })
