@@ -1,9 +1,10 @@
+#![allow(dead_code)]
+
 use anyhow::Result;
 use clickhouse::{Client, Row};
-use hyper_tls::HttpsConnector;
 use serde::{Deserialize, Serialize};
 use serde_repr::{Deserialize_repr, Serialize_repr};
-use std::time::{Duration, UNIX_EPOCH};
+use std::time::UNIX_EPOCH;
 use tokio::runtime::Runtime;
 
 #[derive(Row, Deserialize)]
@@ -159,7 +160,7 @@ async fn show_tables(client: Client) -> Result<()> {
             println!("{}", row.name);
         }
     */
-    let mut rows: Vec<String> = client
+    let rows: Vec<String> = client
         .query("show tables")
         .fetch_all::<TableName>()
         .await?
@@ -174,22 +175,59 @@ async fn show_tables(client: Client) -> Result<()> {
 }
 
 fn main() -> Result<()> {
-    /* HTTP only client
+    /* #1 HTTP only client
     let client = Client::default().with_url("https://ckh-0-0.huo.io:443");
-    //        .with_user("rafal")
-    //        .with_password("thisIsDevPassword")
-    //        .with_database("default");
+            .with_user("foo")
+            .with_password("bar")
+            .with_database("baz");
     */
 
-    // HTTP/HTTPS client
-    let https_conn = HttpsConnector::new();
+    /* #2 HTTPS client
+    // (I) Allow only https
+    //let mut https_conn = hyper_tls::HttpsConnector::new();
+    //https_conn.https_only(true);
+
+    // (II) http compatible client
+    let https_conn = hyper_tls::HttpsConnector::new();
+
     let https_client = hyper::Client::builder()
-        .pool_idle_timeout(Duration::from_secs(30))
+        .pool_idle_timeout(std::time::Duration::from_secs(30))
         //.http2_only(true)
         //.build_http();
         .build::<_, hyper::Body>(https_conn);
+    //let client = Client::with_http_client(https_client).with_url("https://ckh-0-0.huo.io:443");
+    let client = Client::with_http_client(https_client).with_url("http://ckh-0-0.huo.io:80");
+    */
+
+    // #3 HTTPS insecure client
+    // Read self-signed cert and create Certificate
+    //const HOME_MADE_CERT: &[u8] = std::include_bytes!("../certificate.crt");
+    //let cert = tokio_native_tls::native_tls::Certificate::from_pem(HOME_MADE_CERT).unwrap();
+
+    // (3.1) Prepare tls connector
+    let tls_connector = tokio_native_tls::TlsConnector::from(
+        tokio_native_tls::native_tls::TlsConnector::builder()
+            //.add_root_certificate(cert)
+            .danger_accept_invalid_hostnames(true)
+            .danger_accept_invalid_certs(true)
+            .build()
+            .unwrap(),
+    );
+
+    // (3.2) Prepare http connector
+    let mut http_conn = hyper::client::HttpConnector::new();
+    // crucial setting
+    http_conn.enforce_http(false);
+
+    // (3.3) Prepare https connector
+    let https_conn =
+        hyper_tls::HttpsConnector::<hyper::client::HttpConnector>::from((http_conn, tls_connector));
+
+    // (3.4) Build hyper::client::Client from https connector
+    let https_client = hyper::Client::builder().build::<_, hyper::Body>(https_conn);
+
+    // (3.5) Use hyper::client::Client to build a ckh client
     let client = Client::with_http_client(https_client).with_url("https://ckh-0-0.huo.io:443");
-    //let client = Client::with_http_client(https_client).with_url("http://ckh-0-0.huo.io:80");
 
     let rt = Runtime::new().unwrap();
     /*

@@ -80,6 +80,7 @@ dependencies = [
  "serde",
  "serde_repr",
  "tokio",
+ "tokio-native-tls",
 ]
 
 [[package]]
