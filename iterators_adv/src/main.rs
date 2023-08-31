@@ -4,6 +4,10 @@ use std::iter::{from_fn, once, repeat, successors, IntoIterator, Iterator, Peeka
 use std::str::FromStr;
 
 fn main() {
+    // #0 Accumulate
+    let to_be_handled = vec![(4, 6), (8, 3), (2, 12)];
+    assert_eq!(72, to_be_handled.iter().fold(0, |acc, (a, b)| acc + a * b));
+
     // #1 Generate a vec with random value
     let rand_pool: Vec<u8> = from_fn(|| Some(rand::random::<u8>())).take(5).collect();
     println!("rand_pool: {:?}", rand_pool);
