@@ -17,7 +17,10 @@ fn main() {
     assert_eq!(&*test_deref, "Rusty");
 
     // 1b) Option<&T> to Option<T>
-    assert_eq!(Some("rustacean").map(|s| s.to_string()), Some(String::from("rustacean")));
+    assert_eq!(
+        Some("rustacean").map(|s| s.to_string()),
+        Some(String::from("rustacean"))
+    );
     assert_eq!(Some(&88).cloned(), Some(88));
 
     // 2) String to Vec<u8> (String consumed)
