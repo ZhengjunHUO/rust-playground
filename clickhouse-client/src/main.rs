@@ -180,27 +180,28 @@ async fn show_tables(client: Client) -> Result<()> {
     Ok(())
 }
 
-async fn count_line(client: Client, table_name: &str) -> Result<()> {
-    let count_query = format!("select count() from {}", table_name);
-    let rows: Vec<usize> = client
-        .query(&count_query)
+async fn is_empty(client: Client, table_name: &str) -> bool {
+    let query = format!("select count() from {}", table_name);
+    match client
+        .query(&query)
         .fetch_all::<Count>()
-        .await?
-        .into_iter()
-        .map(|r| r.num)
-        .collect();
-
-    for row in &rows {
-        println!("{}", row);
-    }
-
-    if rows.len() > 0 {
-        if rows[0] == 0 {
-            println!("Table {} is empty !", table_name);
+        .await {
+        Ok(rows) => {
+            let rslt: Vec<usize> = rows
+                .into_iter()
+                .map(|r| r.num)
+                .collect();
+            if rslt.len() > 0 {
+                if rslt[0] == 0 {
+                    return true;
+                }
+                println!("[DEBUG] Table {} contains {} line(s) !", table_name, rslt[0])
+            }
         }
+        _ => {},
     }
 
-    Ok(())
+    false
 }
 
 fn main() -> Result<()> {
@@ -267,5 +268,11 @@ fn main() -> Result<()> {
     rt.block_on(async { restore(client, path_incr).await })
     */
     //rt.block_on(async { show_tables(client).await })
-    rt.block_on(async { count_line(client, "rafal_logging").await })
+    rt.block_on(async { 
+        let table_name = "rafal_logging";
+        let rslt = is_empty(client, &table_name).await;
+        println!("Table {} is empty ? {}", table_name, rslt);
+    });
+
+    Ok(())
 }
