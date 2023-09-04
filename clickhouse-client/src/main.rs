@@ -36,6 +36,12 @@ struct TableName {
     name: String,
 }
 
+#[derive(Row, Deserialize)]
+struct Count {
+    num: usize,
+}
+
+
 fn now() -> u64 {
     UNIX_EPOCH
         .elapsed()
@@ -174,6 +180,29 @@ async fn show_tables(client: Client) -> Result<()> {
     Ok(())
 }
 
+async fn count_line(client: Client, table_name: &str) -> Result<()> {
+    let count_query = format!("select count() from {}", table_name);
+    let rows: Vec<usize> = client
+        .query(&count_query)
+        .fetch_all::<Count>()
+        .await?
+        .into_iter()
+        .map(|r| r.num)
+        .collect();
+
+    for row in &rows {
+        println!("{}", row);
+    }
+
+    if rows.len() > 0 {
+        if rows[0] == 0 {
+            println!("Table {} is empty !", table_name);
+        }
+    }
+
+    Ok(())
+}
+
 fn main() -> Result<()> {
     /* #1 HTTP only client
     let client = Client::default().with_url("https://ckh-0-0.huo.io:443");
@@ -237,5 +266,6 @@ fn main() -> Result<()> {
     //rt.block_on(async { backup_incr(client, path, path_incr).await })
     rt.block_on(async { restore(client, path_incr).await })
     */
-    rt.block_on(async { show_tables(client).await })
+    //rt.block_on(async { show_tables(client).await })
+    rt.block_on(async { count_line(client, "rafal_logging").await })
 }
