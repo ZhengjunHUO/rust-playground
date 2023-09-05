@@ -41,7 +41,6 @@ struct Count {
     num: usize,
 }
 
-
 fn now() -> u64 {
     UNIX_EPOCH
         .elapsed()
@@ -180,28 +179,49 @@ async fn show_tables(client: Client) -> Result<()> {
     Ok(())
 }
 
-async fn is_empty(client: Client, table_name: &str) -> bool {
+async fn is_empty_async(client: &Client, table_name: &str) -> bool {
     let query = format!("select count() from {}", table_name);
-    match client
-        .query(&query)
-        .fetch_all::<Count>()
-        .await {
+    match client.query(&query).fetch_all::<Count>().await {
         Ok(rows) => {
-            let rslt: Vec<usize> = rows
-                .into_iter()
-                .map(|r| r.num)
-                .collect();
+            let rslt: Vec<usize> = rows.into_iter().map(|r| r.num).collect();
             if rslt.len() > 0 {
                 if rslt[0] == 0 {
                     return true;
                 }
-                println!("[DEBUG] Table {} contains {} line(s) !", table_name, rslt[0])
+                println!(
+                    "[DEBUG] Table {} contains {} line(s) !",
+                    table_name, rslt[0]
+                )
             }
         }
-        _ => {},
+        _ => {}
     }
 
     false
+}
+
+fn is_empty(client: &Client, table_name: &str) -> bool {
+    let rt = Runtime::new().unwrap();
+    rt.block_on(async {
+        let query = format!("select count() from {}", table_name);
+        let mut result = false;
+        match client.query(&query).fetch_all::<Count>().await {
+            Ok(rows) => {
+                let rslt: Vec<usize> = rows.into_iter().map(|r| r.num).collect();
+                if rslt.len() > 0 {
+                    if rslt[0] == 0 {
+                        result = true;
+                    }
+                    println!(
+                        "[DEBUG] Table {} contains {} line(s) !",
+                        table_name, rslt[0]
+                    )
+                }
+            }
+            _ => (),
+        }
+        return result;
+    })
 }
 
 fn main() -> Result<()> {
@@ -259,20 +279,33 @@ fn main() -> Result<()> {
     // (3.5) Use hyper::client::Client to build a ckh client
     let client = Client::with_http_client(https_client).with_url("https://ckh-0-0.huo.io:443");
 
-    let rt = Runtime::new().unwrap();
-    /*
+    //let rt = Runtime::new().unwrap();
+    /* #1 Backup test
     //let path = "test-ckh-backup/mtms-20230622/";
     //rt.block_on(async { backup(client, path).await })
     let path_incr = "test-ckh-backup/mtms-20230623/";
     //rt.block_on(async { backup_incr(client, path, path_incr).await })
     rt.block_on(async { restore(client, path_incr).await })
     */
+
+    // #2 Show tables test
     //rt.block_on(async { show_tables(client).await })
-    rt.block_on(async { 
+
+    /* #3 Test is table empty
+    rt.block_on(async {
         let table_name = "rafal_logging";
-        let rslt = is_empty(client, &table_name).await;
+        let rslt = is_empty_async(&client, &table_name).await;
         println!("Table {} is empty ? {}", table_name, rslt);
     });
+    */
+
+    let tables = vec!["rafal_logging".to_string(), "rafal_queries".to_string()]
+        .into_iter()
+        .filter(|t| !is_empty(&client, &t))
+        .collect::<Vec<String>>();
+    for table in tables {
+        println!("Non empty table: {:?}", table);
+    }
 
     Ok(())
 }
