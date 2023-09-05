@@ -41,6 +41,11 @@ struct Count {
     num: usize,
 }
 
+#[derive(Row, Deserialize)]
+struct ShowCreate {
+    statement: String,
+}
+
 fn now() -> u64 {
     UNIX_EPOCH
         .elapsed()
@@ -200,6 +205,22 @@ async fn is_empty_async(client: &Client, table_name: &str) -> bool {
     false
 }
 
+async fn show_create_table(client: &Client, table_name: &str) {
+    let query = format!("show create table {}", table_name);
+    match client.query(&query).fetch_all::<ShowCreate>().await {
+        Ok(rows) => {
+            let rslt: Vec<String> = rows.into_iter().map(|r| r.statement).collect();
+            if rslt.len() > 0 {
+                println!(
+                    "[DEBUG] Table {}'s creation detail:\n {}",
+                    table_name, rslt[0]
+                )
+            }
+        }
+        _ => {}
+    }
+}
+
 fn is_empty(client: &Client, table_name: &str) -> bool {
     let rt = Runtime::new().unwrap();
     rt.block_on(async {
@@ -279,7 +300,7 @@ fn main() -> Result<()> {
     // (3.5) Use hyper::client::Client to build a ckh client
     let client = Client::with_http_client(https_client).with_url("https://ckh-0-0.huo.io:443");
 
-    //let rt = Runtime::new().unwrap();
+    let rt = Runtime::new().unwrap();
     /* #1 Backup test
     //let path = "test-ckh-backup/mtms-20230622/";
     //rt.block_on(async { backup(client, path).await })
@@ -299,6 +320,7 @@ fn main() -> Result<()> {
     });
     */
 
+    /* #4 List non empty table(s)
     let tables = vec!["rafal_logging".to_string(), "rafal_queries".to_string()]
         .into_iter()
         .filter(|t| !is_empty(&client, &t))
@@ -306,6 +328,11 @@ fn main() -> Result<()> {
     for table in tables {
         println!("Non empty table: {:?}", table);
     }
+    */
+
+    rt.block_on(async {
+        show_create_table(&client, "shard_label_dist_endpoint_query_inspection").await
+    });
 
     Ok(())
 }
