@@ -244,17 +244,16 @@ async fn is_table_sharded(client: &Client, database_name: &str, table_name: &str
                 );
                 return true;
             }
-
-            return false;
         }
         Err(e) => {
             println!(
                 "[DEBUG] Error getting table {}.{}'s engine:\n{}",
                 database_name, table_name, e
             );
-            return false;
         }
     }
+
+    false
 }
 
 fn is_empty(client: &Client, table_name: &str) -> bool {
@@ -371,7 +370,7 @@ fn main() -> Result<()> {
     rt.block_on(async {
         //let _ = show_tables(&client).await;
         //show_create_table(&client, "default", "shard_label_dist_endpoint_query_inspection").await
-        is_table_sharded(&client, "default", "TechnicalBranch").await
+        is_table_sharded(&client, "default", "shard_TechnicalBranch").await
     });
 
     Ok(())
