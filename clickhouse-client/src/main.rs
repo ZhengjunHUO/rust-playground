@@ -46,6 +46,11 @@ struct ShowCreate {
     statement: String,
 }
 
+#[derive(Row, Deserialize)]
+struct SystemTable {
+    engine: String,
+}
+
 fn now() -> u64 {
     UNIX_EPOCH
         .elapsed()
@@ -162,7 +167,7 @@ async fn restore(client: Client, path: &str) -> Result<()> {
     Ok(())
 }
 
-async fn show_tables(client: Client) -> Result<()> {
+async fn show_tables(client: &Client) -> Result<()> {
     /*
         let mut cursor = client.query("show tables").fetch::<TableName<'_>>()?;
 
@@ -205,19 +210,50 @@ async fn is_empty_async(client: &Client, table_name: &str) -> bool {
     false
 }
 
-async fn show_create_table(client: &Client, table_name: &str) {
-    let query = format!("show create table {}", table_name);
+async fn show_create_table(client: &Client, database_name: &str, table_name: &str) {
+    let query = format!("show create table {}.{}", database_name, table_name);
     match client.query(&query).fetch_all::<ShowCreate>().await {
         Ok(rows) => {
             let rslt: Vec<String> = rows.into_iter().map(|r| r.statement).collect();
             if rslt.len() > 0 {
                 println!(
-                    "[DEBUG] Table {}'s creation detail:\n {}",
-                    table_name, rslt[0]
+                    "[DEBUG] Table {}.{}'s creation detail:\n {}",
+                    database_name, table_name, rslt[0]
                 )
             }
         }
         _ => {}
+    }
+}
+
+async fn is_table_sharded(client: &Client, database_name: &str, table_name: &str) -> bool {
+    let query = format!(
+        "select engine from system.tables where database='{}' and name='{}'",
+        database_name, table_name
+    );
+    match client.query(&query).fetch_all::<SystemTable>().await {
+        Ok(rows) => {
+            let rslt: Vec<String> = rows.into_iter().map(|r| r.engine).collect();
+            if rslt.len() > 0 {
+                println!(
+                    "[DEBUG] Table {}.{}'s engine:\n{}\nIs sharded ? {}",
+                    database_name,
+                    table_name,
+                    rslt[0],
+                    rslt[0].starts_with("Replicated")
+                );
+                return true;
+            }
+
+            return false;
+        }
+        Err(e) => {
+            println!(
+                "[DEBUG] Error getting table {}.{}'s engine:\n{}",
+                database_name, table_name, e
+            );
+            return false;
+        }
     }
 }
 
@@ -298,7 +334,9 @@ fn main() -> Result<()> {
     let https_client = hyper::Client::builder().build::<_, hyper::Body>(https_conn);
 
     // (3.5) Use hyper::client::Client to build a ckh client
-    let client = Client::with_http_client(https_client).with_url("https://ckh-0-0.huo.io:443");
+    let client = Client::with_http_client(https_client)
+        .with_url("https://ckh-0-0.huo.io:443")
+        .with_database("default");
 
     let rt = Runtime::new().unwrap();
     /* #1 Backup test
@@ -331,7 +369,9 @@ fn main() -> Result<()> {
     */
 
     rt.block_on(async {
-        show_create_table(&client, "shard_label_dist_endpoint_query_inspection").await
+        //let _ = show_tables(&client).await;
+        //show_create_table(&client, "default", "shard_label_dist_endpoint_query_inspection").await
+        is_table_sharded(&client, "default", "TechnicalBranch").await
     });
 
     Ok(())
