@@ -242,7 +242,10 @@ async fn is_table_sharded(client: &Client, database_name: &str, table_name: &str
                     rslt[0],
                     rslt[0].starts_with("Replicated")
                 );
-                return true;
+
+                if rslt[0].starts_with("Replicated") {
+                    return true;
+                }
             }
         }
         Err(e) => {
@@ -370,7 +373,10 @@ fn main() -> Result<()> {
     rt.block_on(async {
         //let _ = show_tables(&client).await;
         //show_create_table(&client, "default", "shard_label_dist_endpoint_query_inspection").await
-        is_table_sharded(&client, "default", "shard_TechnicalBranch").await
+        println!(
+            "{}",
+            is_table_sharded(&client, "default", "shard_TechnicalBranch").await
+        );
     });
 
     Ok(())
