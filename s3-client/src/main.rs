@@ -93,11 +93,7 @@ async fn list_all_objs(bucket: &Bucket, path: String) -> Result<()> {
             Some(items) => {
                 for item in items {
                     match get_obj(bucket, format!("{}latest", item.prefix)).await {
-                        Ok(content) => println!(
-                                "  - {}\n    [{}]",
-                                item.prefix,
-                                content,
-                            ),
+                        Ok(content) => println!("  - {}\n    [{}]", item.prefix, content,),
                         Err(_) => (),
                     }
                 }
@@ -142,12 +138,14 @@ async fn list_obj_recursive(
 
         //println!("{}  [DEBUG] Doc under: {}", indent, path);
         for ct in res.contents {
-            println!(
-                "{}  - {} [{}]",
-                indent,
-                ct.key,
-                get_obj(bucket, format!("{}", ct.key)).await?
-            );
+            if ct.key.ends_with("latest") {
+                println!(
+                    "{}  * {} [{}]",
+                    indent,
+                    ct.key,
+                    get_obj(bucket, format!("{}", ct.key)).await?
+                );
+            }
         }
     }
 
@@ -286,7 +284,7 @@ async fn main() -> Result<()> {
 
     //del_obj_recursive(&bucket, String::from("shard_rafal_logging_latest")).await;
     //del_obj_recursive(&bucket, path).await?;
-    list_obj_recursive(&bucket, path, 2, String::default()).await?;
+    list_obj_recursive(&bucket, path, 3, String::default()).await?;
 
     Ok(())
 }
