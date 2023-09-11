@@ -79,11 +79,21 @@ Specify vendored feature in Cargo.toml
 openssl-sys = {version = "0.9.90", features = ["vendored"]}
 ```
 
+### Test coverage
+```
+$ rustup component add llvm-tools
+$ CARGO_INCREMENTAL=0 RUSTFLAGS='-Cinstrument-coverage' LLVM_PROFILE_FILE='cargo-test-%p-%m.profraw' cargo test
+$ grcov . --binary-path ./target/debug/ -s . -t html --branch --ignore-not-existing -o ./target/debug/coverage/
+# check target/debug/coverage/index.html
+```
+
 ### Using tokio
 - [async_tasks](https://github.com/ZhengjunHUO/rust-playground/tree/main/async_tasks)
+- [aya](https://github.com/ZhengjunHUO/rust-playground/tree/main/aya-xdp)
 - [chat_async](https://github.com/ZhengjunHUO/rust-playground/tree/main/chat_async)
 - [ckh-client](https://github.com/ZhengjunHUO/rust-playground/tree/main/ckh-client)
 - [clickhouse-client](https://github.com/ZhengjunHUO/rust-playground/tree/main/clickhouse-client)
+- [clickhouse_mock](https://github.com/ZhengjunHUO/rust-playground/tree/main/clickhouse_mock)
 - [docker](https://github.com/ZhengjunHUO/rust-playground/tree/main/docker)
 - [k8s](https://github.com/ZhengjunHUO/rust-playground/tree/main/k8s)
 - [redis-server](https://github.com/ZhengjunHUO/rust-playground/tree/main/redis-server)
