@@ -8,8 +8,8 @@ use tui::{
     backend::{Backend, CrosstermBackend},
     layout::{Alignment, Constraint, Direction, Layout},
     style::{Color, Modifier, Style},
-    text::Span,
-    widgets::{Block, BorderType, Borders},
+    text::{Span, Spans},
+    widgets::{Block, BorderType, Borders, Paragraph},
     Frame, Terminal,
 };
 
@@ -57,28 +57,26 @@ fn ui<B: Backend>(f: &mut Frame<B>) {
 
     // Background
     let background = Block::default()
-        .borders(Borders::ALL)
         .title("foo")
-        .title_alignment(Alignment::Center)
-        .border_type(BorderType::Rounded);
+        .title_alignment(Alignment::Center);
     f.render_widget(background, size);
 
-    let chunks = Layout::default()
+    // 3 principle vertical parts
+    let vert_parts = Layout::default()
         .direction(Direction::Vertical)
-        .margin(3)
+        .margin(0)
         .constraints(
             [
                 Constraint::Percentage(25),
-                Constraint::Percentage(25),
-                Constraint::Percentage(25),
+                Constraint::Percentage(50),
                 Constraint::Percentage(25),
             ]
             .as_ref(),
         )
         .split(f.size());
 
-    // Top4
-    let top_chunks = Layout::default()
+    // Top 4 blocks
+    let top_horz = Layout::default()
         .direction(Direction::Horizontal)
         .constraints(
             [
@@ -89,44 +87,90 @@ fn ui<B: Backend>(f: &mut Frame<B>) {
             ]
             .as_ref(),
         )
-        .split(chunks[0]);
+        .split(vert_parts[0]);
 
-    // Top left inner block with green background
     let block = Block::default()
+        /*
         .title(vec![
-            Span::styled("With", Style::default().fg(Color::Yellow)),
-            Span::from(" background"),
+            Span::styled("bar", Style::default().fg(Color::Yellow)),
         ])
-        .style(Style::default().bg(Color::Green));
-    f.render_widget(block, top_chunks[0]);
+        .title_alignment(Alignment::Center)
+        .style(Style::default().bg(Color::Green))
+        */
+        .borders(Borders::ALL);
 
-    // Top right inner block with styled title aligned to the right
-    let block = Block::default()
+    let text = vec![Spans::from("foo bar")];
+    let build_block = |_title| {
+        Block::default().borders(Borders::ALL)
+        /*
+        .style(Style::default().bg(Color::White).fg(Color::Black))
         .title(Span::styled(
-            "Styled title",
-            Style::default()
-                .fg(Color::White)
-                .bg(Color::Red)
-                .add_modifier(Modifier::BOLD),
+            title,
+            Style::default().add_modifier(Modifier::BOLD),
         ))
-        .title_alignment(Alignment::Right);
-    f.render_widget(block, top_chunks[1]);
+        */
+    };
 
-    // Bottom two inner blocks
-    let bottom_chunks = Layout::default()
+    let paragraph = Paragraph::new(text.clone())
+        //.style(Style::default().bg(Color::White).fg(Color::Black))
+        .block(build_block("baz"))
+        .alignment(Alignment::Left);
+    f.render_widget(paragraph, top_horz[0]);
+
+    (1..4)
+        .into_iter()
+        .for_each(|i| f.render_widget(block.clone(), top_horz[i]));
+
+    // Middle 3 horizontal subparts
+    let mid_horz_parts = Layout::default()
         .direction(Direction::Horizontal)
+        .constraints(
+            [
+                Constraint::Percentage(25),
+                Constraint::Percentage(50),
+                Constraint::Percentage(25),
+            ]
+            .as_ref(),
+        )
+        .split(vert_parts[1]);
+
+    // Middle left 2 blocks
+    let mid_left_parts = Layout::default()
+        .direction(Direction::Vertical)
         .constraints([Constraint::Percentage(50), Constraint::Percentage(50)].as_ref())
-        .split(chunks[1]);
+        .split(mid_horz_parts[0]);
 
-    // Bottom left block with all default borders
-    let block = Block::default().title("With borders").borders(Borders::ALL);
-    f.render_widget(block, bottom_chunks[0]);
+    (0..2)
+        .into_iter()
+        .for_each(|i| f.render_widget(block.clone(), mid_left_parts[i]));
 
-    // Bottom right block with styled left and right border
-    let block = Block::default()
-        .title("With styled borders and doubled borders")
-        .border_style(Style::default().fg(Color::Cyan))
-        .borders(Borders::LEFT | Borders::RIGHT)
-        .border_type(BorderType::Double);
-    f.render_widget(block, bottom_chunks[1]);
+    // Center big block
+    f.render_widget(block.clone(), mid_horz_parts[1]);
+
+    // Middle left 2 blocks
+    let mid_right_parts = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([Constraint::Percentage(50), Constraint::Percentage(50)].as_ref())
+        .split(mid_horz_parts[2]);
+    (0..2)
+        .into_iter()
+        .for_each(|i| f.render_widget(block.clone(), mid_right_parts[i]));
+
+    // Botton 4 blocks
+    let bottom_horz = Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints(
+            [
+                Constraint::Percentage(25),
+                Constraint::Percentage(25),
+                Constraint::Percentage(25),
+                Constraint::Percentage(25),
+            ]
+            .as_ref(),
+        )
+        .split(vert_parts[2]);
+
+    (0..4)
+        .into_iter()
+        .for_each(|i| f.render_widget(block.clone(), bottom_horz[i]));
 }
