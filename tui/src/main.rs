@@ -109,12 +109,13 @@ fn ui<B: Backend>(f: &mut Frame<B>) {
         xiaoxian: String::new(),
         stars_a: vec_string!("武曲地", "天相庙"),
         stars_b: vec_string!("天刑", "蜚廉", "天厨"),
+        stars_c: vec_string!("病", "飞廉", "白虎", "指背"),
         oppo: 0,
         tri: (0, 0),
     };
 
     //let text = vec![Spans::from("foo bar")];
-    let mut text: Vec<_> = palais
+    let mut text_1: Vec<_> = palais
         .stars_a
         .clone()
         .into_iter()
@@ -124,9 +125,21 @@ fn ui<B: Backend>(f: &mut Frame<B>) {
         .stars_b
         .clone()
         .into_iter()
-        .map(|s| Spans::from(Span::styled(s, Style::default().fg(Color::White))))
+        .map(|s| Spans::from(Span::styled(s, Style::default().fg(Color::Yellow))))
         .collect();
-    text.extend(text_2);
+    text_1.extend(text_2);
+
+    let text_3: Vec<_> = palais
+        .stars_c
+        .clone()
+        .into_iter()
+        .map(|s| {
+            Spans::from(Span::styled(
+                format!("                                      {}", s),
+                Style::default().fg(Color::White),
+            ))
+        })
+        .collect();
 
     let build_block = |title| {
         Block::default()
@@ -140,7 +153,7 @@ fn ui<B: Backend>(f: &mut Frame<B>) {
             ))
     };
 
-    let paragraph = Paragraph::new(text.clone())
+    let paragraph = Paragraph::new(text_1.clone())
         //.style(Style::default().bg(Color::White).fg(Color::Black))
         .block(build_block(&palais.name))
         .alignment(Alignment::Left);
@@ -197,6 +210,12 @@ fn ui<B: Backend>(f: &mut Frame<B>) {
             .as_ref(),
         )
         .split(vert_parts[2]);
+
+    let paragraph_1 = Paragraph::new(text_3.clone())
+        //.style(Style::default().bg(Color::White).fg(Color::Black))
+        .block(build_block(&palais.name))
+        .alignment(Alignment::Left);
+    f.render_widget(paragraph_1, bottom_horz[0]);
 
     f.render_widget(paragraph, bottom_horz[0]);
 

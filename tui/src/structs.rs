@@ -6,6 +6,7 @@ pub struct Palais {
     pub xiaoxian: String,
     pub stars_a: Vec<String>,
     pub stars_b: Vec<String>,
+    pub stars_c: Vec<String>,
     pub oppo: usize,
     pub tri: (usize, usize),
 }
