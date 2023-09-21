@@ -4,14 +4,16 @@ use crossterm::{
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
 use std::{error::Error, io};
+use test_macro::vec_string;
 use tui::{
     backend::{Backend, CrosstermBackend},
     layout::{Alignment, Constraint, Direction, Layout},
     style::{Color, Modifier, Style},
     text::{Span, Spans},
-    widgets::{Block, BorderType, Borders, Paragraph},
+    widgets::{Block, Borders, Paragraph},
     Frame, Terminal,
 };
+use tui_test::structs::Palais;
 
 fn main() -> Result<(), Box<dyn Error>> {
     // 1) prepare
@@ -99,25 +101,51 @@ fn ui<B: Backend>(f: &mut Frame<B>) {
         */
         .borders(Borders::ALL);
 
-    let text = vec![Spans::from("foo bar")];
-    let build_block = |_title| {
-        Block::default().borders(Borders::ALL)
-        /*
-        .style(Style::default().bg(Color::White).fg(Color::Black))
-        .title(Span::styled(
-            title,
-            Style::default().add_modifier(Modifier::BOLD),
-        ))
-        */
+    let palais = Palais {
+        id: 0,
+        name: "命宫".to_string(),
+        gz_name: "戊寅".to_string(),
+        daxian: "5-14".to_string(),
+        xiaoxian: String::new(),
+        stars_a: vec_string!("武曲地", "天相庙"),
+        stars_b: vec_string!("天刑", "蜚廉", "天厨"),
+        oppo: 0,
+        tri: (0, 0),
+    };
+
+    //let text = vec![Spans::from("foo bar")];
+    let mut text: Vec<_> = palais
+        .stars_a
+        .clone()
+        .into_iter()
+        .map(|s| Spans::from(Span::styled(s, Style::default().fg(Color::Red))))
+        .collect();
+    let text_2: Vec<_> = palais
+        .stars_b
+        .clone()
+        .into_iter()
+        .map(|s| Spans::from(Span::styled(s, Style::default().fg(Color::White))))
+        .collect();
+    text.extend(text_2);
+
+    let build_block = |title| {
+        Block::default()
+            .borders(Borders::ALL)
+            //.style(Style::default().bg(Color::White).fg(Color::Blue))
+            .style(Style::default().fg(Color::Blue))
+            .title_alignment(Alignment::Center)
+            .title(Span::styled(
+                title,
+                Style::default().add_modifier(Modifier::BOLD),
+            ))
     };
 
     let paragraph = Paragraph::new(text.clone())
         //.style(Style::default().bg(Color::White).fg(Color::Black))
-        .block(build_block("baz"))
+        .block(build_block(&palais.name))
         .alignment(Alignment::Left);
-    f.render_widget(paragraph, top_horz[0]);
 
-    (1..4)
+    (0..4)
         .into_iter()
         .for_each(|i| f.render_widget(block.clone(), top_horz[i]));
 
@@ -170,7 +198,9 @@ fn ui<B: Backend>(f: &mut Frame<B>) {
         )
         .split(vert_parts[2]);
 
-    (0..4)
+    f.render_widget(paragraph, bottom_horz[0]);
+
+    (1..4)
         .into_iter()
         .for_each(|i| f.render_widget(block.clone(), bottom_horz[i]));
 }
