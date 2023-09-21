@@ -1,50 +1,8 @@
 use chrono::Datelike;
-use inquire::autocompletion::{Autocomplete, Replacement};
-use inquire::error::CustomUserError;
+use ganzhi::interactive::HourCompleter;
 use inquire::{DateSelect, Text};
 use lunardate::LunarDate;
 use rust_ephemeris::lunnar::SolorDate;
-
-#[derive(Clone)]
-pub struct HourCompleter {
-    hours: Vec<String>,
-}
-
-impl HourCompleter {
-    fn filter_candidates(&self, input: &str) -> Vec<String> {
-        let pattern = input.to_lowercase();
-
-        self.hours
-            .clone()
-            .into_iter()
-            .filter(|s| s.starts_with(&pattern))
-            .collect()
-    }
-}
-
-impl Autocomplete for HourCompleter {
-    fn get_suggestions(&mut self, input: &str) -> Result<Vec<String>, CustomUserError> {
-        Ok(self.filter_candidates(input))
-    }
-
-    fn get_completion(
-        &mut self,
-        input: &str,
-        highlighted_suggestion: Option<String>,
-    ) -> Result<Replacement, CustomUserError> {
-        Ok(match highlighted_suggestion {
-            Some(suggestion) => Replacement::Some(suggestion),
-            None => {
-                let list = self.filter_candidates(input);
-                if list.len() == 0 {
-                    Replacement::None
-                } else {
-                    Replacement::Some(list[0].clone())
-                }
-            }
-        })
-    }
-}
 
 fn main() {
     let start = chrono::NaiveDate::from_ymd_opt(1990, 6, 1).unwrap();
@@ -58,11 +16,11 @@ fn main() {
     let day = chosen.day();
     let mut hour: f64 = 10.0;
 
-    let ac = HourCompleter {
+    let hc = HourCompleter {
         hours: (1..25).into_iter().map(|i| i.to_string()).collect(),
     };
     let resp = Text::new("Choose the hour: ")
-        .with_autocomplete(ac)
+        .with_autocomplete(hc)
         .prompt();
 
     match resp {

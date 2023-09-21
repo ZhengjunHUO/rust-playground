@@ -102,6 +102,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "23d2f3407d9a573d666de4b5bdf10569d73ca9478087346697dcbae6244bfbcd"
 
 [[package]]
+name = "ganzhi"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "inquire",
+ "lunardate",
+ "rust-ephemeris",
+]
+
+[[package]]
 name = "iana-time-zone"
 version = "0.1.57"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -177,16 +187,6 @@ name = "log"
 version = "0.4.20"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b5e6163cb8c49088c2c36f57875e58ccd8c87c7427f7fbd50ea6710b2f3f2e8f"
-
-[[package]]
-name = "lunar"
-version = "0.1.0"
-dependencies = [
- "chrono",
- "inquire",
- "lunardate",
- "rust-ephemeris",
-]
 
 [[package]]
 name = "lunardate"
