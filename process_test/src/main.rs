@@ -10,6 +10,7 @@ fn main() {
     //print_filtered_envs();
     //piped_cmd();
     //save_to_file();
+    //append_path_env();
 
     // Attention: the pattern arg should be quoted: "/path/to/**/*.suffix"
     let arg = env::args().nth(1);
@@ -38,6 +39,22 @@ fn print_filtered_envs() {
         .stdout(Stdio::inherit())
         .env_clear()
         .envs(&filtered_env)
+        .spawn()
+        .expect("printenv failed to start");
+}
+
+fn append_path_env() {
+    let env_dict: HashMap<String, String> = env::vars()
+        .filter(|&(ref k, _)| k == "PATH")
+        .collect();
+
+    let path = env_dict.get("PATH").unwrap();
+
+    Command::new("printenv")
+        .stdin(Stdio::null())
+        .stdout(Stdio::inherit())
+        .env_clear()
+        .env("PATH", format!("{}:/tmp/bin", path))
         .spawn()
         .expect("printenv failed to start");
 }
