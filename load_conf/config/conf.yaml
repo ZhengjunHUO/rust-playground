@@ -1,12 +1,15 @@
-full_name: ctn2
+full_name: ctn-test
 alias: ctn2
-serial_no: 18
+serial_no: 19
 ingress_rules:
-  l3: []
+  l3:
+    - 8.8.8.8
   l4:
   - ip: 172.17.0.2
     port: 8000
 egress_rules:
   l3:
     - 8.8.8.8
-  l4: []
+  l4:
+  - ip: 172.17.0.2
+    port: 8000
