@@ -4,8 +4,8 @@ use anyhow::Result;
 use clickhouse::{Client, Row};
 use serde::{Deserialize, Serialize};
 use serde_repr::{Deserialize_repr, Serialize_repr};
-use std::time::UNIX_EPOCH;
 use std::collections::HashMap;
+use std::time::UNIX_EPOCH;
 use tokio::runtime::Runtime;
 
 #[derive(Row, Deserialize)]
@@ -56,6 +56,11 @@ struct SystemTable {
 struct TableSize {
     table: String,
     size: u64,
+}
+
+#[derive(Row, Deserialize)]
+struct FreeSpace {
+    free_space: u64,
 }
 
 fn now() -> u64 {
@@ -233,17 +238,36 @@ async fn show_create_table(client: &Client, database_name: &str, table_name: &st
     }
 }
 
-async fn calc_table_size(client: &Client) {
-    match client.query("SELECT table, sum(bytes) as size FROM system.parts WHERE active GROUP BY table").fetch_all::<TableSize>().await {
+async fn get_free_space(client: &Client) -> u64 {
+    match client
+        .query("SELECT free_space FROM system.disks")
+        .fetch_all::<FreeSpace>()
+        .await
+    {
         Ok(rows) => {
-            let rslt: HashMap<String, u64> = rows.into_iter().map(|r| (r.table, r.size)).collect();
-            println!("Get result: {:?}", rslt); 
+            let rslt: Vec<u64> = rows.into_iter().map(|r| r.free_space).collect();
+            println!("[DEBUG] Free space (in bytes): {}", rslt[0]);
+            rslt[0]
         }
         Err(e) => {
-            println!(
-                "[DEBUG] Error getting tables' size: {}",
-                e
-            );
+            panic!("Error getting disk free space: {}", e);
+        }
+    }
+}
+
+async fn calc_table_size(client: &Client) -> HashMap<String, u64> {
+    match client
+        .query("SELECT table, sum(bytes) as size FROM system.parts WHERE active GROUP BY table")
+        .fetch_all::<TableSize>()
+        .await
+    {
+        Ok(rows) => {
+            let rslt: HashMap<String, u64> = rows.into_iter().map(|r| (r.table, r.size)).collect();
+            println!("[DEBUG] Tables' size (in bytes): {:?}", rslt);
+            rslt
+        }
+        Err(e) => {
+            panic!("Error getting tables' size: {}", e);
         }
     }
 }
@@ -404,7 +428,14 @@ fn main() -> Result<()> {
     */
 
     rt.block_on(async {
-        calc_table_size(&client).await;
+        let dict = calc_table_size(&client).await;
+        let sum = dict.iter().fold(0, |acc, (_, s)| acc + s);
+        println!("[DEBUG] Sum: {}", sum);
+        if sum < get_free_space(&client).await {
+            println!("OK");
+        } else {
+            println!("KO");
+        }
     });
 
     Ok(())
