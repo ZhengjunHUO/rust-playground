@@ -5,6 +5,7 @@ use clickhouse::{Client, Row};
 use serde::{Deserialize, Serialize};
 use serde_repr::{Deserialize_repr, Serialize_repr};
 use std::time::UNIX_EPOCH;
+use std::collections::HashMap;
 use tokio::runtime::Runtime;
 
 #[derive(Row, Deserialize)]
@@ -49,6 +50,12 @@ struct ShowCreate {
 #[derive(Row, Deserialize)]
 struct SystemTable {
     engine: String,
+}
+
+#[derive(Row, Deserialize)]
+struct TableSize {
+    table: String,
+    size: u64,
 }
 
 fn now() -> u64 {
@@ -226,6 +233,21 @@ async fn show_create_table(client: &Client, database_name: &str, table_name: &st
     }
 }
 
+async fn calc_table_size(client: &Client) {
+    match client.query("SELECT table, sum(bytes) as size FROM system.parts WHERE active GROUP BY table").fetch_all::<TableSize>().await {
+        Ok(rows) => {
+            let rslt: HashMap<String, u64> = rows.into_iter().map(|r| (r.table, r.size)).collect();
+            println!("Get result: {:?}", rslt); 
+        }
+        Err(e) => {
+            println!(
+                "[DEBUG] Error getting tables' size: {}",
+                e
+            );
+        }
+    }
+}
+
 async fn is_table_sharded(client: &Client, database_name: &str, table_name: &str) -> bool {
     let query = format!(
         "select engine from system.tables where database='{}' and name='{}'",
@@ -337,7 +359,7 @@ fn main() -> Result<()> {
 
     // (3.5) Use hyper::client::Client to build a ckh client
     let client = Client::with_http_client(https_client)
-        .with_url("https://ckh-0-0.huo.io:443")
+        .with_url("https://clickhouse-0-0.huo.io:443")
         .with_database("default");
 
     let rt = Runtime::new().unwrap();
@@ -370,6 +392,7 @@ fn main() -> Result<()> {
     }
     */
 
+    /* #5 Test is table sharded
     rt.block_on(async {
         //let _ = show_tables(&client).await;
         //show_create_table(&client, "default", "shard_label_dist_endpoint_query_inspection").await
@@ -377,6 +400,11 @@ fn main() -> Result<()> {
             "{}",
             is_table_sharded(&client, "default", "shard_TechnicalBranch").await
         );
+    });
+    */
+
+    rt.block_on(async {
+        calc_table_size(&client).await;
     });
 
     Ok(())
