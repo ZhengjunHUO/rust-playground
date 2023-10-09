@@ -77,7 +77,10 @@ fn main() {
             println!("Config file's content:\n    {:?}", conf);
             let included_config_path_stub;
             match path.rsplit_once('/') {
-                Some((stub, _)) => included_config_path_stub = String::from(stub),
+                Some((stub, _)) => match stub.rsplit_once('/') {
+                    Some((trunk, _)) => included_config_path_stub = String::from(trunk),
+                    None => included_config_path_stub = String::from(stub),
+                },
                 None => included_config_path_stub = path.clone(),
             }
             println!("{}", included_config_path_stub);
@@ -86,12 +89,10 @@ fn main() {
             let rx = Regex::new(".*core.*").unwrap();
             for s in conf.global_parameters.include.iter() {
                 match rx.find(s) {
-                    Some(f) => match f.as_str().split_once('/') {
-                        Some((_, p)) => {
-                            included_config_path = format!("{}/{}", included_config_path_stub, p)
-                        }
-                        None => (),
-                    },
+                    Some(f) => {
+                        included_config_path =
+                            format!("{}/{}", included_config_path_stub, f.as_str())
+                    }
                     None => (),
                 }
             }
