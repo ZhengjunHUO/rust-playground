@@ -11,7 +11,7 @@ use network_types::{
     udp::UdpHdr,
 };
 
-#[xdp(name = "aya_xdp")]
+#[xdp]
 pub fn aya_xdp(ctx: XdpContext) -> u32 {
     match try_aya_xdp(ctx) {
         Ok(ret) => ret,
