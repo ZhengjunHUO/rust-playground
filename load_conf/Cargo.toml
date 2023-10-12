@@ -9,4 +9,5 @@ edition = "2021"
 config-file = { version = "0.2.3", default-features = false, features = ["yaml"] }
 serde = { version = "1.0.164", features = ["derive"] }
 serde_valid = "0.16.3"
+serde_yaml = "0.9.25"
 regex = "1.9.1"

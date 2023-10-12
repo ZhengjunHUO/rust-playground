@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 
 use config_file::FromConfigFile;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use serde_valid::validation::Error::Custom;
 use serde_valid::Validate;
 
@@ -13,7 +13,7 @@ fn odd_only(val: &u8) -> Result<(), serde_valid::validation::Error> {
     Ok(())
 }
 
-#[derive(Deserialize, Debug, Validate)]
+#[derive(Deserialize, Debug, Serialize, Validate)]
 struct Config {
     #[validate(
         pattern = r"^([a-zA-Z0-9-]+-)+[a-zA-Z0-9]+$",
@@ -29,7 +29,7 @@ struct Config {
     egress_rules: Rules,
 }
 
-#[derive(Deserialize, Debug, Validate)]
+#[derive(Deserialize, Debug, Serialize, Validate)]
 struct Rules {
     #[validate(min_items = 1)]
     l3: Vec<String>,
@@ -37,7 +37,7 @@ struct Rules {
     l4: Vec<L4Entry>,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Serialize)]
 struct L4Entry {
     ip: String,
     port: u16,
@@ -49,7 +49,7 @@ fn main() {
             if let Err(e) = conf.validate() {
                 println!("Validator: {}", e.to_string());
             } else {
-                println!("Config file's content:\n    {:?}", conf);
+                println!("Config file's content:\n\n{}", serde_yaml::to_string(&conf).unwrap());
             }
         }
         Err(e) => println!("Error occurred when reading the config: {:?}", e),
