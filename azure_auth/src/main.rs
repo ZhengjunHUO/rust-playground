@@ -11,8 +11,8 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let sub_id = var("AZURE_SUBSCRIPTION_ID")?;
     println!("Subscription id: {}", sub_id);
 
-    // Need also AZURE_TENANT_ID, AZURE_CLIENT_ID, AZURE_CLIENT_SECRET
-    // of Microsoft Entra ID / App registrations
+    // Need also AZURE_TENANT_ID, AZURE_CLIENT_ID, AZURE_CLIENT_SECRET of
+    // Microsoft Entra ID / App registrations, which require a Reader role assigned
     let creds = DefaultAzureCredentialBuilder::new()
         .exclude_azure_cli_credential()
         .exclude_managed_identity_credential()
@@ -23,9 +23,24 @@ async fn main() -> Result<(), Box<dyn Error>> {
         .unwrap();
     println!("{res:?}");
 
+    /*
     let url = Url::parse(&format!(
                  "https://management.azure.com/subscriptions/{sub_id}/providers/Microsoft.Storage/storageAccounts?api-version=2019-06-01"
              ))?;
+    */
+
+    let rg = var("AZURE_RESSOURCE_GROUP")?;
+    println!("Ressource group: {}", rg);
+
+    let c_name = var("AZURE_CLUSTER_NAME")?;
+    println!("Cluster name: {}", c_name);
+
+    let url = Url::parse(&format!(
+        "https://management.azure.com/subscriptions/{}/resourceGroups/{}/providers/Microsoft.ContainerService/managedClusters/{}?api-version=2023-07-01",
+        sub_id,
+        rg,
+        c_name))?
+        .to_string();
 
     let resp = reqwest::Client::new()
         .get(url)
