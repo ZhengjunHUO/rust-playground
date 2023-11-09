@@ -56,6 +56,7 @@ struct SystemTable {
 struct TableSize {
     db: String,
     table: String,
+    rows: u64,
     size: u64,
 }
 
@@ -256,15 +257,15 @@ async fn get_free_space(client: &Client) -> u64 {
     }
 }
 
-async fn calc_table_size(client: &Client) -> HashMap<(String, String), u64> {
+async fn calc_table_size(client: &Client) -> HashMap<(String, String), (u64, u64)> {
     match client
-        .query("SELECT database, table, sum(bytes_on_disk) as size FROM system.parts WHERE active GROUP BY database, table")
+        .query("SELECT database, table, sum(rows) as rows, sum(bytes_on_disk) as size FROM system.parts WHERE active GROUP BY database, table")
         .fetch_all::<TableSize>()
         .await
     {
         Ok(rows) => {
-            let rslt: HashMap<(String, String), u64> = rows.into_iter().map(|r| ((r.db, r.table), r.size)).collect();
-            println!("[DEBUG] Tables' size (in bytes): {:?}", rslt);
+            let rslt: HashMap<(String, String), (u64, u64)> = rows.into_iter().map(|r| ((r.db, r.table), (r.rows, r.size))).collect();
+            println!("[DEBUG] Tables' rows & size (in bytes): {:?}", rslt);
             rslt
         }
         Err(e) => {
@@ -431,16 +432,16 @@ fn main() -> Result<()> {
     rt.block_on(async {
         let dict = calc_table_size(&client).await;
         println!(
-            "system.trace_log size: {}",
+            "system.trace_log rows & size: {:?}",
             dict.get(&("system".to_string(), "trace_log".to_string()))
-                .unwrap_or_else(|| &0)
+                .unwrap_or_else(|| &(0, 0))
         );
         println!(
-            "system.non_exist size: {}",
+            "system.non_exist rows & size: {:?}",
             dict.get(&("system".to_string(), "non_exist".to_string()))
-                .unwrap_or_else(|| &0)
+                .unwrap_or_else(|| &(0, 0))
         );
-        let sum = dict.iter().fold(0, |acc, (_, s)| acc + s);
+        let sum = dict.iter().fold(0, |acc, (_, s)| acc + s.1);
         println!("[DEBUG] Sum: {}", sum);
         if sum < get_free_space(&client).await {
             println!("OK");
