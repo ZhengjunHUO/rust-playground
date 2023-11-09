@@ -54,6 +54,7 @@ struct SystemTable {
 
 #[derive(Row, Deserialize)]
 struct TableSize {
+    db: String,
     table: String,
     size: u64,
 }
@@ -255,14 +256,14 @@ async fn get_free_space(client: &Client) -> u64 {
     }
 }
 
-async fn calc_table_size(client: &Client) -> HashMap<String, u64> {
+async fn calc_table_size(client: &Client) -> HashMap<(String, String), u64> {
     match client
-        .query("SELECT table, sum(bytes) as size FROM system.parts WHERE active GROUP BY table")
+        .query("SELECT database, table, sum(bytes_on_disk) as size FROM system.parts WHERE active GROUP BY database, table")
         .fetch_all::<TableSize>()
         .await
     {
         Ok(rows) => {
-            let rslt: HashMap<String, u64> = rows.into_iter().map(|r| (r.table, r.size)).collect();
+            let rslt: HashMap<(String, String), u64> = rows.into_iter().map(|r| ((r.db, r.table), r.size)).collect();
             println!("[DEBUG] Tables' size (in bytes): {:?}", rslt);
             rslt
         }
@@ -429,6 +430,16 @@ fn main() -> Result<()> {
 
     rt.block_on(async {
         let dict = calc_table_size(&client).await;
+        println!(
+            "system.trace_log size: {}",
+            dict.get(&("system".to_string(), "trace_log".to_string()))
+                .unwrap_or_else(|| &0)
+        );
+        println!(
+            "system.non_exist size: {}",
+            dict.get(&("system".to_string(), "non_exist".to_string()))
+                .unwrap_or_else(|| &0)
+        );
         let sum = dict.iter().fold(0, |acc, (_, s)| acc + s);
         println!("[DEBUG] Sum: {}", sum);
         if sum < get_free_space(&client).await {
