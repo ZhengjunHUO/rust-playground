@@ -3,6 +3,11 @@ use azure_identity::DefaultAzureCredentialBuilder;
 use std::{env::var, error::Error};
 use url::Url;
 
+/* The AKS account used here need to be associated to a custom role with following permissions:
+    "Microsoft.ContainerService/managedClusters/start/action",
+    "Microsoft.ContainerService/managedClusters/stop/action",
+    "Microsoft.ContainerService/managedClusters/read"
+*/
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
     env_logger::init();
@@ -23,12 +28,6 @@ async fn main() -> Result<(), Box<dyn Error>> {
         .unwrap();
     println!("{res:?}");
 
-    /*
-    let url = Url::parse(&format!(
-                 "https://management.azure.com/subscriptions/{sub_id}/providers/Microsoft.Storage/storageAccounts?api-version=2019-06-01"
-             ))?;
-    */
-
     let rg = var("AZURE_RESSOURCE_GROUP")?;
     println!("Ressource group: {}", rg);
 
@@ -36,7 +35,9 @@ async fn main() -> Result<(), Box<dyn Error>> {
     println!("Cluster name: {}", c_name);
 
     let url = Url::parse(&format!(
+        //"https://management.azure.com/subscriptions/{sub_id}/providers/Microsoft.Storage/storageAccounts?api-version=2019-06-01"
         "https://management.azure.com/subscriptions/{}/resourceGroups/{}/providers/Microsoft.ContainerService/managedClusters/{}?api-version=2023-07-01",
+        //"https://management.azure.com/subscriptions/{}/resourceGroups/{}/providers/Microsoft.ContainerService/managedClusters/{}/start?api-version=2023-07-01",
         sub_id,
         rg,
         c_name))?
@@ -44,6 +45,9 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     let resp = reqwest::Client::new()
         .get(url)
+        // when using POST, should specify explicitly the Content-Length in header
+        //.post(url)
+        //.header("Content-Length", 0)
         .header("Authorization", format!("Bearer {}", res.token.secret()))
         .send()
         .await?
