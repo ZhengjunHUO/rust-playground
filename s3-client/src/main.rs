@@ -2,11 +2,12 @@
 
 use anyhow::{bail, Result};
 use async_recursion::async_recursion;
-use log::debug;
 use s3::creds::Credentials;
 use s3::region::Region;
 use s3::Bucket;
 use std::env;
+use std::fs::File;
+use std::io::Write;
 
 async fn prepare_client(bucket_name: String) -> Result<Bucket> {
     let access_key = env::var("GCS_ACCESS_KEY")?;
@@ -182,7 +183,7 @@ async fn get_obj(bucket: &Bucket, path: String) -> Result<String> {
     match bucket.get_object(path).await {
         Ok(resp) => {
             let rslt = resp.to_string()?;
-            debug!("Object retrieved [{}]: {}", resp.status_code(), rslt);
+            //println!("Object retrieved [{}]: {}", resp.status_code(), rslt);
             Ok(rslt)
         }
         Err(e) => {
@@ -224,6 +225,12 @@ async fn del_obj(bucket: &Bucket, path: String) -> Result<()> {
     }
 }
 
+fn write_to_file(file_name: &str, content: &str) -> Result<()> {
+    let mut file = File::create(file_name)?;
+    file.write_all(content.as_bytes())?;
+    Ok(())
+}
+
 #[tokio::main]
 async fn main() -> Result<()> {
     /*
@@ -248,9 +255,11 @@ async fn main() -> Result<()> {
     let bucket = create_resp.bucket;
     */
     let bucket_name = std::env::args().nth(1).expect("No bucket name given");
-    let path = std::env::args()
-        .nth(2)
-        .expect("The object's path is required");
+    /*
+        let path = std::env::args()
+            .nth(2)
+            .expect("The object's path is required");
+    */
     let bucket = prepare_client(bucket_name).await?;
     //create_objs(&bucket).await
     //crud(&bucket).await
@@ -267,12 +276,12 @@ async fn main() -> Result<()> {
     }
     */
 
-    /*
-    let path_to_file = "shard_rafal_logging/latest";
-    let content = b"202309012345";
-    put_obj(&bucket, String::from(path_to_file), content).await?;
-    get_obj(&bucket, String::from(path_to_file)).await?;
-    */
+    // put_obj(&bucket, String::from(path_to_file), content).await?;
+
+    let path_to_file = "psql-dump/202311071020.sql";
+    let content = get_obj(&bucket, String::from(path_to_file)).await?;
+    write_to_file("test.sql", &content)?;
+    println!("Done");
 
     /*
     let path_to_file = "empty/shard_rafal_logging_latest";
@@ -284,7 +293,7 @@ async fn main() -> Result<()> {
 
     //del_obj_recursive(&bucket, String::from("shard_rafal_logging_latest")).await;
     //del_obj_recursive(&bucket, path).await?;
-    list_obj_recursive(&bucket, path, 3, String::default()).await?;
+    //list_obj_recursive(&bucket, path, 3, String::default()).await?;
 
     Ok(())
 }
