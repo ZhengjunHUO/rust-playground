@@ -22,6 +22,7 @@ fn main() {
         Some(String::from("rustacean"))
     );
     assert_eq!(Some(&88).cloned(), Some(88));
+    // 1c) Option<T> to &T: x.as_ref().unwrap()
 
     // 2) String to Vec<u8> (String consumed)
     //let buf: Vec<u8> = String::from("TrustRust").into_bytes();
