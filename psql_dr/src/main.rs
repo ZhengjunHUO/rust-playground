@@ -4,14 +4,17 @@ use std::fs::{self, File};
 use std::process::{Command, Stdio};
 
 fn main() -> Result<()> {
-    dump_sql(
-        "postgresql://user:pass@psql.psql-install.svc.cluster.local:5432/testdb",
-        "test",
+    // should be a superuser and its password
+    //dump_sql(
+    restore_sql(
+        "postgresql://user:password@127.0.0.1:5432/dbname",
+        "dump.sql",
     )?;
     println!("Done");
     Ok(())
 }
 
+#[allow(dead_code)]
 fn dump_sql(db_name: &str, dump_name: &str) -> Result<()> {
     let binary = "pg_dump";
     if !binary_exist_in_path(&binary) {
@@ -23,7 +26,6 @@ fn dump_sql(db_name: &str, dump_name: &str) -> Result<()> {
     let stdio = Stdio::from(file);
 
     let dump = Command::new(binary)
-        .arg("--no-owner")
         .arg(format!("--dbname={}", db_name))
         .stderr(Stdio::piped())
         .stdout(stdio)
@@ -40,6 +42,40 @@ fn dump_sql(db_name: &str, dump_name: &str) -> Result<()> {
     if error.len() > 0 {
         fs::remove_file(&file_name)?;
         bail!("while dumping the db: {}", error);
+    }
+
+    Ok(())
+}
+
+fn restore_sql(db_name: &str, dump_name: &str) -> Result<()> {
+    let binary = "psql";
+    if !binary_exist_in_path(&binary) {
+        bail!("Can't find binary {} in $PATH", binary);
+    }
+
+    let file = File::open(dump_name).unwrap();
+    let stdio = Stdio::from(file);
+
+    let psql = Command::new(binary)
+        .arg(format!("--dbname={}", db_name))
+        .stdin(stdio)
+        .stderr(Stdio::piped())
+        .stdout(Stdio::piped())
+        .spawn()
+        .expect("Restore db failed.");
+
+    let err = Command::new("cat")
+        .arg("-")
+        .stdin(psql.stderr.unwrap())
+        .output()
+        .expect("Cat error failed.");
+
+    let error: String = String::from_utf8_lossy(&err.stdout)
+        .split_inclusive('\n')
+        .filter(|s| !s.contains("already exists"))
+        .collect();
+    if error.len() > 0 {
+        bail!("while restoring the db: \n{}", error);
     }
 
     Ok(())
