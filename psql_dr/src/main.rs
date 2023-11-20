@@ -6,11 +6,51 @@ use std::process::{Command, Stdio};
 fn main() -> Result<()> {
     // should be a superuser and its password
     //dump_sql(
-    restore_sql(
-        "postgresql://user:password@127.0.0.1:5432/dbname",
-        "dump.sql",
-    )?;
+    //restore_sql(
+    //    "postgresql://user:password@127.0.0.1:5432/dbname",
+    //    "dump.sql",
+    //)?;
+    sql_client_version()?;
     println!("Done");
+    Ok(())
+}
+
+fn sql_client_version() -> Result<()> {
+    let binary = "psql";
+    if !binary_exist_in_path(&binary) {
+        bail!("Can't find binary {} in $PATH", binary);
+    }
+
+    let psql = Command::new(binary)
+        .arg("--version")
+        .stderr(Stdio::piped())
+        .stdout(Stdio::piped())
+        .spawn()
+        .expect("Get psql version failed.");
+
+    let err = Command::new("cat")
+        .arg("-")
+        .stdin(psql.stderr.unwrap())
+        .output()
+        .expect("Cat stderr failed.");
+
+    let error = String::from_utf8_lossy(&err.stdout);
+    if error.len() > 0 {
+        bail!("Error getting psql client's version: \n{}", error);
+    }
+
+    let rslt = Command::new("cat")
+        .arg("-")
+        .stdin(psql.stdout.unwrap())
+        .output()
+        .expect("Cat stdout failed.");
+
+    println!(
+        "psql client version: {}",
+        String::from_utf8_lossy(&rslt.stdout)
+            .strip_suffix("\n")
+            .unwrap()
+    );
     Ok(())
 }
 
@@ -47,6 +87,7 @@ fn dump_sql(db_name: &str, dump_name: &str) -> Result<()> {
     Ok(())
 }
 
+#[allow(dead_code)]
 fn restore_sql(db_name: &str, dump_name: &str) -> Result<()> {
     let binary = "psql";
     if !binary_exist_in_path(&binary) {
