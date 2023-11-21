@@ -70,7 +70,7 @@ fn binary_exist_in_path(bin: &str) -> bool {
 }
 
 fn grep_psql_version(raw: &str) -> Result<String> {
-    let rx = Regex::new(r" \d{2}\.\d{2} ").unwrap();
+    let rx = Regex::new(r" \d?\d\.\d\d? ").unwrap();
     match rx.find(raw) {
         Some(r) => Ok(r.as_str().trim_start().trim_end().to_owned()),
         None => bail!("Failed to grab psql client version from {} !", raw),
