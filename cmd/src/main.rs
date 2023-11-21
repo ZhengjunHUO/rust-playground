@@ -1,7 +1,10 @@
 use anyhow::{bail, Result};
 use regex::Regex;
+use std::cmp::{Ordering, PartialOrd};
 use std::ffi::OsStr;
+use std::fmt;
 use std::process::{Command, Stdio};
+use std::str::FromStr;
 use std::{env, fs};
 
 fn main() -> Result<()> {
@@ -69,10 +72,74 @@ fn binary_exist_in_path(bin: &str) -> bool {
     false
 }
 
-fn grep_psql_version(raw: &str) -> Result<String> {
+fn grep_psql_version(raw: &str) -> Result<BinVersion> {
     let rx = Regex::new(r" \d?\d\.\d\d? ").unwrap();
     match rx.find(raw) {
-        Some(r) => Ok(r.as_str().trim_start().trim_end().to_owned()),
+        Some(r) => {
+            let mut it = r.as_str().trim_start().trim_end().split('.');
+            let maj = u8::from_str(it.next().unwrap()).unwrap();
+            let min = u8::from_str(it.next().unwrap()).unwrap();
+            Ok(BinVersion::new(maj, min))
+        }
         None => bail!("Failed to grab psql client version from {} !", raw),
+    }
+}
+
+#[derive(PartialEq)]
+pub(crate) struct BinVersion {
+    major: u8,
+    minor: u8,
+}
+
+impl BinVersion {
+    fn new(major: u8, minor: u8) -> Self {
+        Self { major, minor }
+    }
+}
+
+impl fmt::Display for BinVersion {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}.{}", self.major, self.minor)
+    }
+}
+
+impl PartialOrd<Self> for BinVersion {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        if self.major < other.major {
+            return Some(Ordering::Less);
+        }
+
+        if self.major > other.major {
+            return Some(Ordering::Greater);
+        }
+
+        if self.minor < other.minor {
+            return Some(Ordering::Less);
+        }
+
+        if self.minor > other.minor {
+            return Some(Ordering::Greater);
+        }
+
+        Some(Ordering::Equal)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_version_compare() {
+        let v1 = BinVersion::new(12, 9);
+        let v2 = BinVersion::new(12, 15);
+        let v3 = BinVersion::new(9, 18);
+        let v4 = BinVersion::new(12, 9);
+
+        assert!(v1 < v2);
+        assert!(v1 > v3);
+        assert!(v2 > v3);
+        assert!(v1 == v4);
+        assert!(v4 >= v3);
     }
 }
