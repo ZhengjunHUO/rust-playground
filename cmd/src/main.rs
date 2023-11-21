@@ -1,15 +1,27 @@
 use anyhow::{bail, Result};
+use regex::Regex;
 use std::ffi::OsStr;
 use std::process::{Command, Stdio};
 use std::{env, fs};
 
 fn main() -> Result<()> {
-    println!("{}", exec_cmd("psql", ["--version"])?);
-    println!("{}", exec_cmd("psql", ["--dbname=postgresql://postgres:pwd@127.0.0.1:31000/dbname", "-t", "-c", "SELECT version();"])?);
+    let raw_client = exec_cmd("psql", ["--version"])?;
+    println!("psql client verion: [{}]", grep_psql_version(&raw_client)?);
+
+    let raw_server = exec_cmd(
+        "psql",
+        [
+            "--dbname=postgresql://postgres:pwd@127.0.0.1:31000/dbname",
+            "-t",
+            "-c",
+            "SELECT version();",
+        ],
+    )?;
+    println!("psql server verion: [{}]", grep_psql_version(&raw_server)?);
     Ok(())
 }
 
-pub fn exec_cmd<T, S>(bin: &str, args: T) -> Result<String>
+fn exec_cmd<T, S>(bin: &str, args: T) -> Result<String>
 where
     T: IntoIterator<Item = S>,
     S: AsRef<OsStr>,
@@ -45,7 +57,7 @@ where
 }
 
 /// Check if binary exists in environment variable $PATH
-pub(crate) fn binary_exist_in_path(bin: &str) -> bool {
+fn binary_exist_in_path(bin: &str) -> bool {
     if let Ok(path) = env::var("PATH") {
         for path in path.split(":") {
             let path_to_bin = format!("{}/{}", path, bin);
@@ -55,4 +67,12 @@ pub(crate) fn binary_exist_in_path(bin: &str) -> bool {
         }
     }
     false
+}
+
+fn grep_psql_version(raw: &str) -> Result<String> {
+    let rx = Regex::new(r" \d{2}\.\d{2} ").unwrap();
+    match rx.find(raw) {
+        Some(r) => Ok(r.as_str().trim_start().trim_end().to_owned()),
+        None => bail!("Failed to grab psql client version from {} !", raw),
+    }
 }
