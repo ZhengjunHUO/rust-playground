@@ -65,6 +65,9 @@ fn main() {
 
     // 8) String to int
     assert_eq!(String::from("18").parse::<usize>().unwrap(), 18);
+
+    // 8) &str to int
+    assert_eq!(u8::from_str("26").unwrap(), 26);
 }
 
 // Vec<u8> to Ipv4Addr
