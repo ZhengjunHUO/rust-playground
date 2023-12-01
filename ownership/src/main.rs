@@ -68,6 +68,8 @@ fn main() {
     assert!(rc_str_a == rc_str_c);
     // 值相同但是地址不同
     assert!(!Rc::ptr_eq(&rc_str_a, &rc_str_c));
+
+    test_option();
 }
 
 fn get_len(s: String) -> (String, usize) {
@@ -85,4 +87,19 @@ fn modif_str_ch(s: &mut String) {
 
 fn modif_str_en(s: &mut String) {
     s.push_str(" world!");
+}
+
+fn print(v: Option<&str>) {
+    match v {
+        Some(s) => println!("Got some {}", s),
+        None => println!("Got None"),
+    }
+}
+
+fn test_option() {
+    let s = String::from("Rustacean");
+    let v = Some(s.as_str());
+    print(v);
+    print(v);
+    print(v);
 }
