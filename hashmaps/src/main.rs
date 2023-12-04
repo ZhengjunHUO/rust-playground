@@ -36,4 +36,13 @@ fn main() {
     }
 
     println!("counter: {:?}", counter);
+
+    let mut dict_test: HashMap<String, (u64, u64)> = HashMap::new();
+    dict_test.insert("Rustacean".to_owned(), (6, 9));
+    assert_eq!(dict_test.get("rusty"), None);
+    assert_eq!(dict_test.get("Rustacean"), Some(&(6, 9)));
+    match dict_test.get("Rustacean") {
+        None => unreachable!(),
+        Some(&t) => assert_eq!(t, (6, 9)),
+    }
 }
