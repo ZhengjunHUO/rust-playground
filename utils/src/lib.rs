@@ -21,9 +21,9 @@ mod tests {
 
     #[test]
     fn test_size_to_human_readable() {
-        assert_eq!(size_to_human_readable(1024), "1.00 KB".to_owned());
-        assert_eq!(size_to_human_readable(892), "892 byte(s)".to_owned());
-        assert_eq!(size_to_human_readable(93111441), "88.80 MB".to_owned());
-        assert_eq!(size_to_human_readable(4927586304), "4.59 GB".to_owned());
+        assert_eq!(&size_to_human_readable(1024), "1.00 KB");
+        assert_eq!(&size_to_human_readable(892), "892 byte(s)");
+        assert_eq!(&size_to_human_readable(93111441), "88.80 MB");
+        assert_eq!(&size_to_human_readable(4927586304), "4.59 GB");
     }
 }
