@@ -1,5 +1,5 @@
-use crate::models::init_demo_db;
-use crate::models::{Candidate, CandidateList};
+use crate::handlers::{dummy_handle_request, print_all, update_candidate};
+use crate::models::{init_demo_db, Candidate, CandidateList};
 use warp::Filter;
 
 pub fn all_routes() -> impl Filter<Extract = (impl warp::Reply,), Error = warp::Rejection> + Clone {
@@ -55,31 +55,6 @@ fn get_dummy() -> impl Filter<Extract = (impl warp::Reply,), Error = warp::Rejec
     warp::get()
         .and(warp::path!("dummy"))
         .then(|| dummy_handle_request())
-}
-
-fn update_candidate(name: &str, votes: u32, cands: CandidateList) -> String {
-    let mut guard = cands.lock().unwrap();
-    guard
-        .entry(name.to_string())
-        .and_modify(|sum| *sum += votes)
-        .or_insert(votes);
-    println!("[DEBUG] {:?}", guard);
-    format!("{} got {} vote(s) !\n", name, *guard.get(name).unwrap())
-}
-
-fn print_all(cands: CandidateList) -> String {
-    let guard = cands.lock().unwrap();
-    guard
-        .iter()
-        .map(|(name, sum)| format!("{} currently has {} vote(s) !\n", name, sum))
-        .collect::<String>()
-}
-
-async fn dummy_handle_request() -> Result<impl warp::Reply, std::convert::Infallible> {
-    use std::{thread, time};
-    thread::sleep(time::Duration::from_secs(3));
-    let resp = String::from("Done");
-    Ok(warp::reply::json(&resp))
 }
 
 #[cfg(test)]

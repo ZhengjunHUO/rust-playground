@@ -9,3 +9,4 @@ edition = "2021"
 warp = "0.3.6"
 tokio = { version = "1", features = ["macros", "rt-multi-thread", "sync"] }
 serde = { version = "1.0.164", features = ["derive"] }
+lazy_static = "1.4.0"
