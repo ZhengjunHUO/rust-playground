@@ -1,5 +1,24 @@
+use crate::models::init_demo_db;
 use crate::models::{Candidate, CandidateList};
 use warp::Filter;
+
+pub fn all_routes() -> impl Filter<Extract = (impl warp::Reply,), Error = warp::Rejection> + Clone {
+    let candidates = init_demo_db();
+
+    // Add or update candidate's vote
+    // $ curl -X POST -H "Content-Type: application/json" -d '{"name": "huo","votes": 1}' 127.0.0.1:8000/vote
+    let vote = update_votes(candidates.clone());
+
+    // Retrieve all candidates' current stats
+    // $ curl 127.0.0.1:8000/show
+    let show = show_all(candidates.clone());
+
+    // Dummy api route to simulate an async remote call
+    // $ curl 127.0.0.1:8000/dummy
+    let dummy = get_dummy();
+
+    vote.or(show).or(dummy)
+}
 
 fn with_candlist(
     list: CandidateList,
@@ -8,7 +27,7 @@ fn with_candlist(
 }
 
 /// POST /vote with json body. eg. '{"name": "foo","votes": 1}'
-pub fn update_votes(
+fn update_votes(
     db: CandidateList,
 ) -> impl Filter<Extract = (impl warp::Reply,), Error = warp::Rejection> + Clone {
     warp::post()
@@ -22,13 +41,20 @@ pub fn update_votes(
 }
 
 /// GET /show
-pub fn show_all(
+fn show_all(
     db: CandidateList,
 ) -> impl Filter<Extract = (impl warp::Reply,), Error = warp::Rejection> + Clone {
     warp::get()
         .and(warp::path!("show"))
         .and(with_candlist(db))
         .map(|candlist: CandidateList| print_all(candlist))
+}
+
+/// GET /dummy
+fn get_dummy() -> impl Filter<Extract = (impl warp::Reply,), Error = warp::Rejection> + Clone {
+    warp::get()
+        .and(warp::path!("dummy"))
+        .then(|| dummy_handle_request())
 }
 
 fn update_candidate(name: &str, votes: u32, cands: CandidateList) -> String {
@@ -47,6 +73,13 @@ fn print_all(cands: CandidateList) -> String {
         .iter()
         .map(|(name, sum)| format!("{} currently has {} vote(s) !\n", name, sum))
         .collect::<String>()
+}
+
+async fn dummy_handle_request() -> Result<impl warp::Reply, std::convert::Infallible> {
+    use std::{thread, time};
+    thread::sleep(time::Duration::from_secs(3));
+    let resp = String::from("Done");
+    Ok(warp::reply::json(&resp))
 }
 
 #[cfg(test)]
