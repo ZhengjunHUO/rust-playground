@@ -1,4 +1,4 @@
-use crate::handlers::{dummy_handle_request, print_all, update_candidate};
+use crate::handlers::{check_status, dummy_handle_request, print_all, update_candidate};
 use crate::models::{init_demo_db, Candidate, CandidateList};
 use warp::Filter;
 
@@ -17,7 +17,11 @@ pub fn all_routes() -> impl Filter<Extract = (impl warp::Reply,), Error = warp::
     // $ curl 127.0.0.1:8000/dummy
     let dummy = get_dummy();
 
-    vote.or(show).or(dummy)
+    // Check if the dummy api is still working
+    // $ 127.0.0.1:8000/status
+    let status = status();
+
+    vote.or(show).or(dummy).or(status)
 }
 
 fn with_candlist(
@@ -55,6 +59,13 @@ fn get_dummy() -> impl Filter<Extract = (impl warp::Reply,), Error = warp::Rejec
     warp::get()
         .and(warp::path!("dummy"))
         .then(|| dummy_handle_request())
+}
+
+/// GET /status
+fn status() -> impl Filter<Extract = (impl warp::Reply,), Error = warp::Rejection> + Clone {
+    warp::get()
+        .and(warp::path!("status"))
+        .map(|| check_status())
 }
 
 #[cfg(test)]

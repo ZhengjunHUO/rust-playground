@@ -47,6 +47,17 @@ pub(crate) async fn dummy_handle_request() -> Result<impl warp::Reply, std::conv
     Ok(reply::with_status("Done", StatusCode::OK))
 }
 
+pub(crate) fn check_status() -> Result<impl warp::Reply, std::convert::Infallible> {
+    if *IS_WORKING.lock().unwrap() {
+        Ok(reply::with_status(
+            "Still working, try later !",
+            StatusCode::TOO_MANY_REQUESTS,
+        ))
+    } else {
+        Ok(reply::with_status("Idle", StatusCode::OK))
+    }
+}
+
 pub async fn error_handler(err: Rejection) -> Result<impl Reply, std::convert::Infallible> {
     if err.is_not_found() {
         Ok(reply::with_status(
