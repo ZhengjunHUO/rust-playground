@@ -17,6 +17,9 @@ fn main() {
 
     // Decrypt
     let plaintext = cipher.decrypt(&nonce, ciphered.as_ref()).unwrap();
-    println!("plantext: {:?}", String::from_utf8_lossy(plaintext.as_ref()));
+    println!(
+        "plantext: {:?}",
+        String::from_utf8_lossy(plaintext.as_ref())
+    );
     assert_eq!(&plaintext, msg);
 }

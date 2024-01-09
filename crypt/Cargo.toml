@@ -8,3 +8,4 @@ edition = "2021"
 [dependencies]
 aes-gcm = "0.10.3"
 hex = "0.4.3"
+base64 = "0.21.6"
