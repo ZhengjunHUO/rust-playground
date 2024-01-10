@@ -1,5 +1,6 @@
 use crate::handlers::{check_status, dummy_handle_request, print_all, update_candidate};
 use crate::models::{init_demo_db, Candidate, CandidateList};
+use reqwest::Client;
 use warp::Filter;
 
 pub fn all_routes() -> impl Filter<Extract = (impl warp::Reply,), Error = warp::Rejection> + Clone {
@@ -50,8 +51,50 @@ fn show_all(
 ) -> impl Filter<Extract = (impl warp::Reply,), Error = warp::Rejection> + Clone {
     warp::get()
         .and(warp::path!("show"))
+        .and(warp::header::optional::<String>("authorization"))
         .and(with_candlist(db))
-        .map(|candlist: CandidateList| print_all(candlist))
+        .then(|auth: Option<String>, candlist: CandidateList| async {
+            match auth {
+                None => String::from("No token provided"),
+                Some(text) => {
+                    //println!("In header: {}", text);
+                    if !text.starts_with("Bearer ") {
+                        return String::from("Expect a Bearer token");
+                    }
+
+                    let endpoint_rslt = std::env::var("AUTH_ENDPOINT");
+                    if endpoint_rslt.is_err() {
+                        return String::from("Env var AUTH_ENDPOINT not set !");
+                    }
+                    let (_, token) = text.split_at(7);
+                    //println!("Token: {}", token);
+                    let client = Client::new();
+                    let res = client
+                        .get(endpoint_rslt.unwrap())
+                        .bearer_auth(token)
+                        .send()
+                        .await;
+                    match res {
+                        Ok(resp) => match resp.status().as_u16() {
+                            200 => print_all(candlist),
+                            401 => {
+                                return String::from(
+                                    "Failed to authorize, please use a valid token",
+                                )
+                            }
+                            _ => {
+                                return format!(
+                                    "Unexpected error: [code {}] {}",
+                                    resp.status().as_u16(),
+                                    resp.text().await.unwrap()
+                                )
+                            }
+                        },
+                        Err(e) => return format!("Error occurred: {}", e),
+                    }
+                }
+            }
+        })
 }
 
 /// GET /dummy
