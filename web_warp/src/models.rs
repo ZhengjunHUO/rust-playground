@@ -22,3 +22,13 @@ pub fn init_demo_db() -> CandidateList {
         (String::from("fufu"), 0),
     ])))
 }
+
+#[derive(Debug)]
+pub(crate) struct InvalidToken;
+
+impl warp::reject::Reject for InvalidToken {}
+
+#[derive(Debug)]
+pub(crate) struct MissingEnvVar;
+
+impl warp::reject::Reject for MissingEnvVar {}

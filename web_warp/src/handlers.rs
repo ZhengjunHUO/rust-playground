@@ -1,20 +1,10 @@
-//use anyhow::{bail, Result};
-use crate::models::{CandidateList, IS_WORKING};
+use crate::crypto::decrypt_token;
+use crate::models::{CandidateList, InvalidToken, MissingEnvVar, IS_WORKING};
 use reqwest::Client;
 use warp::{
     body::BodyDeserializeError, http::StatusCode, reject, reject::MethodNotAllowed, reply, Filter,
     Rejection, Reply,
 };
-
-#[derive(Debug)]
-struct InvalidToken;
-
-impl warp::reject::Reject for InvalidToken {}
-
-#[derive(Debug)]
-struct MissingEnvVar;
-
-impl warp::reject::Reject for MissingEnvVar {}
 
 pub(crate) fn with_candlist(
     list: CandidateList,
@@ -40,9 +30,15 @@ fn retrieve_token() -> impl Filter<Extract = (String,), Error = Rejection> + Cop
                     return Err(reject::custom(InvalidToken));
                 }
 
-                let (_, token) = text.split_at(7);
-                println!("[DEBUG] Recv token: {}", token);
-                return Ok(token.to_owned());
+                let (_, raw_token) = text.split_at(7);
+
+                match decrypt_token(raw_token.to_owned()) {
+                    Ok(token) => {
+                        println!("[DEBUG] Recv token: {}", token);
+                        return Ok(token);
+                    }
+                    Err(e) => return Err(e),
+                }
             }
         }
     })
@@ -78,7 +74,7 @@ async fn verify_token(token: String) -> Result<(), Rejection> {
             }
         },
         Err(e) => {
-            println!("[DEBUG] Error occurred: {}", e);
+            println!("[DEBUG] Error occurred during introspection: {}", e);
             return Err(reject::custom(InvalidToken));
         }
     }
