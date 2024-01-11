@@ -1,7 +1,80 @@
+//use anyhow::{bail, Result};
 use crate::models::{CandidateList, IS_WORKING};
+use reqwest::Client;
 use warp::{
-    body::BodyDeserializeError, http::StatusCode, reject::MethodNotAllowed, reply, Rejection, Reply,
+    body::BodyDeserializeError, http::StatusCode, reject, reject::MethodNotAllowed, reply, Filter,
+    Rejection, Reply,
 };
+
+#[derive(Debug)]
+struct InvalidToken;
+
+impl warp::reject::Reject for InvalidToken {}
+
+#[derive(Debug)]
+struct MissingEnvVar;
+
+impl warp::reject::Reject for MissingEnvVar {}
+
+pub(crate) fn with_candlist(
+    list: CandidateList,
+) -> impl Filter<Extract = (CandidateList,), Error = std::convert::Infallible> + Clone {
+    warp::any().map(move || list.clone())
+}
+
+pub(crate) fn check_auth_header() -> impl Filter<Extract = ((),), Error = Rejection> + Copy {
+    warp::header::optional::<String>("authorization").and_then(|auth: Option<String>| async move {
+        match auth {
+            None => {
+                println!("[DEBUG] No token is provided !");
+                return Err(reject::custom(InvalidToken));
+            }
+            Some(text) => {
+                //println!("In header: {}", text);
+                if !text.starts_with("Bearer ") {
+                    println!("[DEBUG] Expect a Bearer token");
+                    return Err(reject::custom(InvalidToken));
+                }
+
+                let endpoint_rslt = std::env::var("AUTH_ENDPOINT");
+                if endpoint_rslt.is_err() {
+                    println!("[DEBUG] Env var AUTH_ENDPOINT not set !");
+                    return Err(reject::custom(MissingEnvVar));
+                }
+
+                let (_, token) = text.split_at(7);
+                println!("[DEBUG] Recv token: {}", token);
+                let client = Client::new();
+                let res = client
+                    .get(endpoint_rslt.unwrap())
+                    .bearer_auth(token)
+                    .send()
+                    .await;
+                match res {
+                    Ok(resp) => match resp.status().as_u16() {
+                        200 => return Ok(()),
+                        401 => {
+                            println!("[DEBUG] Failed to authorize, please use a valid token",);
+                            return Err(reject::custom(InvalidToken));
+                        }
+                        _ => {
+                            println!(
+                                "[DEBUG] Unexpected error: [code {}] {}",
+                                resp.status().as_u16(),
+                                resp.text().await.unwrap()
+                            );
+                            return Err(reject::custom(InvalidToken));
+                        }
+                    },
+                    Err(e) => {
+                        println!("[DEBUG] Error occurred: {}", e);
+                        return Err(reject::custom(InvalidToken));
+                    }
+                }
+            }
+        }
+    })
+}
 
 pub(crate) fn update_candidate(name: &str, votes: u32, cands: CandidateList) -> String {
     let mut guard = cands.lock().unwrap();
@@ -68,6 +141,16 @@ pub async fn error_handler(err: Rejection) -> Result<impl Reply, std::convert::I
         Ok(reply::with_status(
             "Error(s) in payload !",
             StatusCode::BAD_REQUEST,
+        ))
+    } else if let Some(_e) = err.find::<MissingEnvVar>() {
+        Ok(reply::with_status(
+            "The api server is running without connection to the SSO server!",
+            StatusCode::INTERNAL_SERVER_ERROR,
+        ))
+    } else if let Some(_e) = err.find::<InvalidToken>() {
+        Ok(reply::with_status(
+            "Please provide a valid token !",
+            StatusCode::UNAUTHORIZED,
         ))
     } else if let Some(_e) = err.find::<MethodNotAllowed>() {
         Ok(reply::with_status(

@@ -1,6 +1,8 @@
-use crate::handlers::{check_status, dummy_handle_request, print_all, update_candidate};
+use crate::handlers::{
+    check_auth_header, check_status, dummy_handle_request, print_all, update_candidate,
+    with_candlist,
+};
 use crate::models::{init_demo_db, Candidate, CandidateList};
-use reqwest::Client;
 use warp::Filter;
 
 pub fn all_routes() -> impl Filter<Extract = (impl warp::Reply,), Error = warp::Rejection> + Clone {
@@ -25,18 +27,14 @@ pub fn all_routes() -> impl Filter<Extract = (impl warp::Reply,), Error = warp::
     vote.or(show).or(dummy).or(status)
 }
 
-fn with_candlist(
-    list: CandidateList,
-) -> impl Filter<Extract = (CandidateList,), Error = std::convert::Infallible> + Clone {
-    warp::any().map(move || list.clone())
-}
-
 /// POST /vote with json body. eg. '{"name": "foo","votes": 1}'
 fn update_votes(
     db: CandidateList,
 ) -> impl Filter<Extract = (impl warp::Reply,), Error = warp::Rejection> + Clone {
     warp::post()
         .and(warp::path!("vote"))
+        //.and(check_auth_header())
+        //.untuple_one()
         .and(warp::body::content_length_limit(4096))
         .and(warp::body::json())
         .and(with_candlist(db))
@@ -51,50 +49,10 @@ fn show_all(
 ) -> impl Filter<Extract = (impl warp::Reply,), Error = warp::Rejection> + Clone {
     warp::get()
         .and(warp::path!("show"))
-        .and(warp::header::optional::<String>("authorization"))
+        .and(check_auth_header())
+        .untuple_one()
         .and(with_candlist(db))
-        .then(|auth: Option<String>, candlist: CandidateList| async {
-            match auth {
-                None => String::from("No token provided"),
-                Some(text) => {
-                    //println!("In header: {}", text);
-                    if !text.starts_with("Bearer ") {
-                        return String::from("Expect a Bearer token");
-                    }
-
-                    let endpoint_rslt = std::env::var("AUTH_ENDPOINT");
-                    if endpoint_rslt.is_err() {
-                        return String::from("Env var AUTH_ENDPOINT not set !");
-                    }
-                    let (_, token) = text.split_at(7);
-                    //println!("Token: {}", token);
-                    let client = Client::new();
-                    let res = client
-                        .get(endpoint_rslt.unwrap())
-                        .bearer_auth(token)
-                        .send()
-                        .await;
-                    match res {
-                        Ok(resp) => match resp.status().as_u16() {
-                            200 => print_all(candlist),
-                            401 => {
-                                return String::from(
-                                    "Failed to authorize, please use a valid token",
-                                )
-                            }
-                            _ => {
-                                return format!(
-                                    "Unexpected error: [code {}] {}",
-                                    resp.status().as_u16(),
-                                    resp.text().await.unwrap()
-                                )
-                            }
-                        },
-                        Err(e) => return format!("Error occurred: {}", e),
-                    }
-                }
-            }
-        })
+        .map(|candlist: CandidateList| print_all(candlist))
 }
 
 /// GET /dummy
@@ -114,6 +72,7 @@ fn status() -> impl Filter<Extract = (impl warp::Reply,), Error = warp::Rejectio
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::handlers::error_handler;
     use crate::models::init_demo_db;
 
     use std::ops::Deref;
@@ -121,10 +80,10 @@ mod tests {
     #[tokio::test]
     async fn test_print_all() {
         let db = init_demo_db();
-        let filter = show_all(db);
+        let filter = show_all(db).recover(error_handler);
         let resp = warp::test::request().path("/show").reply(&filter).await;
-        assert_eq!(resp.status(), 200);
-        assert_eq!(resp.body().len(), 92);
+        assert_eq!(resp.status(), 401);
+        //assert_eq!(resp.body().len(), 92);
     }
 
     #[tokio::test]
