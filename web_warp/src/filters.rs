@@ -1,6 +1,5 @@
 use crate::handlers::{
-    check_auth_header, check_status, dummy_handle_request, print_all, update_candidate,
-    with_candlist,
+    auth_check, check_status, dummy_handle_request, print_all, update_candidate, with_candlist,
 };
 use crate::models::{init_demo_db, Candidate, CandidateList};
 use warp::Filter;
@@ -33,7 +32,7 @@ fn update_votes(
 ) -> impl Filter<Extract = (impl warp::Reply,), Error = warp::Rejection> + Clone {
     warp::post()
         .and(warp::path!("vote"))
-        //.and(check_auth_header())
+        //.and(auth_check())
         //.untuple_one()
         .and(warp::body::content_length_limit(4096))
         .and(warp::body::json())
@@ -49,7 +48,9 @@ fn show_all(
 ) -> impl Filter<Extract = (impl warp::Reply,), Error = warp::Rejection> + Clone {
     warp::get()
         .and(warp::path!("show"))
-        .and(check_auth_header())
+        .and(auth_check())
+        //.and(retrieve_token())
+        //.and_then(move |token: String| verify_token(token))
         .untuple_one()
         .and(with_candlist(db))
         .map(|candlist: CandidateList| print_all(candlist))

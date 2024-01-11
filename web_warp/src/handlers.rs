@@ -22,7 +22,11 @@ pub(crate) fn with_candlist(
     warp::any().map(move || list.clone())
 }
 
-pub(crate) fn check_auth_header() -> impl Filter<Extract = ((),), Error = Rejection> + Copy {
+pub(crate) fn auth_check() -> impl Filter<Extract = ((),), Error = Rejection> + Copy {
+    retrieve_token().and_then(move |token: String| verify_token(token))
+}
+
+fn retrieve_token() -> impl Filter<Extract = (String,), Error = Rejection> + Copy {
     warp::header::optional::<String>("authorization").and_then(|auth: Option<String>| async move {
         match auth {
             None => {
@@ -36,44 +40,48 @@ pub(crate) fn check_auth_header() -> impl Filter<Extract = ((),), Error = Reject
                     return Err(reject::custom(InvalidToken));
                 }
 
-                let endpoint_rslt = std::env::var("AUTH_ENDPOINT");
-                if endpoint_rslt.is_err() {
-                    println!("[DEBUG] Env var AUTH_ENDPOINT not set !");
-                    return Err(reject::custom(MissingEnvVar));
-                }
-
                 let (_, token) = text.split_at(7);
                 println!("[DEBUG] Recv token: {}", token);
-                let client = Client::new();
-                let res = client
-                    .get(endpoint_rslt.unwrap())
-                    .bearer_auth(token)
-                    .send()
-                    .await;
-                match res {
-                    Ok(resp) => match resp.status().as_u16() {
-                        200 => return Ok(()),
-                        401 => {
-                            println!("[DEBUG] Failed to authorize, please use a valid token",);
-                            return Err(reject::custom(InvalidToken));
-                        }
-                        _ => {
-                            println!(
-                                "[DEBUG] Unexpected error: [code {}] {}",
-                                resp.status().as_u16(),
-                                resp.text().await.unwrap()
-                            );
-                            return Err(reject::custom(InvalidToken));
-                        }
-                    },
-                    Err(e) => {
-                        println!("[DEBUG] Error occurred: {}", e);
-                        return Err(reject::custom(InvalidToken));
-                    }
-                }
+                return Ok(token.to_owned());
             }
         }
     })
+}
+
+async fn verify_token(token: String) -> Result<(), Rejection> {
+    let endpoint_rslt = std::env::var("AUTH_ENDPOINT");
+    if endpoint_rslt.is_err() {
+        println!("[DEBUG] Env var AUTH_ENDPOINT not set !");
+        return Err(reject::custom(MissingEnvVar));
+    }
+
+    let client = Client::new();
+    let res = client
+        .get(endpoint_rslt.unwrap())
+        .bearer_auth(token.clone())
+        .send()
+        .await;
+    match res {
+        Ok(resp) => match resp.status().as_u16() {
+            200 => return Ok(()),
+            401 => {
+                println!("[DEBUG] Failed to authorize, please use a valid token",);
+                return Err(reject::custom(InvalidToken));
+            }
+            _ => {
+                println!(
+                    "[DEBUG] Unexpected error: [code {}] {}",
+                    resp.status().as_u16(),
+                    resp.text().await.unwrap()
+                );
+                return Err(reject::custom(InvalidToken));
+            }
+        },
+        Err(e) => {
+            println!("[DEBUG] Error occurred: {}", e);
+            return Err(reject::custom(InvalidToken));
+        }
+    }
 }
 
 pub(crate) fn update_candidate(name: &str, votes: u32, cands: CandidateList) -> String {
