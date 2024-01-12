@@ -1,10 +1,16 @@
 use crate::handlers::{
-    auth_check, check_status, dummy_handle_request, print_all, update_candidate, with_candlist,
+    auth_check, check_status, dummy_handle_request, error_handler, print_all, update_candidate,
+    with_candlist,
 };
 use crate::models::{init_demo_db, Candidate, CandidateList};
 use warp::Filter;
 
-pub fn all_routes() -> impl Filter<Extract = (impl warp::Reply,), Error = warp::Rejection> + Clone {
+pub fn all_routes_handled(
+) -> impl Filter<Extract = (impl warp::Reply,), Error = std::convert::Infallible> + Clone {
+    all_routes().recover(error_handler)
+}
+
+fn all_routes() -> impl Filter<Extract = (impl warp::Reply,), Error = warp::Rejection> + Clone {
     let candidates = init_demo_db();
 
     // Add or update candidate's vote
