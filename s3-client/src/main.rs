@@ -8,6 +8,7 @@ use s3::Bucket;
 use std::env;
 use std::fs::File;
 use std::io::Write;
+use std::str::FromStr;
 
 async fn prepare_client(bucket_name: String) -> Result<Bucket> {
     let access_key = env::var("GCS_ACCESS_KEY")?;
@@ -20,6 +21,20 @@ async fn prepare_client(bucket_name: String) -> Result<Bucket> {
             region: "eu".to_owned(),
             endpoint: "https://storage.googleapis.com".to_owned(),
         },
+        Credentials::new(Some(&access_key), Some(&secret_key), None, None, None).unwrap(),
+    )?
+    .with_path_style())
+}
+
+async fn prepare_client_aws(bucket_name: String) -> Result<Bucket> {
+    let access_key = env::var("AWS_ACCESS_KEY")?;
+    let secret_key = env::var("AWS_SECRET_KEY")?;
+
+    // Prepare existing bucket
+    Ok(Bucket::new(
+        &bucket_name,
+        //Region::EuWest3,
+        Region::from_str("eu-west-3").unwrap(),
         Credentials::new(Some(&access_key), Some(&secret_key), None, None, None).unwrap(),
     )?
     .with_path_style())
@@ -74,7 +89,7 @@ async fn create_objs(bucket: &Bucket) -> Result<()> {
     let prefix = "test";
     let content = b"Rust rocks!";
 
-    for x in 0..100 {
+    for x in 0..10 {
         let resp = bucket
             .put_object(format!("{}{}", prefix, x), content)
             .await?;
@@ -260,8 +275,9 @@ async fn main() -> Result<()> {
             .nth(2)
             .expect("The object's path is required");
     */
-    let bucket = prepare_client(bucket_name).await?;
-    //create_objs(&bucket).await
+    //let bucket = prepare_client(bucket_name).await?;
+    let bucket = prepare_client_aws(bucket_name).await?;
+    //create_objs(&bucket).await.unwrap();
     //crud(&bucket).await
     //let _ = list_all_objs(&bucket, path).await;
     //list_all_objs(&bucket, "mtms-util/".to_string()).await
@@ -276,14 +292,14 @@ async fn main() -> Result<()> {
     }
     */
 
-    // put_obj(&bucket, String::from(path_to_file), content).await?;
+    put_obj(&bucket, String::from("test"), b"Rust rocks!").await?;
 
+    /*
     let path_to_file = "psql-dump/202311071020.sql";
     let content = get_obj(&bucket, String::from(path_to_file)).await?;
     write_to_file("test.sql", &content)?;
     println!("Done");
 
-    /*
     let path_to_file = "empty/shard_rafal_logging_latest";
     match del_obj(&bucket, String::from(path_to_file)).await {
         Ok(_) => (),
