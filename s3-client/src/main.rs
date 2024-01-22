@@ -30,11 +30,18 @@ async fn prepare_client_aws(bucket_name: String) -> Result<Bucket> {
     let access_key = env::var("AWS_ACCESS_KEY")?;
     let secret_key = env::var("AWS_SECRET_KEY")?;
 
+    let s3_region = Region::from_str("eu-west-3").unwrap();
+    println!("endpoint: {}", s3_region.endpoint());
+
     // Prepare existing bucket
     Ok(Bucket::new(
         &bucket_name,
         //Region::EuWest3,
-        Region::from_str("eu-west-3").unwrap(),
+        //Region::from_str("eu-west-3").unwrap(),
+        Region::Custom {
+            region: "eu-west-3".to_owned(),
+            endpoint: format!("https://{}.{}", bucket_name, s3_region.endpoint()),
+        },
         Credentials::new(Some(&access_key), Some(&secret_key), None, None, None).unwrap(),
     )?
     .with_path_style())
