@@ -40,7 +40,7 @@ async fn prepare_client_aws(bucket_name: String) -> Result<Bucket> {
         //Region::from_str("eu-west-3").unwrap(),
         Region::Custom {
             region: "eu-west-3".to_owned(),
-            endpoint: format!("https://{}.{}", bucket_name, s3_region.endpoint()),
+            endpoint: format!("{}", s3_region.endpoint()),
         },
         Credentials::new(Some(&access_key), Some(&secret_key), None, None, None).unwrap(),
     )?
@@ -299,7 +299,7 @@ async fn main() -> Result<()> {
     }
     */
 
-    put_obj(&bucket, String::from("test"), b"Rust rocks!").await?;
+    put_obj(&bucket, String::from("test_dir/test"), b"Rust rocks!").await?;
 
     /*
     let path_to_file = "psql-dump/202311071020.sql";
