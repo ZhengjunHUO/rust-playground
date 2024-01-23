@@ -10,37 +10,32 @@ use std::fs::File;
 use std::io::Write;
 use std::str::FromStr;
 
-async fn prepare_client(bucket_name: String) -> Result<Bucket> {
-    let access_key = env::var("GCS_ACCESS_KEY")?;
-    let secret_key = env::var("GCS_SECRET_KEY")?;
-
-    // Prepare existing bucket
-    Ok(Bucket::new(
-        &bucket_name,
-        Region::Custom {
-            region: "eu".to_owned(),
-            endpoint: "https://storage.googleapis.com".to_owned(),
-        },
-        Credentials::new(Some(&access_key), Some(&secret_key), None, None, None).unwrap(),
-    )?
-    .with_path_style())
+struct Config {
+    bucket_name: String,
+    region: String,
+    endpoint: Option<String>,
 }
 
-async fn prepare_client_aws(bucket_name: String) -> Result<Bucket> {
-    let access_key = env::var("AWS_ACCESS_KEY")?;
-    let secret_key = env::var("AWS_SECRET_KEY")?;
+async fn prepare_client(config: Config) -> Result<Bucket> {
+    let access_key = env::var("S3_ACCESS_KEY")?;
+    let secret_key = env::var("S3_SECRET_KEY")?;
 
-    let s3_region = Region::from_str("eu-west-3").unwrap();
-    println!("endpoint: {}", s3_region.endpoint());
+    let s3_endpoint;
+    if config.endpoint.is_none() {
+        let inferred_region = Region::from_str(&config.region).unwrap();
+        s3_endpoint = inferred_region.endpoint();
+    } else {
+        s3_endpoint = config.endpoint.clone().unwrap();
+    }
 
     // Prepare existing bucket
     Ok(Bucket::new(
-        &bucket_name,
+        &config.bucket_name,
         //Region::EuWest3,
         //Region::from_str("eu-west-3").unwrap(),
         Region::Custom {
-            region: "eu-west-3".to_owned(),
-            endpoint: format!("{}", s3_region.endpoint()),
+            region: config.region.clone(),
+            endpoint: s3_endpoint,
         },
         Credentials::new(Some(&access_key), Some(&secret_key), None, None, None).unwrap(),
     )?
@@ -282,8 +277,34 @@ async fn main() -> Result<()> {
             .nth(2)
             .expect("The object's path is required");
     */
-    //let bucket = prepare_client(bucket_name).await?;
-    let bucket = prepare_client_aws(bucket_name).await?;
+
+    // AWS
+    /*
+    let config = Config {
+        bucket_name: bucket_name,
+        region: "eu-west-3".to_owned(),
+        endpoint: None,
+    };
+    */
+
+    // Minio
+    /*
+    let config = Config {
+        bucket_name: bucket_name,
+        region: "eu".to_owned(),
+        endpoint: Some("http://127.0.0.1:9000".to_owned()),
+    };
+    */
+
+    // GCP
+    let config = Config {
+        bucket_name: bucket_name,
+        region: "eu".to_owned(),
+        endpoint: Some("https://storage.googleapis.com".to_owned()),
+    };
+
+    let bucket = prepare_client(config).await?;
+
     //create_objs(&bucket).await.unwrap();
     //crud(&bucket).await
     //let _ = list_all_objs(&bucket, path).await;
