@@ -248,7 +248,11 @@ async fn get_free_space(client: &Client) -> u64 {
     {
         Ok(rows) => {
             let rslt: Vec<u64> = rows.into_iter().map(|r| r.free_space).collect();
-            println!("[DEBUG] Free space (in bytes): {}", rslt[0]);
+            println!(
+                "[DEBUG] Free space: {} ({})",
+                size_to_human_readable(rslt[0]),
+                rslt[0]
+            );
             rslt[0]
         }
         Err(e) => {
@@ -331,6 +335,23 @@ fn is_empty(client: &Client, table_name: &str) -> bool {
     })
 }
 
+const UNITS: [&str; 5] = ["byte(s)", "KB", "MB", "GB", "TB"];
+
+fn size_to_human_readable(size: u64) -> String {
+    if size < 1024 {
+        return format!("{} byte(s)", size);
+    }
+
+    let mut idx = 0;
+    let mut rslt = size as f64;
+    while rslt >= 1024.0 {
+        rslt /= 1024.0;
+        idx += 1;
+    }
+
+    format!("{:.2} {}", rslt, UNITS[idx])
+}
+
 fn main() -> Result<()> {
     /* #1 HTTP only client
     let client = Client::default().with_url("https://ckh-0-0.huo.io:443");
@@ -385,7 +406,7 @@ fn main() -> Result<()> {
 
     // (3.5) Use hyper::client::Client to build a ckh client
     let client = Client::with_http_client(https_client)
-        .with_url("https://clickhouse-0-0.huo.io:443")
+        .with_url("https://ckh-0-0.huo.io:443")
         .with_database("default");
 
     let rt = Runtime::new().unwrap();
@@ -442,7 +463,11 @@ fn main() -> Result<()> {
                 .unwrap_or_else(|| &(0, 0))
         );
         let sum = dict.iter().fold(0, |acc, (_, s)| acc + s.1);
-        println!("[DEBUG] Sum: {}", sum);
+        println!(
+            "[DEBUG] Sum: {} ({} bytes)",
+            size_to_human_readable(sum),
+            sum
+        );
         if sum < get_free_space(&client).await {
             println!("OK");
         } else {
