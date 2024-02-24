@@ -1,2 +1,3 @@
 [workspace]
 members = ["aya-xdp", "aya-xdp-common", "xtask"]
+resolver = "2"
