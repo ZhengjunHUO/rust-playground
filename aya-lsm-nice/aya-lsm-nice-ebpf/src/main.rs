@@ -49,6 +49,7 @@ unsafe fn try_task_setnice(ctx: LsmContext) -> Result<i32, i32> {
 
     info!(&ctx, "Mutate nice value to {} on proc {} (target proc: {})", nice, pid, target_pid);
     if pid == target_pid && nice < 0 {
+        info!(&ctx, "Mutate nice value to {} on proc {} is not allowed !", nice, pid);
         return Err(-1);
     }
 
