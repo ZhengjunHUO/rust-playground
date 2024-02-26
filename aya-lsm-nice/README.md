@@ -7,6 +7,7 @@
 ## Build eBPF
 
 ```bash
+sudo aya-tool generate task_struct > aya-lsm-nice-ebpf/src/vmlinux.rs
 cargo xtask build-ebpf
 ```
 
