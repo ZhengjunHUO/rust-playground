@@ -1,0 +1,3 @@
+[workspace]
+members = ["xtask", "aya-kprobe-tcp", "aya-kprobe-tcp-common"]
+resolver = "2"
