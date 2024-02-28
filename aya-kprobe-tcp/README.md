@@ -7,6 +7,7 @@
 ## Build eBPF
 
 ```bash
+aya-tool generate sock sock_common > aya-kprobe-tcp-ebpf/src/vmlinux.rs
 cargo xtask build-ebpf
 ```
 
