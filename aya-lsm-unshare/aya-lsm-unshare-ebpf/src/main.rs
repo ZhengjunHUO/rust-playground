@@ -7,12 +7,7 @@
 #[allow(dead_code)]
 mod vmlinux;
 
-use aya_bpf::{
-    cty::c_int,
-    helpers::bpf_get_current_pid_tgid,
-    macros::lsm,
-    programs::LsmContext,
-};
+use aya_bpf::{cty::c_int, helpers::bpf_get_current_pid_tgid, macros::lsm, programs::LsmContext};
 use aya_bpf_bindings::helpers::{bpf_get_current_task_btf, bpf_task_pt_regs};
 //use aya_bpf_bindings::bindings::pt_regs;
 use aya_log_ebpf::info;

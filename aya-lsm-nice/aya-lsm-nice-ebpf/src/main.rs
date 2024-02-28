@@ -7,11 +7,7 @@
 #[allow(dead_code)]
 mod vmlinux;
 
-use aya_bpf::{
-    cty::c_int,
-    macros::lsm,
-    programs::LsmContext,
-};
+use aya_bpf::{cty::c_int, macros::lsm, programs::LsmContext};
 use aya_log_ebpf::info;
 use vmlinux::task_struct;
 
@@ -47,9 +43,15 @@ unsafe fn try_task_setnice(ctx: LsmContext) -> Result<i32, i32> {
     let nice: c_int = ctx.arg(1);
     let target_pid: c_int = core::ptr::read_volatile(&TARGET_PID);
 
-    info!(&ctx, "Mutate nice value to {} on proc {} (target proc: {})", nice, pid, target_pid);
+    info!(
+        &ctx,
+        "Mutate nice value to {} on proc {} (target proc: {})", nice, pid, target_pid
+    );
     if pid == target_pid && nice < 0 {
-        info!(&ctx, "Mutate nice value to {} on proc {} is not allowed !", nice, pid);
+        info!(
+            &ctx,
+            "Mutate nice value to {} on proc {} is not allowed !", nice, pid
+        );
         return Err(-1);
     }
 
