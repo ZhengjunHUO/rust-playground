@@ -36,7 +36,7 @@ impl Autocomplete for EmotionCompleter {
             Some(suggestion) => Replacement::Some(suggestion),
             None => {
                 let list = self.filter_candidates(input);
-                if list.len() == 0 {
+                if list.is_empty() {
                     Replacement::None
                 } else {
                     Replacement::Some(list[0].clone())
@@ -268,7 +268,7 @@ fn main() {
 
     let resp = Text::new("How do you feel now ?")
         .with_initial_value("rusty")
-        .with_help_message(&help)
+        .with_help_message(help)
         .with_validator(validator)
         .with_autocomplete(ac)
         .with_page_size(10)

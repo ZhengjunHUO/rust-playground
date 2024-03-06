@@ -28,6 +28,6 @@ async fn main() -> azure_core::Result<()> {
         }
     }
 
-    println!("result: {}", String::from_utf8_lossy(&result).to_string());
+    println!("result: {}", String::from_utf8_lossy(&result));
     Ok(())
 }

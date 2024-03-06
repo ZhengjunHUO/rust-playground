@@ -19,7 +19,7 @@ fn print_help() {
 
 fn binary_exist_in_path(bin: &str) -> bool {
     if let Ok(path) = env::var("PATH") {
-        for path in path.split(":") {
+        for path in path.split(':') {
             let path_to_bin = format!("{}/{}", path, bin);
             if fs::metadata(path_to_bin).is_ok() {
                 return true;
@@ -50,10 +50,10 @@ fn coverage() -> Result<()> {
 
     println!("[1] Preparing folder ...");
     let dest_dir = "coverage";
-    if fs::metadata(&dest_dir).is_ok() {
-        fs::remove_dir_all(&dest_dir)?;
+    if fs::metadata(dest_dir).is_ok() {
+        fs::remove_dir_all(dest_dir)?;
     }
-    fs::create_dir_all(&dest_dir)?;
+    fs::create_dir_all(dest_dir)?;
     println!("[1] Done.");
 
     println!("[2] Generating test coverage profiles ...");

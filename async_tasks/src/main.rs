@@ -130,8 +130,8 @@ async fn main() {
 
     println!("[main] Receiving message !");
     while let Some(msg) = rx.recv().await {
-        ind.println(format!("{}", msg));
-        if msg.find("Done").is_some() {
+        ind.println(msg.to_string());
+        if msg.contains("Done") {
             ind.inc(1);
         }
     }

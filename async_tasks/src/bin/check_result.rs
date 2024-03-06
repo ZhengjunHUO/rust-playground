@@ -65,11 +65,7 @@ async fn main() {
 
     for (i, ep) in eps.into_iter().enumerate() {
         let list = tables.clone();
-        tasks.push(tokio::spawn(handle(
-            i as u8,
-            ep,
-            list,
-        )));
+        tasks.push(tokio::spawn(handle(i as u8, ep, list)));
     }
 
     let mut rslt = Vec::with_capacity(tasks.len());
@@ -78,11 +74,14 @@ async fn main() {
     }
 
     println!("{:?}", rslt);
-    println!("{}", rslt.into_iter().fold(0, |acc, s| {
-        match s {
-            Ok(()) => acc + 1,
-            _ => acc,
-        }
-    }));
+    println!(
+        "{}",
+        rslt.into_iter().fold(0, |acc, s| {
+            match s {
+                Ok(()) => acc + 1,
+                _ => acc,
+            }
+        })
+    );
     println!("[main] All done!");
 }

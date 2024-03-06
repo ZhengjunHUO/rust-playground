@@ -1,5 +1,5 @@
-use std::io::Write;
 use std::fs::File;
+use std::io::Write;
 use trait_objects::fqs::{Cat, Feline, Mao, Neko, Tiger};
 use trait_objects::newtype::Envelope;
 use trait_objects::operator::{Binome, Offset};

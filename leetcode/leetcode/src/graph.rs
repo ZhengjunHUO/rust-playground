@@ -49,7 +49,7 @@ pub fn find_cheapest_price(n: i32, flights: Vec<Vec<i32>>, src: i32, dst: i32, k
         cost_accumulated: 0,
     });
 
-    while pq.len() > 0 {
+    while !pq.is_empty() {
         // 优先pop出累计花费最少的点
         let curr = pq.pop().unwrap();
         if curr.node_id == dst {
@@ -69,7 +69,7 @@ pub fn find_cheapest_price(n: i32, flights: Vec<Vec<i32>>, src: i32, dst: i32, k
         }
     }
 
-    return -1;
+    -1
 }
 
 #[test]
@@ -84,14 +84,14 @@ fn test_find_cheapest_price() {
 // Solve leetcode [0684] Redundant Connection
 pub fn find_redundant_connection(edges: Vec<Vec<i32>>) -> Vec<i32> {
     let n = edges.len();
-    let mut uf = UF::new((n + 1) as usize);
+    let mut uf = UF::new(n + 1);
 
-    for i in 0..n {
-        if uf.is_linked(edges[i][0] as usize, edges[i][1] as usize) {
-            return edges[i].clone();
+    for edg in edges.iter() {
+        if uf.is_linked(edg[0] as usize, edg[1] as usize) {
+            return edg.clone();
         }
 
-        uf.union(edges[i][0] as usize, edges[i][1] as usize);
+        uf.union(edg[0] as usize, edg[1] as usize);
     }
 
     vec![]

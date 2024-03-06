@@ -15,12 +15,12 @@ struct Store {
 impl Store {
     fn deliver(&mut self, order: Option<Game>) -> Game {
         // if the client don't specify the game, return the best selling game
-        let g = order.unwrap_or_else(|| self.best_selling.clone());
+        let g = order.unwrap_or(self.best_selling);
         // update stock
         self.records.entry(g).and_modify(|c| *c += 1).or_insert(1);
         if self.records.get(&g).unwrap_or(&0) >= self.records.get(&self.best_selling).unwrap_or(&0)
         {
-            self.best_selling = g.clone();
+            self.best_selling = g;
         }
         g
     }

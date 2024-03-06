@@ -30,5 +30,5 @@ fn first_word(s: &str) -> &str {
         }
     }
 
-    &s[..]
+    s
 }

@@ -62,7 +62,7 @@ where
 /// Check if binary exists in environment variable $PATH
 fn binary_exist_in_path(bin: &str) -> bool {
     if let Ok(path) = env::var("PATH") {
-        for path in path.split(":") {
+        for path in path.split(':') {
             let path_to_bin = format!("{}/{}", path, bin);
             if fs::metadata(path_to_bin).is_ok() {
                 return true;

@@ -48,6 +48,12 @@ impl Service {
     }
 }
 
+impl Default for Service {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 // state #1
 struct Manifest {}
 impl State for Manifest {

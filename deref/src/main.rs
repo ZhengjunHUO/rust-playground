@@ -12,6 +12,6 @@ fn print_generic<T: Display>(v: T) {
 fn main() {
     let pool_str = Pool::new(vec!["foo", "bar", "fufu", "baz"], 2);
     print_all(&pool_str);
-    print_generic(&*pool_str);
+    print_generic(*pool_str);
     print_generic(&pool_str as &str);
 }

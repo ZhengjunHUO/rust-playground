@@ -17,7 +17,7 @@ fn main() -> Result<()> {
 
 fn sql_client_version() -> Result<()> {
     let binary = "psql";
-    if !binary_exist_in_path(&binary) {
+    if !binary_exist_in_path(binary) {
         bail!("Can't find binary {} in $PATH", binary);
     }
 
@@ -48,7 +48,7 @@ fn sql_client_version() -> Result<()> {
     println!(
         "psql client version: {}",
         String::from_utf8_lossy(&rslt.stdout)
-            .strip_suffix("\n")
+            .strip_suffix('\n')
             .unwrap()
     );
     Ok(())
@@ -57,7 +57,7 @@ fn sql_client_version() -> Result<()> {
 #[allow(dead_code)]
 fn dump_sql(db_name: &str, dump_name: &str) -> Result<()> {
     let binary = "pg_dump";
-    if !binary_exist_in_path(&binary) {
+    if !binary_exist_in_path(binary) {
         bail!("Can't find binary {} in $PATH", binary);
     }
 
@@ -90,7 +90,7 @@ fn dump_sql(db_name: &str, dump_name: &str) -> Result<()> {
 #[allow(dead_code)]
 fn restore_sql(db_name: &str, dump_name: &str) -> Result<()> {
     let binary = "psql";
-    if !binary_exist_in_path(&binary) {
+    if !binary_exist_in_path(binary) {
         bail!("Can't find binary {} in $PATH", binary);
     }
 
@@ -115,7 +115,7 @@ fn restore_sql(db_name: &str, dump_name: &str) -> Result<()> {
         .split_inclusive('\n')
         .filter(|s| !s.contains("already exists"))
         .collect();
-    if error.len() > 0 {
+    if !error.is_empty() {
         bail!("while restoring the db: \n{}", error);
     }
 
@@ -124,7 +124,7 @@ fn restore_sql(db_name: &str, dump_name: &str) -> Result<()> {
 
 fn binary_exist_in_path(bin: &str) -> bool {
     if let Ok(path) = env::var("PATH") {
-        for path in path.split(":") {
+        for path in path.split(':') {
             let path_to_bin = format!("{}/{}", path, bin);
             if fs::metadata(path_to_bin).is_ok() {
                 return true;
