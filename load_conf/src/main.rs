@@ -47,9 +47,12 @@ fn main() {
     match Config::from_config_file("config/conf.yaml") {
         Ok(conf) => {
             if let Err(e) = conf.validate() {
-                println!("Validator: {}", e.to_string());
+                println!("Validator: {}", e);
             } else {
-                println!("Config file's content:\n\n{}", serde_yaml::to_string(&conf).unwrap());
+                println!(
+                    "Config file's content:\n\n{}",
+                    serde_yaml::to_string(&conf).unwrap()
+                );
             }
         }
         Err(e) => println!("Error occurred when reading the config: {:?}", e),

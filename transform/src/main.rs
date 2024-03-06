@@ -2,6 +2,7 @@ use std::net::Ipv4Addr;
 use std::ops::Deref;
 use std::str::FromStr;
 
+#[allow(clippy::option_as_ref_deref)]
 fn main() {
     // 1) Option<String> to Option<&str>
     let test = Some("Rusty".to_owned());

@@ -1,5 +1,4 @@
 use crossbeam_channel::{after, bounded, select, tick, Receiver};
-use ctrlc;
 use std::time::{Duration, Instant};
 
 fn main() {

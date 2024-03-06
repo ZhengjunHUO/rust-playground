@@ -73,7 +73,7 @@ fn main() {
         }
     };
 
-    match write(&args.result, &result) {
+    match write(&args.result, result) {
         Ok(_) => {
             println!(
                 "{} Result wrote to {}.",

@@ -50,6 +50,7 @@ struct SecretsBM {
     db_name: String,
 }
 
+#[allow(clippy::upper_case_acronyms)]
 #[derive(Deserialize, Debug)]
 struct SSL {
     enable: bool,
@@ -88,12 +89,8 @@ fn main() {
             let mut included_config_path = String::default();
             let rx = Regex::new(".*core.*").unwrap();
             for s in conf.global_parameters.include.iter() {
-                match rx.find(s) {
-                    Some(f) => {
-                        included_config_path =
-                            format!("{}/{}", included_config_path_stub, f.as_str())
-                    }
-                    None => (),
+                if let Some(f) = rx.find(s) {
+                    included_config_path = format!("{}/{}", included_config_path_stub, f.as_str())
                 }
             }
             println!("{}", included_config_path);

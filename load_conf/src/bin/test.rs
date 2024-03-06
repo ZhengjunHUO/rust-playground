@@ -52,7 +52,7 @@ struct Ports {
 
 fn main() {
     let path = env::args().nth(1).expect("Need a path to config file");
-    match Config::from_config_file(&path) {
+    match Config::from_config_file(path) {
         Ok(conf) => {
             println!("Config file's content:\n    {:?}", conf);
         }

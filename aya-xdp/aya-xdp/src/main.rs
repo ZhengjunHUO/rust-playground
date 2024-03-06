@@ -43,7 +43,7 @@ async fn main() -> Result<(), anyhow::Error> {
 
     let mut blacklist: HashMap<_, u32, u32> =
         HashMap::try_from(bpf.map_mut("INGRESS_FILTER").unwrap())?;
-    let banned: u32 = Ipv4Addr::new(172, 17, 0, 2).try_into()?;
+    let banned: u32 = Ipv4Addr::new(172, 17, 0, 2).into();
     blacklist.insert(banned, 0, 0)?;
 
     let program: &mut Xdp = bpf.program_mut("aya_xdp").unwrap().try_into()?;

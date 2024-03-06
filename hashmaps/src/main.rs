@@ -15,15 +15,15 @@ fn main() {
         println!("{}: {}", k, v);
     }
 
-    let bar = String::from("bar");
-    let baz = String::from("baz");
-    // bar exist, return bar's value
-    let bar_val = dict.get(&bar).copied().unwrap_or(0);
-    // baz not exist, return 0
-    let baz_val = dict.get(&baz).copied().unwrap_or(0);
+    let val1 = String::from("val1");
+    let val2 = String::from("val2");
+    // val1 exist, return val1's value
+    let val1_val = dict.get(&val1).copied().unwrap_or(0);
+    // val2 not exist, return 0
+    let val2_val = dict.get(&val2).copied().unwrap_or(0);
 
-    println!("bar's value: {}", bar_val);
-    println!("baz's value: {}", baz_val);
+    println!("val1's value: {}", val1_val);
+    println!("val2's value: {}", val2_val);
 
     let mut counter = HashMap::new();
     let text = "what is fufu ? cat ! fufu is a domestic cat .";

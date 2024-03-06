@@ -6,6 +6,7 @@ use std::path::Path;
 //use std::process::exit;
 //use std::time::{Duration, UNIX_EPOCH};
 
+#[allow(clippy::unnecessary_cast)]
 pub fn check(msg: &'static str, exit_status: c_int) -> Result<c_int> {
     if exit_status >= 0 {
         return Ok(exit_status);

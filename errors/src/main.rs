@@ -29,6 +29,7 @@ fn read_file_with_creation(filename: &str) -> Result<String, io::Error> {
                 .read(true)
                 .write(true)
                 .create(true)
+                .truncate(true)
                 .open(filename)
             {
                 Ok(mut created_file) => {

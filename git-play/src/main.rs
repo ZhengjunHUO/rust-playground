@@ -6,12 +6,11 @@ mod git;
 
 fn main() -> Result<()> {
     let path_to_repo = std::env::args()
-        .skip(1)
-        .next()
+        .nth(1)
         .expect("Wait for a path to git repo as arg");
     //let path = CString::new(path_to_repo).expect("Invalid path");
 
-    let repo = git::Repo::open(&path_to_repo)?;
+    let repo = git::Repo::open(path_to_repo)?;
     let oid = repo.reference_name_to_id("HEAD")?;
     let commit = repo.fetch_commit(&oid)?;
     let author = commit.author();

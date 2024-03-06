@@ -5,7 +5,7 @@ use std::str::FromStr;
 
 fn main() {
     // #0 Accumulate
-    let to_be_handled = vec![(4, 6), (8, 3), (2, 12)];
+    let to_be_handled = [(4, 6), (8, 3), (2, 12)];
     assert_eq!(72, to_be_handled.iter().fold(0, |acc, (a, b)| acc + a * b));
 
     // #1 Generate a vec with random value
@@ -47,7 +47,7 @@ fn main() {
     groups.insert("Fufu", vec!["fuku", "neko"]);
     groups.insert("Huo", vec!["foo", "bar", "baz"]);
 
-    let targets = vec!["Huo", "Fufu"];
+    let targets = ["Huo", "Fufu"];
     assert_eq!(
         targets.iter().flat_map(|s| &groups[s]).collect::<Vec<_>>(),
         vec![&"foo", &"bar", &"baz", &"fuku", &"neko"]
@@ -180,7 +180,7 @@ fn main() {
     tree.append("baz");
 
     assert_eq!(
-        tree.into_iter().map(|s| *s).collect::<Vec<_>>(),
+        tree.into_iter().copied().collect::<Vec<_>>(),
         // Call also call this
         //tree.iter().map(|s| *s).collect::<Vec<_>>(),
         vec!["bar", "baz", "foo", "fufu", "huo"]
@@ -292,7 +292,7 @@ where
     let mut result = 0;
     loop {
         match p.peek() {
-            Some(v) if v.is_digit(10) => {
+            Some(v) if v.is_ascii_digit() => {
                 result = result * 10 + v.to_digit(10).unwrap();
             }
             _ => return result,

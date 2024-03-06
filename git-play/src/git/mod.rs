@@ -2,7 +2,6 @@ mod raw;
 mod utils;
 
 use chrono::{DateTime, Local};
-use libc;
 use std::{
     error,
     ffi::{CString, NulError},
@@ -16,6 +15,7 @@ use std::{
     time::{Duration, UNIX_EPOCH},
 };
 
+#[allow(dead_code)]
 #[derive(Debug)]
 pub struct Error {
     code: i32,

@@ -44,11 +44,8 @@ fn do_grep() -> Result<(), Box<dyn Error>> {
 
 fn main() {
     let rslt = do_grep();
-    match rslt {
-        Err(e) => {
-            eprintln!("{}", e);
-            std::process::exit(1);
-        }
-        _ => {}
+    if let Err(e) = rslt {
+        eprintln!("{}", e);
+        std::process::exit(1);
     }
 }
