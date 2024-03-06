@@ -66,14 +66,12 @@ fn show_all(
 fn get_dummy() -> impl Filter<Extract = (impl warp::Reply,), Error = warp::Rejection> + Clone {
     warp::get()
         .and(warp::path!("dummy"))
-        .then(|| dummy_handle_request())
+        .then(dummy_handle_request)
 }
 
 /// GET /status
 fn status() -> impl Filter<Extract = (impl warp::Reply,), Error = warp::Rejection> + Clone {
-    warp::get()
-        .and(warp::path!("status"))
-        .map(|| check_status())
+    warp::get().and(warp::path!("status")).map(check_status)
 }
 
 #[cfg(test)]

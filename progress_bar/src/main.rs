@@ -1,4 +1,3 @@
-use indicatif;
 use std::{thread, time::Duration};
 
 const NUM_JOB: u64 = 10;

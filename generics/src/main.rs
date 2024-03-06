@@ -67,7 +67,7 @@ fn main() {
         p2.dist_from_zero_point()
     );
 
-    let p3 = PointX { x: "Rust", y: 3.14 };
+    let p3 = PointX { x: "Rust", y: 3.15 };
     let p4 = PointX { x: 1, y: 'x' };
     let p5 = p3.melange(p4);
     println!("after the melange p5.x = {}, p5.y = {}", p5.x, p5.y);

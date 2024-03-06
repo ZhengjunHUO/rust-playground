@@ -36,7 +36,7 @@ impl fmt::Display for Kube {
 
 impl Inspect for Kube {
     fn show_name(&self) -> String {
-        format!("{}", self.name)
+        self.name.to_string()
     }
 }
 
@@ -56,7 +56,7 @@ impl Cat {
 
 impl Inspect for Cat {
     fn show_name(&self) -> String {
-        format!("{}", self.name)
+        self.name.to_string()
     }
 
     fn info(&self) -> String {

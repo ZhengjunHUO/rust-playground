@@ -1,10 +1,7 @@
 const FIVE: i32 = 5;
 
 fn add_i32(num: Option<i32>, delta: i32) -> Option<i32> {
-    match num {
-        Some(i) => Some(i + delta),
-        None => None,
-    }
+    num.map(|i| i + delta)
 }
 
 fn get_value_i32(num: Option<i32>) -> i32 {

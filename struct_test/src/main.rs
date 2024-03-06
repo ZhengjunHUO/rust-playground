@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 #[derive(Debug)]
 struct Rectangle {
     name: String,
@@ -11,6 +13,7 @@ impl Rectangle {
     }
 
     // &self is an alias
+    #[allow(clippy::needless_arbitrary_self_type)]
     fn contains(self: &Self, rect: &Rectangle) -> bool {
         self.width >= rect.width && self.height >= rect.height
     }
@@ -95,14 +98,12 @@ fn main() {
     c.left();
     println!("Moved coordiante: {:?}", c);
 
-
     // 如果需要从结构中取出个别值，可以考虑在结构定义使用Option<T>
     // 调用take可以取出Some<T>并在原地留下None, 不会触发ownership的约束
-    let mut clusters = Vec::new();
-    clusters.push(Cluster {
+    let mut clusters = [Cluster {
         name: Some("internal".to_string()),
         nodes: 8,
-    });
+    }];
 
     let cname = clusters[0].name.take();
     // 等同于take

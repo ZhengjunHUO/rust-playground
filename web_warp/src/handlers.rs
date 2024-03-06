@@ -1,6 +1,7 @@
 use crate::crypto::decrypt_token;
 use crate::models::{CandidateList, InvalidToken, MissingEnvVar, IS_WORKING};
 use reqwest::Client;
+use std::fmt::Write;
 use warp::{
     body::BodyDeserializeError, http::StatusCode, reject, reject::MethodNotAllowed, reply, Filter,
     Rejection, Reply,
@@ -21,7 +22,7 @@ fn retrieve_token() -> impl Filter<Extract = (String,), Error = Rejection> + Cop
         match auth {
             None => {
                 println!("[DEBUG] No token is provided !");
-                return Err(reject::custom(InvalidToken));
+                Err(reject::custom(InvalidToken))
             }
             Some(text) => {
                 //println!("In header: {}", text);
@@ -35,9 +36,9 @@ fn retrieve_token() -> impl Filter<Extract = (String,), Error = Rejection> + Cop
                 match decrypt_token(raw_token.to_owned()) {
                     Ok(token) => {
                         println!("[DEBUG] Recv token: {}", token);
-                        return Ok(token);
+                        Ok(token)
                     }
-                    Err(e) => return Err(e),
+                    Err(e) => Err(e),
                 }
             }
         }
@@ -59,10 +60,10 @@ async fn verify_token(token: String) -> Result<(), Rejection> {
         .await;
     match res {
         Ok(resp) => match resp.status().as_u16() {
-            200 => return Ok(()),
+            200 => Ok(()),
             401 => {
                 println!("[DEBUG] Failed to authorize, please use a valid token",);
-                return Err(reject::custom(InvalidToken));
+                Err(reject::custom(InvalidToken))
             }
             _ => {
                 println!(
@@ -70,12 +71,12 @@ async fn verify_token(token: String) -> Result<(), Rejection> {
                     resp.status().as_u16(),
                     resp.text().await.unwrap()
                 );
-                return Err(reject::custom(InvalidToken));
+                Err(reject::custom(InvalidToken))
             }
         },
         Err(e) => {
             println!("[DEBUG] Error occurred during introspection: {}", e);
-            return Err(reject::custom(InvalidToken));
+            Err(reject::custom(InvalidToken))
         }
     }
 }
@@ -92,10 +93,10 @@ pub(crate) fn update_candidate(name: &str, votes: u32, cands: CandidateList) -> 
 
 pub(crate) fn print_all(cands: CandidateList) -> String {
     let guard = cands.lock().unwrap();
-    guard
-        .iter()
-        .map(|(name, sum)| format!("{} currently has {} vote(s) !\n", name, sum))
-        .collect::<String>()
+    guard.iter().fold(String::new(), |mut rslt, (name, sum)| {
+        let _ = writeln!(rslt, "{} currently has {} vote(s) !", name, sum);
+        rslt
+    })
 }
 
 pub(crate) async fn dummy_handle_request() -> Result<impl warp::Reply, std::convert::Infallible> {

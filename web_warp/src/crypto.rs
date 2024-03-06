@@ -12,7 +12,7 @@ pub(crate) fn decrypt_token(token: String) -> Result<String, warp::Rejection> {
     let key = "abcdefghijklmnopqrstuvwxyz123456".as_bytes();
 
     let cipher = Aes256Gcm::new_from_slice(key).unwrap();
-    let buf = Vec::<u8>::from_hex(&token).unwrap();
+    let buf = Vec::<u8>::from_hex(token).unwrap();
     let buf_len = buf.len();
 
     let iv: &GenericArray<u8, U12> = Nonce::from_slice(&buf[(buf_len - 28)..(buf_len - 16)]);
@@ -21,11 +21,11 @@ pub(crate) fn decrypt_token(token: String) -> Result<String, warp::Rejection> {
     match cipher.decrypt(iv, ciphered.as_slice()) {
         Ok(deciphered) => {
             let rslt = String::from_utf8(deciphered).unwrap();
-            return Ok(rslt);
+            Ok(rslt)
         }
         Err(err) => {
             println!("[DEBUG] Error occurred during the decryption: {}", err);
-            return Err(warp::reject::custom(InvalidToken));
+            Err(warp::reject::custom(InvalidToken))
         }
-    };
+    }
 }

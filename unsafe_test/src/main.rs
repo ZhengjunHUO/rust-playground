@@ -55,7 +55,7 @@ fn split_at_mut(list: &mut [i32], offset: usize) -> (&mut [i32], &mut [i32]) {
 }
 
 fn split_ref() {
-    let mut list = vec![1, 2, 3, 4];
+    let mut list = [1, 2, 3, 4];
     // Get its mutable slice
     let r = &mut list[..];
 
@@ -87,7 +87,7 @@ fn option_to_raw_ptr<T>(o: Option<&T>) -> *const T {
 }
 
 fn raw_ptr_distance() {
-    let list = vec!["huo", "rustacean", "fufu"];
+    let list = ["huo", "rustacean", "fufu"];
     let head: *const &str = &list[0];
     let tail: *const &str = &list[list.len() - 1];
     unsafe {
