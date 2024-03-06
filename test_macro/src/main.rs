@@ -48,7 +48,7 @@ fn main() {
     println!(pop_tail!(foo bar baz));
     //trace_macros!(false);
 
-    let list = vec![4, 5, 6];
+    let list = [4, 5, 6];
     println!("sum: {}", list.iter().sum::<u64>());
     assert_eq!(json!(null), Json::Null);
 

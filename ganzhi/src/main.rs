@@ -17,7 +17,7 @@ fn main() {
     let mut hour: f64 = 10.0;
 
     let hc = HourCompleter {
-        hours: (1..25).into_iter().map(|i| i.to_string()).collect(),
+        hours: (1..25).map(|i| i.to_string()).collect(),
     };
     let resp = Text::new("Choose the hour: ")
         .with_autocomplete(hc)

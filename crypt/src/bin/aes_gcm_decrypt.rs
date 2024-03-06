@@ -25,12 +25,11 @@ fn main() {
     let cipher = Aes256Gcm::new_from_slice(key).unwrap();
 
     // decoded ciphered_text
-    let buf: Vec<u8>;
-    match encoding {
-        "hex" => buf = Vec::<u8>::from_hex(&args[1]).unwrap(),
-        "base64" => buf = general_purpose::STANDARD.decode(&args[1]).unwrap(),
+    let buf: Vec<u8> = match encoding {
+        "hex" => Vec::<u8>::from_hex(&args[1]).unwrap(),
+        "base64" => general_purpose::STANDARD.decode(&args[1]).unwrap(),
         _ => unreachable!(),
-    }
+    };
     let buf_len = buf.len();
 
     // Split iv and payload (the rest part)

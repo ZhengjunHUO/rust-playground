@@ -205,20 +205,17 @@ async fn show_tables(client: &Client) -> Result<()> {
 
 async fn is_empty_async(client: &Client, table_name: &str) -> bool {
     let query = format!("select count() from {}", table_name);
-    match client.query(&query).fetch_all::<Count>().await {
-        Ok(rows) => {
-            let rslt: Vec<usize> = rows.into_iter().map(|r| r.num).collect();
-            if rslt.len() > 0 {
-                if rslt[0] == 0 {
-                    return true;
-                }
-                println!(
-                    "[DEBUG] Table {} contains {} line(s) !",
-                    table_name, rslt[0]
-                )
+    if let Ok(rows) = client.query(&query).fetch_all::<Count>().await {
+        let rslt: Vec<usize> = rows.into_iter().map(|r| r.num).collect();
+        if !rslt.is_empty() {
+            if rslt[0] == 0 {
+                return true;
             }
+            println!(
+                "[DEBUG] Table {} contains {} line(s) !",
+                table_name, rslt[0]
+            )
         }
-        _ => {}
     }
 
     false
@@ -226,17 +223,14 @@ async fn is_empty_async(client: &Client, table_name: &str) -> bool {
 
 async fn show_create_table(client: &Client, database_name: &str, table_name: &str) {
     let query = format!("show create table {}.{}", database_name, table_name);
-    match client.query(&query).fetch_all::<ShowCreate>().await {
-        Ok(rows) => {
-            let rslt: Vec<String> = rows.into_iter().map(|r| r.statement).collect();
-            if rslt.len() > 0 {
-                println!(
-                    "[DEBUG] Table {}.{}'s creation detail:\n {}",
-                    database_name, table_name, rslt[0]
-                )
-            }
+    if let Ok(rows) = client.query(&query).fetch_all::<ShowCreate>().await {
+        let rslt: Vec<String> = rows.into_iter().map(|r| r.statement).collect();
+        if !rslt.is_empty() {
+            println!(
+                "[DEBUG] Table {}.{}'s creation detail:\n {}",
+                database_name, table_name, rslt[0]
+            )
         }
-        _ => {}
     }
 }
 
@@ -286,7 +280,7 @@ async fn is_table_sharded(client: &Client, database_name: &str, table_name: &str
     match client.query(&query).fetch_all::<SystemTable>().await {
         Ok(rows) => {
             let rslt: Vec<String> = rows.into_iter().map(|r| r.engine).collect();
-            if rslt.len() > 0 {
+            if !rslt.is_empty() {
                 println!(
                     "[DEBUG] Table {}.{}'s engine:\n{}\nIs sharded ? {}",
                     database_name,
@@ -316,22 +310,19 @@ fn is_empty(client: &Client, table_name: &str) -> bool {
     rt.block_on(async {
         let query = format!("select count() from {}", table_name);
         let mut result = false;
-        match client.query(&query).fetch_all::<Count>().await {
-            Ok(rows) => {
-                let rslt: Vec<usize> = rows.into_iter().map(|r| r.num).collect();
-                if rslt.len() > 0 {
-                    if rslt[0] == 0 {
-                        result = true;
-                    }
-                    println!(
-                        "[DEBUG] Table {} contains {} line(s) !",
-                        table_name, rslt[0]
-                    )
+        if let Ok(rows) = client.query(&query).fetch_all::<Count>().await {
+            let rslt: Vec<usize> = rows.into_iter().map(|r| r.num).collect();
+            if rslt.len() > 0 {
+                if rslt[0] == 0 {
+                    result = true;
                 }
+                println!(
+                    "[DEBUG] Table {} contains {} line(s) !",
+                    table_name, rslt[0]
+                )
             }
-            _ => (),
         }
-        return result;
+        result
     })
 }
 
@@ -455,12 +446,12 @@ fn main() -> Result<()> {
         println!(
             "system.trace_log rows & size: {:?}",
             dict.get(&("system".to_string(), "trace_log".to_string()))
-                .unwrap_or_else(|| &(0, 0))
+                .unwrap_or(&(0, 0))
         );
         println!(
             "system.non_exist rows & size: {:?}",
             dict.get(&("system".to_string(), "non_exist".to_string()))
-                .unwrap_or_else(|| &(0, 0))
+                .unwrap_or(&(0, 0))
         );
         let sum = dict.iter().fold(0, |acc, (_, s)| acc + s.1);
         println!(

@@ -32,7 +32,7 @@ impl Autocomplete for HourCompleter {
             Some(suggestion) => Replacement::Some(suggestion),
             None => {
                 let list = self.filter_candidates(input);
-                if list.len() == 0 {
+                if list.is_empty() {
                     Replacement::None
                 } else {
                     Replacement::Some(list[0].clone())
