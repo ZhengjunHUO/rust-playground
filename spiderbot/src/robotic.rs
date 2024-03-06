@@ -25,7 +25,7 @@ impl SpiderBot {
     pub fn add_alerts(&self, alert: &str) {
         let mut s = self.alerts.borrow_mut();
         s.push_str(alert);
-        s.push_str("\n");
+        s.push('\n');
         self.incr_alerts();
     }
 

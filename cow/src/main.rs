@@ -22,7 +22,7 @@ fn from_env(s: &str) -> String {
 // If not exist, returns its &str as a Cow::Borrowed
 fn from_env_cow(s: &str) -> Cow<'_, str> {
     var(s)
-        .map(|v| Cow::Owned(v))
+        .map(Cow::Owned)
         .unwrap_or(Cow::Borrowed("unknown"))
 }
 

@@ -16,6 +16,13 @@ $ rustup override set nightly
 $ rustc -Zunpretty=expanded src/main.rs
 ```
 
+### Fmt & Lint
+```sh
+$ rustup component add rustfmt
+
+$ cargo clippy
+```
+
 ### See the println in cargo test
 ```sh
 $ cargo test -- --nocapture
