@@ -21,7 +21,7 @@ fn main() {
         };
         println!("You guessed: {}", guess);
 
-        if guess < 1 || guess > 100 {
+        if !(1..=100).contains(&guess) {
             println!("The number should between 1 to 100.");
             continue;
         }

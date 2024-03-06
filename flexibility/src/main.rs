@@ -1,5 +1,5 @@
 trait MyTrait {
-    fn init(self, foo: i32) -> Self;
+    fn init(self, init_data: i32) -> Self;
     fn peek(&self) -> (i32, i32);
 }
 
@@ -9,9 +9,9 @@ struct Concrete1 {
 }
 
 impl MyTrait for Concrete1 {
-    fn init(mut self, foo: i32) -> Self {
-        self.data = foo;
-        self.triple = foo * 3;
+    fn init(mut self, init_data: i32) -> Self {
+        self.data = init_data;
+        self.triple = init_data * 3;
         self
     }
 
@@ -26,9 +26,9 @@ struct Concrete2 {
 }
 
 impl MyTrait for Concrete2 {
-    fn init(mut self, foo: i32) -> Self {
-        self.data = foo;
-        self.double = foo * 2;
+    fn init(mut self, init_data: i32) -> Self {
+        self.data = init_data;
+        self.double = init_data * 2;
         self
     }
 
@@ -41,9 +41,9 @@ struct ClientWrapper<T> {
     client: T,
 }
 
-fn init<T: MyTrait>(client_w: ClientWrapper<T>, foo: i32) -> ClientWrapper<T> {
+fn init<T: MyTrait>(client_w: ClientWrapper<T>, init_data: i32) -> ClientWrapper<T> {
     ClientWrapper {
-        client: client_w.client.init(foo),
+        client: client_w.client.init(init_data),
     }
 }
 

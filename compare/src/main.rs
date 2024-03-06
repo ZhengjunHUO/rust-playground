@@ -8,6 +8,7 @@ struct Cat {
     weight: f32,
 }
 
+#[allow(dead_code)]
 #[derive(Debug)]
 struct CatImplPartialEq {
     uuid: u32,
@@ -23,7 +24,6 @@ impl PartialEq for CatImplPartialEq {
 
 // Eq trait has no method
 impl Eq for CatImplPartialEq {}
-
 
 // 需要Eq和PartialOrd
 impl Ord for CatImplPartialEq {
@@ -41,13 +41,30 @@ impl PartialOrd for CatImplPartialEq {
 }
 
 fn main() {
-    let c1 = Cat { uuid: 1, name: String::from("Fufu"), weight: 6.4, };
-    let c2 = Cat { uuid: 1, name: String::from("Fuku"), weight: 5.9, };
+    let c1 = Cat {
+        uuid: 1,
+        name: String::from("Fufu"),
+        weight: 6.4,
+    };
+    let c2 = Cat {
+        uuid: 1,
+        name: String::from("Fuku"),
+        weight: 5.9,
+    };
     assert_ne!(c1, c2);
 
-    let cp1 = CatImplPartialEq { uuid: 1, name: String::from("Fufu") };
-    let cp2 = CatImplPartialEq { uuid: 1, name: String::from("Fuku") };
-    let cp3 = CatImplPartialEq { uuid: 8, name: String::from("FukuNeko") };
+    let cp1 = CatImplPartialEq {
+        uuid: 1,
+        name: String::from("Fufu"),
+    };
+    let cp2 = CatImplPartialEq {
+        uuid: 1,
+        name: String::from("Fuku"),
+    };
+    let cp3 = CatImplPartialEq {
+        uuid: 8,
+        name: String::from("FukuNeko"),
+    };
     assert_eq!(cp1, cp2);
-    assert_eq!(cp1 < cp3, true);
+    assert!(cp1 < cp3);
 }

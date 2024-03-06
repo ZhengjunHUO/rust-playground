@@ -158,9 +158,7 @@ fn ui<B: Backend>(f: &mut Frame<B>) {
         .block(build_block(&palais.name))
         .alignment(Alignment::Left);
 
-    (0..4)
-        .into_iter()
-        .for_each(|i| f.render_widget(block.clone(), top_horz[i]));
+    (0..4).for_each(|i| f.render_widget(block.clone(), top_horz[i]));
 
     // Middle 3 horizontal subparts
     let mid_horz_parts = Layout::default()
@@ -181,9 +179,7 @@ fn ui<B: Backend>(f: &mut Frame<B>) {
         .constraints([Constraint::Percentage(50), Constraint::Percentage(50)].as_ref())
         .split(mid_horz_parts[0]);
 
-    (0..2)
-        .into_iter()
-        .for_each(|i| f.render_widget(block.clone(), mid_left_parts[i]));
+    (0..2).for_each(|i| f.render_widget(block.clone(), mid_left_parts[i]));
 
     // Center big block
     f.render_widget(block.clone(), mid_horz_parts[1]);
@@ -193,9 +189,7 @@ fn ui<B: Backend>(f: &mut Frame<B>) {
         .direction(Direction::Vertical)
         .constraints([Constraint::Percentage(50), Constraint::Percentage(50)].as_ref())
         .split(mid_horz_parts[2]);
-    (0..2)
-        .into_iter()
-        .for_each(|i| f.render_widget(block.clone(), mid_right_parts[i]));
+    (0..2).for_each(|i| f.render_widget(block.clone(), mid_right_parts[i]));
 
     // Botton 4 blocks
     let bottom_horz = Layout::default()
@@ -219,7 +213,5 @@ fn ui<B: Backend>(f: &mut Frame<B>) {
 
     f.render_widget(paragraph, bottom_horz[0]);
 
-    (1..4)
-        .into_iter()
-        .for_each(|i| f.render_widget(block.clone(), bottom_horz[i]));
+    (1..4).for_each(|i| f.render_widget(block.clone(), bottom_horz[i]));
 }

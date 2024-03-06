@@ -1,3 +1,4 @@
+#[allow(clippy::manual_range_patterns)]
 fn main() {
     // (1) About "if let"
     //
@@ -154,16 +155,12 @@ fn copy_check_exist(src: Option<u32>, mut dst: Option<u32>) {
 
 fn ignore_multi_places() {
     let t = (1, 2, 3, 4, 5);
-
-    match t {
-        (first, _, third, _, fifth) => println!("partial tuple: ({first}, {third}, {fifth})"),
-    }
+    let (first, _, third, _, fifth) = t;
+    println!("partial tuple: ({first}, {third}, {fifth})");
 }
 
 fn ignore_consec_places() {
     let t = (1, 2, 3, 4, 5);
-
-    match t {
-        (first, .., last) => println!("partial tuple: ({first}, {last})"),
-    }
+    let (first, .., last) = t;
+    println!("partial tuple: ({first}, {last})");
 }
