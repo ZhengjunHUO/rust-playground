@@ -76,7 +76,7 @@ fn main() {
     let dict = Arc::new(
         ["huo", "fufu", "foo", "bar"]
             .into_iter()
-            .zip([1, 2, 3, 4].into_iter())
+            .zip([1, 2, 3, 4])
             .collect::<HashMap<&str, u32>>(),
     );
     let nthread = 8;

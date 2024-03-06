@@ -116,12 +116,8 @@ fn main() {
     assert_eq!(cats, cats_bis);
 
     let cat_first_two = name_moved.clone().into_iter().take(2).collect::<Vec<_>>();
-    let cat_first_two_bis = name_moved
-        .iter()
-        .map(|elem| elem.clone())
-        .take(2)
-        .collect::<Vec<_>>();
-    let cat_first_two_ter = name_moved.iter().cloned().take(2).collect::<Vec<_>>();
+    let cat_first_two_bis = name_moved.iter().take(2).cloned().collect::<Vec<_>>();
+    let cat_first_two_ter = name_moved.iter().take(2).cloned().collect::<Vec<_>>();
     assert_eq!(cat_first_two, cat_first_two_bis);
     assert_eq!(cat_first_two, cat_first_two_ter);
 
@@ -132,7 +128,7 @@ fn main() {
     // z1, z2 consumed; element in rslt is (i32, i32)
     // use iter() to get ref (avoid move); element in rslt is (&i32, &i32)
     // z1.into_iter().zip(z2.iter()); => (i32, &i32)
-    let rslt = z1.into_iter().zip(z2.into_iter());
+    let rslt = z1.into_iter().zip(z2);
     // rslt consumed by for loop
     // for loop syntax is actually sugar for iterators
     /*
@@ -144,7 +140,7 @@ fn main() {
     assert_eq!(collect_into_vec(rslt), vec![(1, 10), (2, 20), (3, 30)]);
 }
 
-fn print_all<T: Display>(prime: &Vec<T>)
+fn print_all<T: Display>(prime: &[T])
 where
     T: Display,
 {
@@ -163,7 +159,7 @@ where
     //println!("next get: {}", prime_itr.next().unwrap());
 }
 
-fn increment(prime: &Vec<u32>) -> Vec<u32> {
+fn increment(prime: &[u32]) -> Vec<u32> {
     // collect(): take anything iterable, and turn it into a relevant collection
     let positive = prime.iter().map(|x| x + 1).collect();
     positive

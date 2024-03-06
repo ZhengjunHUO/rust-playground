@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use anyhow::Result;
 use clickhouse_rs::{row, types::Block, ClientHandle, Pool};
 use futures_util::{StreamExt, TryStreamExt};

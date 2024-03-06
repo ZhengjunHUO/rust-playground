@@ -1,3 +1,4 @@
+#[allow(clippy::precedence)]
 fn main() {
     // (1)
     // 需要明确指出type(i32)

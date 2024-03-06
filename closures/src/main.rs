@@ -29,11 +29,12 @@ struct Statistics {
     hdi: HashMap<String, i64>,
 }
 
-fn city_sort_incr(cs: &mut Vec<City>) {
+fn city_sort_incr(cs: &mut [City]) {
     cs.sort_by_key(|city| city.population);
 }
 
-fn city_sort_stat_desc(cs: &mut Vec<City>, stat: Statistics) {
+#[allow(dead_code)]
+fn city_sort_stat_desc(cs: &mut [City], stat: Statistics) {
     cs.sort_by_key(|city| -city.get_stat(&stat));
 }
 

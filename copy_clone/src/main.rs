@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 // Clone是Copy的supertrait: pub trait Copy: Clone { }
 // 是Copy的东西必定是Clone
 

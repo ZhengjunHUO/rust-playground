@@ -28,6 +28,10 @@ impl<T> GapBuffer<T> {
         self.cap() - self.gap.len()
     }
 
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+
     // 当前插入点为gap区域的头部
     pub fn pos(&self) -> usize {
         self.gap.start
@@ -45,12 +49,12 @@ impl<T> GapBuffer<T> {
 
     // idx不能超过chunk的capacity的范围
     unsafe fn get_ptr_at(&self, idx: usize) -> *const T {
-        self.chunk.as_ptr().offset(idx as isize)
+        self.chunk.as_ptr().add(idx)
     }
 
     // 和get_ptr_at类似，返回一个可变的raw pointer
     unsafe fn get_mut_ptr_at(&mut self, idx: usize) -> *mut T {
-        self.chunk.as_mut_ptr().offset(idx as isize)
+        self.chunk.as_mut_ptr().add(idx)
     }
 
     // 获取存储内容的第idx个元素的ref
@@ -93,7 +97,7 @@ impl<T> GapBuffer<T> {
     }
 
     pub fn insert(&mut self, elem: T) {
-        if self.gap.len() == 0 {
+        if self.gap.is_empty() {
             self.double_bufsize();
         }
 
@@ -141,13 +145,19 @@ impl<T> GapBuffer<T> {
             // 把原本在gap后的内容copy到新buffer的尾部
             copy_nonoverlapping(
                 self.get_ptr_at(self.gap.end),
-                doubled_chunk.as_mut_ptr().offset(new_gap.end as isize),
+                doubled_chunk.as_mut_ptr().add(new_gap.end),
                 self.cap() - self.gap.end,
             );
         }
 
         self.chunk = doubled_chunk;
         self.gap = new_gap;
+    }
+}
+
+impl<T> Default for GapBuffer<T> {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

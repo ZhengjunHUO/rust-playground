@@ -12,8 +12,8 @@ fn calc_max(list: &[u32]) -> u32 {
     let n = list.len();
 
     match n {
-        0 => return 0,
-        1 => return list[0],
+        0 => 0,
+        1 => list[0],
         _ => {
             let pivot = n / 2;
             scope(|s| {

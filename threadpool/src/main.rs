@@ -7,10 +7,7 @@ use threadpool::ThreadPool;
 use walkdir::WalkDir;
 
 fn is_zip(path: &Path) -> bool {
-    match path.extension() {
-        Some(ext) if ext.to_string_lossy().to_lowercase() == "zip" => true,
-        _ => false,
-    }
+    matches!(path.extension(), Some(ext) if ext.to_string_lossy().to_lowercase() == "zip")
 }
 
 fn calc_digest<P: AsRef<Path>>(path: P) -> Result<(Digest, P), Error> {

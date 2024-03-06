@@ -77,7 +77,7 @@ fn get_len(s: String) -> (String, usize) {
     (s, len)
 }
 
-fn calc_len(s: &String) -> usize {
+fn calc_len(s: &str) -> usize {
     s.len()
 }
 

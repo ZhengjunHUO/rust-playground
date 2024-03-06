@@ -31,7 +31,7 @@ fn main() {
 
 fn print_filtered_envs() {
     let filtered_env: HashMap<String, String> = env::vars()
-        .filter(|&(ref k, _)| k == "USER" || k == "HOME" || k == "PATH")
+        .filter(|(k, _)| k == "USER" || k == "HOME" || k == "PATH")
         .collect();
 
     Command::new("printenv")
