@@ -65,6 +65,12 @@ struct FreeSpace {
     free_space: u64,
 }
 
+#[derive(Row, Deserialize)]
+struct ClusterTopo {
+    shard_num: u32,
+    replica_num: u32,
+}
+
 fn now() -> u64 {
     UNIX_EPOCH
         .elapsed()
@@ -326,6 +332,17 @@ fn is_empty(client: &Client, table_name: &str) -> bool {
     })
 }
 
+async fn execute_query<S>(client: &Client, query: &str) -> Result<Vec<S>>
+where
+    S: Row + for<'b> Deserialize<'b>,
+{
+    println!("[DEBUG] Execute query: {}", query);
+    client.query(query).fetch_all::<S>().await.map_err(|e| {
+        let context = format!("[DEBUG] Error executing `{}`", query);
+        anyhow::Error::new(e).context(context)
+    })
+}
+
 const UNITS: [&str; 5] = ["byte(s)", "KB", "MB", "GB", "TB"];
 
 fn size_to_human_readable(size: u64) -> String {
@@ -441,6 +458,7 @@ fn main() -> Result<()> {
     });
     */
 
+    /* #6 Grab available disk size
     rt.block_on(async {
         let dict = calc_table_size(&client).await;
         println!(
@@ -464,6 +482,23 @@ fn main() -> Result<()> {
         } else {
             println!("KO");
         }
+    });
+    */
+
+    let cluster_name = "standard";
+    let query = format!(
+        "SELECT shard_num,replica_num FROM system.clusters where cluster='{}'",
+        cluster_name
+    );
+
+    rt.block_on(async {
+        execute_query::<ClusterTopo>(&client, &query)
+            .await
+            .unwrap()
+            .iter()
+            .for_each(|r| {
+                println!("RepNum: {}, ShardNum: {}", r.replica_num, r.shard_num);
+            })
     });
 
     Ok(())
