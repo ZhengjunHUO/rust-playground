@@ -1,9 +1,10 @@
 #![allow(dead_code)]
 
-use anyhow::Result;
+use anyhow::{bail, Result};
 use clickhouse::{Client, Row};
 use serde::{Deserialize, Serialize};
 use serde_repr::{Deserialize_repr, Serialize_repr};
+use std::cmp::max;
 use std::collections::HashMap;
 use std::time::UNIX_EPOCH;
 use tokio::runtime::Runtime;
@@ -49,6 +50,7 @@ struct ShowCreate {
 
 #[derive(Row, Deserialize)]
 struct SystemTable {
+    name: String,
     engine: String,
 }
 
@@ -69,6 +71,62 @@ struct FreeSpace {
 struct ClusterTopo {
     shard_num: u32,
     replica_num: u32,
+}
+
+struct Topology {
+    topos: Vec<ClusterTopo>,
+    shard_num: u32,
+    replica_num: u32,
+}
+
+impl Topology {
+    async fn new(client: &Client, query: &str) -> Self {
+        let topos = Topology::get_cluster_topo(client, query).await.unwrap();
+        let (shard_num, replica_num) = topos.iter().fold((0, 0), |(sn, rn), tp| {
+            (max(sn, tp.shard_num), max(rn, tp.replica_num))
+        });
+
+        Topology {
+            topos,
+            shard_num,
+            replica_num,
+        }
+    }
+
+    async fn get_cluster_topo(client: &Client, query: &str) -> Result<Vec<ClusterTopo>> {
+        execute_query::<ClusterTopo>(client, query).await
+    }
+
+    fn is_all_replicated(&self) -> bool {
+        self.shard_num == 1 && self.replica_num > self.shard_num
+    }
+}
+
+struct TableEngine {
+    engine_map: HashMap<String, String>,
+}
+
+impl TableEngine {
+    async fn new(client: &Client, database: &str) -> Self {
+        let engine_map = build_engine_map(client, database).await.unwrap();
+        TableEngine { engine_map }
+    }
+
+    fn is_sharded(&self, table_name: &str) -> bool {
+        if let Some(engine) = self.engine_map.get(table_name) {
+            return engine.starts_with("Replicated");
+        }
+
+        false
+    }
+
+    fn contains_macro(&self, table_name: &str, macro_name: &str) -> bool {
+        if let Some(engine) = self.engine_map.get(table_name) {
+            return engine.contains(macro_name);
+        }
+
+        false
+    }
 }
 
 fn now() -> u64 {
@@ -187,7 +245,7 @@ async fn restore(client: Client, path: &str) -> Result<()> {
     Ok(())
 }
 
-async fn show_tables(client: &Client) -> Result<()> {
+async fn show_tables(client: &Client) -> Result<Vec<String>> {
     /*
         let mut cursor = client.query("show tables").fetch::<TableName<'_>>()?;
 
@@ -202,11 +260,8 @@ async fn show_tables(client: &Client) -> Result<()> {
         .into_iter()
         .map(|r| r.name)
         .collect();
-    for row in rows {
-        println!("{}", row);
-    }
 
-    Ok(())
+    Ok(rows)
 }
 
 async fn is_empty_async(client: &Client, table_name: &str) -> bool {
@@ -261,6 +316,22 @@ async fn get_free_space(client: &Client) -> u64 {
     }
 }
 
+async fn build_engine_map(client: &Client, database: &str) -> Result<HashMap<String, String>> {
+    let query = format!(
+        "select name, engine_full from system.tables where database='{}'",
+        database
+    );
+    match client.query(&query).fetch_all::<SystemTable>().await {
+        Ok(rows) => Ok(rows
+            .into_iter()
+            .map(|r| (r.name, r.engine))
+            .collect::<HashMap<String, String>>()),
+        Err(e) => {
+            bail!("Error getting tables' size: {}", e);
+        }
+    }
+}
+
 async fn calc_table_size(client: &Client) -> HashMap<(String, String), (u64, u64)> {
     match client
         .query("SELECT database, table, sum(rows) as rows, sum(bytes_on_disk) as size FROM system.parts WHERE active GROUP BY database, table")
@@ -280,21 +351,22 @@ async fn calc_table_size(client: &Client) -> HashMap<(String, String), (u64, u64
 
 async fn is_table_sharded(client: &Client, database_name: &str, table_name: &str) -> bool {
     let query = format!(
-        "select engine from system.tables where database='{}' and name='{}'",
+        "select name, engine_full from system.tables where database='{}' and name='{}'",
         database_name, table_name
     );
     match client.query(&query).fetch_all::<SystemTable>().await {
         Ok(rows) => {
             let rslt: Vec<String> = rows.into_iter().map(|r| r.engine).collect();
             if !rslt.is_empty() {
-                println!(
-                    "[DEBUG] Table {}.{}'s engine:\n{}\nIs sharded ? {}",
-                    database_name,
-                    table_name,
-                    rslt[0],
-                    rslt[0].starts_with("Replicated")
-                );
-
+                /*
+                                println!(
+                                    "[DEBUG] Table {}.{}'s engine:\n{}\nIs sharded ? {}",
+                                    database_name,
+                                    table_name,
+                                    rslt[0],
+                                    rslt[0].starts_with("Replicated")
+                                );
+                */
                 if rslt[0].starts_with("Replicated") {
                     return true;
                 }
@@ -485,21 +557,36 @@ fn main() -> Result<()> {
     });
     */
 
-    let cluster_name = "standard";
-    let query = format!(
-        "SELECT shard_num,replica_num FROM system.clusters where cluster='{}'",
-        cluster_name
-    );
-
     rt.block_on(async {
-        execute_query::<ClusterTopo>(&client, &query)
-            .await
-            .unwrap()
-            .iter()
-            .for_each(|r| {
-                println!("RepNum: {}, ShardNum: {}", r.replica_num, r.shard_num);
-            })
+        let table_engine = TableEngine::new(&client, "default").await;
+        let tables = show_tables(&client).await.unwrap();
+
+        for name in tables.iter() {
+            let is_sharded = table_engine.is_sharded(name);
+            println!("{name} is sharded: {}", is_sharded);
+            if is_sharded {
+                println!(
+                    "  {name} contains macro `uuid`: {}",
+                    table_engine.contains_macro(name, "{uuid}")
+                );
+            }
+        }
     });
 
+    /*
+        let query_std = "SELECT shard_num,replica_num FROM system.clusters where cluster='standard'";
+        let query_all_replic = "SELECT shard_num,replica_num FROM system.clusters where cluster='all-replicated'";
+
+        rt.block_on(async {
+            let topo_std = Topology::new(&client, &query_std).await;
+            println!(
+                "shard_num: {}, replica_num: {}, is_all_replicated: {}",
+                topo_std.shard_num, topo_std.replica_num, topo_std.is_all_replicated()
+            );
+
+            show_create_table(&client, "default", "shard_label_dist_endpoint_query_inspection").await;
+            show_create_table(&client, "default", "label_dist_endpoint_query_inspection").await
+        });
+    */
     Ok(())
 }
