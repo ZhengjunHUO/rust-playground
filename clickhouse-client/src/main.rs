@@ -127,6 +127,20 @@ impl TableEngine {
 
         false
     }
+
+    fn get_topology(&self, table_name: &str) -> Option<String> {
+        if let Some(engine) = self.engine_map.get(table_name) {
+            if engine.find('{').is_some() {
+                let (_, text) = engine.split_once('{').unwrap();
+                if engine.find('}').is_some() {
+                    let (topo_macro, _) = text.split_once('}').unwrap();
+                    return Some(topo_macro.to_owned());
+                }
+            }
+        }
+
+        None
+    }
 }
 
 fn now() -> u64 {
@@ -432,6 +446,14 @@ fn size_to_human_readable(size: u64) -> String {
     format!("{:.2} {}", rslt, UNITS[idx])
 }
 
+fn find_controller(table_name: &str, prefix: &str) -> Option<String> {
+    if table_name.starts_with(prefix) {
+        return Some(table_name.strip_prefix(prefix).unwrap().to_owned());
+    }
+
+    None
+}
+
 fn main() -> Result<()> {
     /* #1 HTTP only client
     let client = Client::default().with_url("https://ckh-0-0.huo.io:443");
@@ -565,10 +587,15 @@ fn main() -> Result<()> {
             let is_sharded = table_engine.is_sharded(name);
             println!("{name} is sharded: {}", is_sharded);
             if is_sharded {
-                println!(
-                    "  {name} contains macro `uuid`: {}",
-                    table_engine.contains_macro(name, "{uuid}")
-                );
+                let contains_macro = table_engine.contains_macro(name, "{uuid}");
+                println!("  {name} contains macro `uuid`: {contains_macro}");
+
+                if contains_macro {
+                    if let Some(controller_name) = find_controller(name, "shard_") {
+                        let topo = table_engine.get_topology(&controller_name);
+                        println!("  {controller_name} shows topology: {topo:?}");
+                    }
+                }
             }
         }
     });
