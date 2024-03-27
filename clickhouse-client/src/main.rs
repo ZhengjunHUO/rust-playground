@@ -296,17 +296,17 @@ async fn is_empty_async(client: &Client, table_name: &str) -> bool {
     false
 }
 
-async fn show_create_table(client: &Client, database_name: &str, table_name: &str) {
+async fn show_create_table(
+    client: &Client,
+    database_name: &str,
+    table_name: &str,
+) -> Option<String> {
     let query = format!("show create table {}.{}", database_name, table_name);
-    if let Ok(rows) = client.query(&query).fetch_all::<ShowCreate>().await {
-        let rslt: Vec<String> = rows.into_iter().map(|r| r.statement).collect();
-        if !rslt.is_empty() {
-            println!(
-                "[DEBUG] Table {}.{}'s creation detail:\n {}",
-                database_name, table_name, rslt[0]
-            )
-        }
+    if let Ok(row) = client.query(&query).fetch_one::<ShowCreate>().await {
+        return Some(row.statement);
     }
+
+    None
 }
 
 async fn get_free_space(client: &Client) -> u64 {
@@ -422,7 +422,7 @@ async fn execute_query<S>(client: &Client, query: &str) -> Result<Vec<S>>
 where
     S: Row + for<'b> Deserialize<'b>,
 {
-    println!("[DEBUG] Execute query: {}", query);
+    //println!("[DEBUG] Execute query: {}", query);
     client.query(query).fetch_all::<S>().await.map_err(|e| {
         let context = format!("[DEBUG] Error executing `{}`", query);
         anyhow::Error::new(e).context(context)
@@ -449,6 +449,15 @@ fn size_to_human_readable(size: u64) -> String {
 fn find_controller(table_name: &str, prefix: &str) -> Option<String> {
     if table_name.starts_with(prefix) {
         return Some(table_name.strip_prefix(prefix).unwrap().to_owned());
+    }
+
+    None
+}
+
+async fn get_ckh_macro_value(client: &Client, macro_name: &str) -> Option<String> {
+    let query = format!("select getMacro('{}')", macro_name);
+    if let Ok(row) = client.query(&query).fetch_one::<TableName>().await {
+        return Some(row.name);
     }
 
     None
@@ -507,9 +516,10 @@ fn main() -> Result<()> {
     let https_client = hyper::Client::builder().build::<_, hyper::Body>(https_conn);
 
     // (3.5) Use hyper::client::Client to build a ckh client
+    let database_name = "default";
     let client = Client::with_http_client(https_client)
         .with_url("https://ckh-0-0.huo.io:443")
-        .with_database("default");
+        .with_database(database_name);
 
     let rt = Runtime::new().unwrap();
     /* #1 Backup test
@@ -580,7 +590,7 @@ fn main() -> Result<()> {
     */
 
     rt.block_on(async {
-        let table_engine = TableEngine::new(&client, "default").await;
+        let table_engine = TableEngine::new(&client, database_name).await;
         let tables = show_tables(&client).await.unwrap();
 
         for name in tables.iter() {
@@ -590,10 +600,26 @@ fn main() -> Result<()> {
                 let contains_macro = table_engine.contains_macro(name, "{uuid}");
                 println!("  {name} contains macro `uuid`: {contains_macro}");
 
+                // Special table
                 if contains_macro {
                     if let Some(controller_name) = find_controller(name, "shard_") {
                         let topo = table_engine.get_topology(&controller_name);
-                        println!("  {controller_name} shows topology: {topo:?}");
+                        println!("  {controller_name} reveals topology behind: {topo:?}");
+                        if topo.is_some() {
+                            // (1) Prepare restoration sql
+                            let create_table_statement = show_create_table(&client, database_name, name).await.unwrap();
+                            println!("  statement: {create_table_statement}");
+
+                            // (2) Tell if the table is all replicated
+                            let topo_value = get_ckh_macro_value(&client, topo.as_ref().unwrap()).await;
+                            println!("  topology {topo:?} value: {topo_value:?}");
+
+                            if topo_value.is_some() {
+                                let query = format!("SELECT shard_num,replica_num FROM system.clusters where cluster='{}'", topo_value.as_ref().unwrap());
+                                let topology = Topology::new(&client, &query).await;
+                                println!("    is_all_replicated: {}", topology.is_all_replicated());
+                            }
+                        }
                     }
                 }
             }
