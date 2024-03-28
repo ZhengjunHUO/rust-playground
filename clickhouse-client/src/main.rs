@@ -463,6 +463,19 @@ async fn get_ckh_macro_value(client: &Client, macro_name: &str) -> Option<String
     None
 }
 
+fn patch_create_statement(query: &str, cluster_name: &str) -> Option<String> {
+    let (first, second) = query.split_at(13);
+
+    if let Some((table_name, rest)) = second.split_once('\n') {
+        return Some(format!(
+            "{}IF NOT EXISTS {} ON CLUSTER '{{{}}}' {}",
+            first, table_name, cluster_name, rest
+        ));
+    }
+
+    None
+}
+
 fn main() -> Result<()> {
     /* #1 HTTP only client
     let client = Client::default().with_url("https://ckh-0-0.huo.io:443");
@@ -588,6 +601,22 @@ fn main() -> Result<()> {
         }
     });
     */
+
+    /*
+        let query = "CREATE TABLE default.shard_Foo
+    (
+        `table` String,
+        `name` String,
+        `commit_hash` String,
+        `database` String DEFAULT 'default'
+    )
+    ENGINE = ReplicatedMergeTree('{zoo_prefix}/tables/{shard}/{uuid}', '{host}')
+    PARTITION BY tuple()
+    ORDER BY (database, table, commit_hash)
+    SETTINGS index_granularity = 8192";
+
+        patch_create_statement(query, "all-replicated");
+        */
 
     rt.block_on(async {
         let table_engine = TableEngine::new(&client, database_name).await;
