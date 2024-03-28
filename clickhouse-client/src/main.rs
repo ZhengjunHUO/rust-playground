@@ -106,32 +106,19 @@ impl Topology {
     }
 }
 
-type DictIsAllReplicated = HashMap<String, bool>;
-
-async fn build_is_all_replicated_dict(client: &Client) -> DictIsAllReplicated {
-    let mut dict = DictIsAllReplicated::new();
-    let clusters =
-        execute_query::<TableName>(client, "SELECT DISTINCT cluster FROM system.clusters")
-            .await
-            .unwrap();
-    for cluster in clusters {
-        let is_all_replicated = Topology::new(client, &cluster.name)
-            .await
-            .is_all_replicated();
-        dict.insert(cluster.name, is_all_replicated);
-    }
-
-    dict
-}
-
 struct TableEngine {
     engine_map: HashMap<String, String>,
+    is_all_replic_map: HashMap<String, bool>,
 }
 
 impl TableEngine {
     async fn new(client: &Client, database: &str) -> Self {
-        let engine_map = build_engine_map(client, database).await.unwrap();
-        TableEngine { engine_map }
+        let engine_map = Self::build_engine_map(client, database).await.unwrap();
+        let is_all_replic_map = Self::build_is_all_replicated_map(client).await;
+        TableEngine {
+            engine_map,
+            is_all_replic_map,
+        }
     }
 
     fn is_sharded(&self, table_name: &str) -> bool {
@@ -150,7 +137,7 @@ impl TableEngine {
         false
     }
 
-    fn shared_contains_macro(&self, table_name: &str, macro_name: &str) -> bool {
+    fn sharded_contains_macro(&self, table_name: &str, macro_name: &str) -> bool {
         self.is_sharded(table_name) && self.contains_macro(table_name, macro_name)
     }
 
@@ -182,6 +169,61 @@ impl TableEngine {
         }
 
         None
+    }
+
+    async fn build_engine_map(client: &Client, database: &str) -> Result<HashMap<String, String>> {
+        let query = format!(
+            "select name, engine_full from system.tables where database='{}'",
+            database
+        );
+        match client.query(&query).fetch_all::<SystemTable>().await {
+            Ok(rows) => Ok(rows
+                .into_iter()
+                .map(|r| (r.name, r.engine))
+                .collect::<HashMap<String, String>>()),
+            Err(e) => {
+                bail!("Error getting tables' size: {}", e);
+            }
+        }
+    }
+
+    async fn build_is_all_replicated_map(client: &Client) -> HashMap<String, bool> {
+        let mut dict = HashMap::<String, bool>::new();
+        let clusters =
+            execute_query::<TableName>(client, "SELECT DISTINCT cluster FROM system.clusters")
+                .await
+                .unwrap();
+        for cluster in clusters {
+            let is_all_replicated = Topology::new(client, &cluster.name)
+                .await
+                .is_all_replicated();
+            dict.insert(cluster.name, is_all_replicated);
+        }
+
+        dict
+    }
+
+    async fn get_ckh_macro_value(client: &Client, macro_name: &str) -> Option<String> {
+        let query = format!("select getMacro('{}')", macro_name);
+        if let Ok(row) = client.query(&query).fetch_one::<TableName>().await {
+            return Some(row.name);
+        }
+
+        None
+    }
+
+    async fn is_all_replicated(&self, client: &Client, table_name: &str, prefix: &str) -> bool {
+        if self.is_sharded(table_name) {
+            if let Some(topo) = self.trace_table_topology(table_name, prefix) {
+                if let Some(topo_value) = Self::get_ckh_macro_value(client, &topo).await {
+                    if let Some(&rslt) = self.is_all_replic_map.get(&topo_value) {
+                        return rslt;
+                    }
+                }
+            }
+        }
+
+        false
     }
 }
 
@@ -351,6 +393,19 @@ async fn show_create_table(
     None
 }
 
+async fn patched_create_table(
+    client: &Client,
+    database_name: &str,
+    table_name: &str,
+    on_cluster_name: &str,
+) -> Option<String> {
+    if let Some(query) = show_create_table(client, database_name, table_name).await {
+        return patch_create_statement(&query, on_cluster_name);
+    }
+
+    None
+}
+
 async fn get_free_space(client: &Client) -> u64 {
     match client
         .query("SELECT free_space FROM system.disks")
@@ -368,22 +423,6 @@ async fn get_free_space(client: &Client) -> u64 {
         }
         Err(e) => {
             panic!("Error getting disk free space: {}", e);
-        }
-    }
-}
-
-async fn build_engine_map(client: &Client, database: &str) -> Result<HashMap<String, String>> {
-    let query = format!(
-        "select name, engine_full from system.tables where database='{}'",
-        database
-    );
-    match client.query(&query).fetch_all::<SystemTable>().await {
-        Ok(rows) => Ok(rows
-            .into_iter()
-            .map(|r| (r.name, r.engine))
-            .collect::<HashMap<String, String>>()),
-        Err(e) => {
-            bail!("Error getting tables' size: {}", e);
         }
     }
 }
@@ -486,15 +525,6 @@ fn size_to_human_readable(size: u64) -> String {
     }
 
     format!("{:.2} {}", rslt, UNITS[idx])
-}
-
-async fn get_ckh_macro_value(client: &Client, macro_name: &str) -> Option<String> {
-    let query = format!("select getMacro('{}')", macro_name);
-    if let Ok(row) = client.query(&query).fetch_one::<TableName>().await {
-        return Some(row.name);
-    }
-
-    None
 }
 
 fn patch_create_statement(query: &str, cluster_name: &str) -> Option<String> {
@@ -653,7 +683,6 @@ fn main() -> Result<()> {
         */
 
     rt.block_on(async {
-        let is_all_replicated_dict = build_is_all_replicated_dict(&client).await;
         let table_engine_dict = TableEngine::new(&client, database_name).await;
 
         let tables = show_tables(&client).await.unwrap();
@@ -663,52 +692,30 @@ fn main() -> Result<()> {
             println!("{name} is sharded: {}", is_sharded);
 
             // (2)
-            let contains_macro = table_engine_dict.shared_contains_macro(name, "{uuid}");
+            let contains_macro = table_engine_dict.sharded_contains_macro(name, "{uuid}");
             println!("  {name} contains macro `uuid`: {contains_macro}");
 
             // Special table
             if contains_macro {
-                let topo = table_engine_dict.trace_table_topology(name, "shard_");
-                println!("  {name} reveals topology behind: {topo:?}");
-
-                if topo.is_some() {
-                    // (1) Prepare restoration sql
-                    let create_table_statement = show_create_table(&client, database_name, name)
+                // (1) Tell if the table is all replicated
+                println!(
+                    "    is_all_replicated: {}",
+                    table_engine_dict
+                        .is_all_replicated(&client, name, "shard_")
                         .await
-                        .unwrap();
-                    println!("  statement: {create_table_statement}");
+                );
 
-                    // (2) Tell if the table is all replicated
-                    let topo_value = get_ckh_macro_value(&client, topo.as_ref().unwrap()).await;
-                    println!("  topology {topo:?} value: {topo_value:?}");
-
-                    if topo_value.is_some() {
-                        //let topology = Topology::new(&client, topo_value.as_ref().unwrap()).await;
-                        //println!("    is_all_replicated: {}", topology.is_all_replicated());
-                        println!(
-                            "    is_all_replicated: {:?}",
-                            is_all_replicated_dict.get(topo_value.as_ref().unwrap())
-                        );
-                    }
+                // (2) Prepare restoration sql
+                if let Some(topo) = table_engine_dict.trace_table_topology(name, "shard_") {
+                    let create_table_statement =
+                        patched_create_table(&client, database_name, name, &topo)
+                            .await
+                            .unwrap();
+                    println!("  statement:\n\n{create_table_statement}\n");
                 }
             }
         }
     });
 
-    /*
-        let query_std = "SELECT shard_num,replica_num FROM system.clusters where cluster='standard'";
-        let query_all_replic = "SELECT shard_num,replica_num FROM system.clusters where cluster='all-replicated'";
-
-        rt.block_on(async {
-            let topo_std = Topology::new(&client, &query_std).await;
-            println!(
-                "shard_num: {}, replica_num: {}, is_all_replicated: {}",
-                topo_std.shard_num, topo_std.replica_num, topo_std.is_all_replicated()
-            );
-
-            show_create_table(&client, "default", "shard_label_dist_endpoint_query_inspection").await;
-            show_create_table(&client, "default", "label_dist_endpoint_query_inspection").await
-        });
-    */
     Ok(())
 }
