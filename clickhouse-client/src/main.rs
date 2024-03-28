@@ -150,6 +150,18 @@ impl TableEngine {
         false
     }
 
+    fn shared_contains_macro(&self, table_name: &str, macro_name: &str) -> bool {
+        self.is_sharded(table_name) && self.contains_macro(table_name, macro_name)
+    }
+
+    fn trace_table_topology(&self, table_name: &str, prefix: &str) -> Option<String> {
+        if let Some(controller_name) = Self::find_controller(table_name, prefix) {
+            return self.get_topology(&controller_name);
+        }
+
+        None
+    }
+
     fn get_topology(&self, table_name: &str) -> Option<String> {
         if let Some(engine) = self.engine_map.get(table_name) {
             if engine.find('{').is_some() {
@@ -159,6 +171,14 @@ impl TableEngine {
                     return Some(topo_macro.to_owned());
                 }
             }
+        }
+
+        None
+    }
+
+    fn find_controller(table_name: &str, prefix: &str) -> Option<String> {
+        if table_name.starts_with(prefix) {
+            return Some(table_name.strip_prefix(prefix).unwrap().to_owned());
         }
 
         None
@@ -468,14 +488,6 @@ fn size_to_human_readable(size: u64) -> String {
     format!("{:.2} {}", rslt, UNITS[idx])
 }
 
-fn find_controller(table_name: &str, prefix: &str) -> Option<String> {
-    if table_name.starts_with(prefix) {
-        return Some(table_name.strip_prefix(prefix).unwrap().to_owned());
-    }
-
-    None
-}
-
 async fn get_ckh_macro_value(client: &Client, macro_name: &str) -> Option<String> {
     let query = format!("select getMacro('{}')", macro_name);
     if let Ok(row) = client.query(&query).fetch_one::<TableName>().await {
@@ -642,44 +654,41 @@ fn main() -> Result<()> {
 
     rt.block_on(async {
         let is_all_replicated_dict = build_is_all_replicated_dict(&client).await;
+        let table_engine_dict = TableEngine::new(&client, database_name).await;
 
-        let table_engine = TableEngine::new(&client, database_name).await;
         let tables = show_tables(&client).await.unwrap();
-
         for name in tables.iter() {
-            let is_sharded = table_engine.is_sharded(name);
+            // (1)
+            let is_sharded = table_engine_dict.is_sharded(name);
             println!("{name} is sharded: {}", is_sharded);
-            if is_sharded {
-                let contains_macro = table_engine.contains_macro(name, "{uuid}");
-                println!("  {name} contains macro `uuid`: {contains_macro}");
 
-                // Special table
-                if contains_macro {
-                    if let Some(controller_name) = find_controller(name, "shard_") {
-                        let topo = table_engine.get_topology(&controller_name);
-                        println!("  {controller_name} reveals topology behind: {topo:?}");
-                        if topo.is_some() {
-                            // (1) Prepare restoration sql
-                            let create_table_statement =
-                                show_create_table(&client, database_name, name)
-                                    .await
-                                    .unwrap();
-                            println!("  statement: {create_table_statement}");
+            // (2)
+            let contains_macro = table_engine_dict.shared_contains_macro(name, "{uuid}");
+            println!("  {name} contains macro `uuid`: {contains_macro}");
 
-                            // (2) Tell if the table is all replicated
-                            let topo_value =
-                                get_ckh_macro_value(&client, topo.as_ref().unwrap()).await;
-                            println!("  topology {topo:?} value: {topo_value:?}");
+            // Special table
+            if contains_macro {
+                let topo = table_engine_dict.trace_table_topology(name, "shard_");
+                println!("  {name} reveals topology behind: {topo:?}");
 
-                            if topo_value.is_some() {
-                                //let topology = Topology::new(&client, topo_value.as_ref().unwrap()).await;
-                                //println!("    is_all_replicated: {}", topology.is_all_replicated());
-                                println!(
-                                    "    is_all_replicated: {:?}",
-                                    is_all_replicated_dict.get(topo_value.as_ref().unwrap())
-                                );
-                            }
-                        }
+                if topo.is_some() {
+                    // (1) Prepare restoration sql
+                    let create_table_statement = show_create_table(&client, database_name, name)
+                        .await
+                        .unwrap();
+                    println!("  statement: {create_table_statement}");
+
+                    // (2) Tell if the table is all replicated
+                    let topo_value = get_ckh_macro_value(&client, topo.as_ref().unwrap()).await;
+                    println!("  topology {topo:?} value: {topo_value:?}");
+
+                    if topo_value.is_some() {
+                        //let topology = Topology::new(&client, topo_value.as_ref().unwrap()).await;
+                        //println!("    is_all_replicated: {}", topology.is_all_replicated());
+                        println!(
+                            "    is_all_replicated: {:?}",
+                            is_all_replicated_dict.get(topo_value.as_ref().unwrap())
+                        );
                     }
                 }
             }
