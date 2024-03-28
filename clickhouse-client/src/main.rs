@@ -666,22 +666,6 @@ fn main() -> Result<()> {
     });
     */
 
-    /*
-        let query = "CREATE TABLE default.shard_Foo
-    (
-        `table` String,
-        `name` String,
-        `commit_hash` String,
-        `database` String DEFAULT 'default'
-    )
-    ENGINE = ReplicatedMergeTree('{zoo_prefix}/tables/{shard}/{uuid}', '{host}')
-    PARTITION BY tuple()
-    ORDER BY (database, table, commit_hash)
-    SETTINGS index_granularity = 8192";
-
-        patch_create_statement(query, "all-replicated");
-        */
-
     rt.block_on(async {
         let table_engine_dict = TableEngine::new(&client, database_name).await;
 
@@ -718,4 +702,20 @@ fn main() -> Result<()> {
     });
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_patch_create_statement() {
+        let query = "CREATE TABLE default.shard_Foo\n(\n    `table` String,\n    `name` String,\n    `commit_hash` String,\n    `database` String DEFAULT 'default'\n)\nENGINE = ReplicatedMergeTree('{zoo_prefix}/tables/{shard}/{uuid}', '{host}')\nPARTITION BY tuple()\nORDER BY (database, table, commit_hash)\nSETTINGS index_granularity = 8192";
+        let expected = "CREATE TABLE IF NOT EXISTS default.shard_Foo ON CLUSTER '{standard}' (\n    `table` String,\n    `name` String,\n    `commit_hash` String,\n    `database` String DEFAULT 'default'\n)\nENGINE = ReplicatedMergeTree('{zoo_prefix}/tables/{shard}/{uuid}', '{host}')\nPARTITION BY tuple()\nORDER BY (database, table, commit_hash)\nSETTINGS index_granularity = 8192";
+
+        assert_eq!(
+            patch_create_statement(query, "standard").unwrap(),
+            expected.to_owned()
+        );
+    }
 }
