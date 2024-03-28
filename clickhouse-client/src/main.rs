@@ -80,8 +80,12 @@ struct Topology {
 }
 
 impl Topology {
-    async fn new(client: &Client, query: &str) -> Self {
-        let topos = Topology::get_cluster_topo(client, query).await.unwrap();
+    async fn new(client: &Client, cluster_name: &str) -> Self {
+        let query = format!(
+            "SELECT shard_num,replica_num FROM system.clusters where cluster='{}'",
+            cluster_name
+        );
+        let topos = Topology::get_cluster_topo(client, &query).await.unwrap();
         let (shard_num, replica_num) = topos.iter().fold((0, 0), |(sn, rn), tp| {
             (max(sn, tp.shard_num), max(rn, tp.replica_num))
         });
@@ -100,6 +104,24 @@ impl Topology {
     fn is_all_replicated(&self) -> bool {
         self.shard_num == 1 && self.replica_num > self.shard_num
     }
+}
+
+type DictIsAllReplicated = HashMap<String, bool>;
+
+async fn build_is_all_replicated_dict(client: &Client) -> DictIsAllReplicated {
+    let mut dict = DictIsAllReplicated::new();
+    let clusters =
+        execute_query::<TableName>(client, "SELECT DISTINCT cluster FROM system.clusters")
+            .await
+            .unwrap();
+    for cluster in clusters {
+        let is_all_replicated = Topology::new(client, &cluster.name)
+            .await
+            .is_all_replicated();
+        dict.insert(cluster.name, is_all_replicated);
+    }
+
+    dict
 }
 
 struct TableEngine {
@@ -619,6 +641,8 @@ fn main() -> Result<()> {
         */
 
     rt.block_on(async {
+        let is_all_replicated_dict = build_is_all_replicated_dict(&client).await;
+
         let table_engine = TableEngine::new(&client, database_name).await;
         let tables = show_tables(&client).await.unwrap();
 
@@ -636,17 +660,24 @@ fn main() -> Result<()> {
                         println!("  {controller_name} reveals topology behind: {topo:?}");
                         if topo.is_some() {
                             // (1) Prepare restoration sql
-                            let create_table_statement = show_create_table(&client, database_name, name).await.unwrap();
+                            let create_table_statement =
+                                show_create_table(&client, database_name, name)
+                                    .await
+                                    .unwrap();
                             println!("  statement: {create_table_statement}");
 
                             // (2) Tell if the table is all replicated
-                            let topo_value = get_ckh_macro_value(&client, topo.as_ref().unwrap()).await;
+                            let topo_value =
+                                get_ckh_macro_value(&client, topo.as_ref().unwrap()).await;
                             println!("  topology {topo:?} value: {topo_value:?}");
 
                             if topo_value.is_some() {
-                                let query = format!("SELECT shard_num,replica_num FROM system.clusters where cluster='{}'", topo_value.as_ref().unwrap());
-                                let topology = Topology::new(&client, &query).await;
-                                println!("    is_all_replicated: {}", topology.is_all_replicated());
+                                //let topology = Topology::new(&client, topo_value.as_ref().unwrap()).await;
+                                //println!("    is_all_replicated: {}", topology.is_all_replicated());
+                                println!(
+                                    "    is_all_replicated: {:?}",
+                                    is_all_replicated_dict.get(topo_value.as_ref().unwrap())
+                                );
                             }
                         }
                     }
