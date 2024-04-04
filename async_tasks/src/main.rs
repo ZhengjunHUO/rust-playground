@@ -1,6 +1,4 @@
 use indicatif::ProgressBar;
-use rand::rngs::StdRng;
-use rand::{Rng, SeedableRng};
 use std::collections::VecDeque;
 use std::env;
 use std::fs::read_to_string;
@@ -20,15 +18,9 @@ async fn handle(ctx: Context, tx: Sender<Payload>) {
             table = garde.pop_front();
         }
 
-        let seed = [
-            1, 0, 0, 0, 23, 0, 0, 0, 200, 1, 0, 0, 210, 30, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-            0, 0, 0, 0, ctx.idx,
-        ];
-        let mut rng = StdRng::from_seed(seed);
-
         match table {
             Some(table_name) => {
-                let secs = rng.gen_range(3..=8);
+                let secs = 3;
                 if let Err(e) = tx
                     .send(Payload {
                         message: format!(
@@ -88,7 +80,6 @@ async fn handle(ctx: Context, tx: Sender<Payload>) {
 type TableList = Arc<Mutex<VecDeque<String>>>;
 
 struct Context {
-    idx: u8,
     client_id: String,
     table_list: TableList,
 }
@@ -96,6 +87,16 @@ struct Context {
 struct Payload {
     message: String,
 }
+
+/*
+struct Async_Sched {
+
+}
+
+impl Async_Sched {
+
+}
+*/
 
 #[tokio::main]
 async fn main() {
@@ -133,10 +134,9 @@ where
     senders.push(tx);
 
     let ind = ProgressBar::new(num_job);
-    for (i, ep) in eps.into_iter().enumerate() {
+    for ep in eps.into_iter() {
         let list = tables.clone();
         let context = Context {
-            idx: i as u8,
             client_id: ep,
             table_list: list,
         };
@@ -152,7 +152,7 @@ where
 
     println!("[main] Receiving message !");
     while let Some(payload) = rx.recv().await {
-        ind.println(payload.message.to_string());
+        ind.println(&payload.message);
         if payload.message.contains("Done") {
             ind.inc(1);
         }
