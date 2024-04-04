@@ -182,7 +182,7 @@ impl TableEngine {
                 .map(|r| (r.name, r.engine))
                 .collect::<HashMap<String, String>>()),
             Err(e) => {
-                bail!("Error getting tables' size: {}", e);
+                bail!("Error getting table's engine info: {}", e);
             }
         }
     }
