@@ -3,42 +3,9 @@ use std::cmp::min;
 use std::collections::VecDeque;
 use std::env;
 use std::fs::read_to_string;
-use std::future::Future;
 use std::sync::{Arc, Mutex};
 use std::{thread, time};
 use tokio::sync::mpsc::{channel, Sender};
-
-type SharedBacklog = Arc<Mutex<VecDeque<String>>>;
-
-fn prepare_shared_backlog() -> (SharedBacklog, usize) {
-    let path = env::args()
-        .nth(1)
-        .expect("Expect a path to file containing list of tables to be dealt with.");
-
-    let mut table_list = VecDeque::new();
-    for line in read_to_string(path).unwrap().lines() {
-        table_list.push_back(line.to_string())
-    }
-    let num_job = table_list.len();
-
-    (Arc::new(Mutex::new(table_list)), num_job)
-}
-
-struct Context {
-    client_id: String,
-    table_list: SharedBacklog,
-}
-
-struct Payload {
-    message: String,
-    done: bool,
-}
-
-impl Payload {
-    fn new(message: String, done: bool) -> Self {
-        Payload { message, done }
-    }
-}
 
 macro_rules! send_message {
     ($tx:ident, $client_id: ident, $payload: ident) => {
@@ -49,6 +16,107 @@ macro_rules! send_message {
             );
         };
     };
+}
+
+trait RunAsync {
+    type Backlog;
+    type Context;
+    type Payload;
+
+    fn prepare_shared_backlog(&self) -> (Arc<Mutex<Self::Backlog>>, usize);
+}
+
+struct DemoProject {}
+
+impl DemoProject {
+    fn new() -> Self {
+        DemoProject {}
+    }
+}
+
+impl RunAsync for DemoProject {
+    type Backlog = VecDeque<String>;
+    type Context = DemoContext;
+    type Payload = DemoPayload;
+
+    fn prepare_shared_backlog(&self) -> (Arc<Mutex<Self::Backlog>>, usize) {
+        let path = env::args()
+            .nth(1)
+            .expect("Expect a path to file containing list of tables to be dealt with.");
+
+        let mut table_list = VecDeque::new();
+        for line in read_to_string(path).unwrap().lines() {
+            table_list.push_back(line.to_string())
+        }
+        let num_job = table_list.len();
+
+        (Arc::new(Mutex::new(table_list)), num_job)
+    }
+}
+
+struct DemoContext {
+    client_id: String,
+    table_list: Arc<Mutex<VecDeque<String>>>,
+}
+
+struct DemoPayload {
+    message: String,
+    done: bool,
+}
+
+impl DemoPayload {
+    fn new(message: String, done: bool) -> Self {
+        Self { message, done }
+    }
+}
+
+async fn handle(ctx: DemoContext, tx: Sender<DemoPayload>) {
+    let client_id = ctx.client_id;
+    println!("ckh-{}: Worker start !", client_id);
+
+    loop {
+        let table;
+        {
+            let mut garde = ctx.table_list.lock().unwrap();
+            table = garde.pop_front();
+        }
+
+        let secs = 3;
+
+        match table {
+            Some(table_name) => {
+                // Notify start task
+                let payload = DemoPayload::new(
+                    format!(
+                        "[ckh-{}] Dealing with the table {}, estimate done in {} secs",
+                        client_id, table_name, secs
+                    ),
+                    false,
+                );
+                send_message!(tx, client_id, payload);
+
+                // Do sth
+                thread::sleep(time::Duration::from_secs(secs));
+
+                // Notify end task
+                let payload = DemoPayload::new(
+                    format!("[ckh-{}] Done with the table {}", client_id, table_name),
+                    true,
+                );
+                send_message!(tx, client_id, payload);
+            }
+            None => {
+                // Notify quit
+                let payload = DemoPayload::new(
+                    format!("[ckh-{}] Todo list is empty, mission complete", client_id),
+                    false,
+                );
+                send_message!(tx, client_id, payload);
+
+                break;
+            }
+        }
+    }
 }
 
 macro_rules! do_async_tasks {
@@ -65,7 +133,7 @@ macro_rules! do_async_tasks {
         // Dispatch jobs to workers
         let mut tasks = Vec::with_capacity($eps.len());
         for ep in $eps.into_iter() {
-            let context = Context {
+            let context = DemoContext {
                 client_id: ep,
                 table_list: $tables.clone(),
             };
@@ -95,63 +163,26 @@ fn prepare_workers() -> Vec<String> {
         .collect()
 }
 
-async fn handle(ctx: Context, tx: Sender<Payload>) {
-    let client_id = ctx.client_id;
-    println!("ckh-{}: Worker start !", client_id);
+#[tokio::main]
+async fn main() {
+    let project = DemoProject::new();
 
-    loop {
-        let table;
-        {
-            let mut garde = ctx.table_list.lock().unwrap();
-            table = garde.pop_front();
-        }
+    let (tables, num_job) = project.prepare_shared_backlog();
+    let eps = prepare_workers();
 
-        let secs = 3;
-
-        match table {
-            Some(table_name) => {
-                // Notify start task
-                let payload = Payload::new(
-                    format!(
-                        "[ckh-{}] Dealing with the table {}, estimate done in {} secs",
-                        client_id, table_name, secs
-                    ),
-                    false,
-                );
-                send_message!(tx, client_id, payload);
-
-                // Do sth
-                thread::sleep(time::Duration::from_secs(secs));
-
-                // Notify end task
-                let payload = Payload::new(
-                    format!("[ckh-{}] Done with the table {}", client_id, table_name),
-                    true,
-                );
-                send_message!(tx, client_id, payload);
-            }
-            None => {
-                // Notify quit
-                let payload = Payload::new(
-                    format!("[ckh-{}] Todo list is empty, mission complete", client_id),
-                    false,
-                );
-                send_message!(tx, client_id, payload);
-
-                break;
-            }
-        }
-    }
+    do_async_tasks!(eps, num_job, tables, handle);
 }
 
-#[tokio::main]
+/*
+use std::future::Future;
+
 async fn main() {
     doit(handle).await
 }
 
 async fn doit<F, Fut>(handle_func: F)
 where
-    F: Fn(Context, Sender<Payload>) -> Fut,
+    F: Fn(DemoContext, Sender<DemoPayload>) -> Fut,
     Fut: Future<Output = ()> + Send + 'static,
 {
     let (tables, num_job) = prepare_shared_backlog();
@@ -159,3 +190,4 @@ where
 
     do_async_tasks!(eps, num_job, tables, handle_func);
 }
+*/
