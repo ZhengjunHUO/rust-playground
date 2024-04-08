@@ -2,6 +2,7 @@ use indicatif::ProgressBar;
 use std::cmp::min;
 use std::collections::VecDeque;
 use std::env;
+use std::fmt::Debug;
 use std::fs::read_to_string;
 use std::future::Future;
 use std::sync::{Arc, Mutex};
@@ -19,19 +20,24 @@ macro_rules! send_message {
     };
 }
 
+trait IsDone {
+    fn is_done(&self) -> bool;
+}
+
 trait RunAsync {
     type Backlog;
     type Context;
-    type Payload;
+    type Payload: Debug + IsDone;
     type Worker;
 
     fn prepare_shared_backlog() -> (Arc<Mutex<Self::Backlog>>, usize);
-    fn handle(ctx: Self::Context, tx: Sender<Self::Payload>) -> impl Future<Output = ()>;
+    fn handle(
+        ctx: Self::Context,
+        tx: Sender<Self::Payload>,
+    ) -> impl Future<Output = ()> + Send + 'static;
     fn prepare_workers() -> Vec<Self::Worker>;
-    fn prepare_context(
-        worker: Self::Worker,
-        task_list: Arc<Mutex<Self::Backlog>>,
-    ) -> Self::Context;
+    fn prepare_context(worker: Self::Worker, task_list: Arc<Mutex<Self::Backlog>>)
+        -> Self::Context;
 }
 
 struct DemoProject {}
@@ -94,7 +100,10 @@ impl RunAsync for DemoProject {
                 None => {
                     // Notify quit
                     let payload = DemoPayload::new(
-                        format!("[Worker {}] Todo list is empty, mission complete", client_id),
+                        format!(
+                            "[Worker {}] Todo list is empty, mission complete",
+                            client_id
+                        ),
                         false,
                     );
                     send_message!(tx, client_id, payload);
@@ -139,6 +148,18 @@ impl DemoPayload {
     }
 }
 
+impl Debug for DemoPayload {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.message)
+    }
+}
+
+impl IsDone for DemoPayload {
+    fn is_done(&self) -> bool {
+        self.done
+    }
+}
+
 macro_rules! do_async_tasks {
     ($eps:ident, $num_job:ident, $tables:ident, $handle_func:ident, $prepare_context_func:ident) => {
         // Prepare mpsc channels
@@ -160,8 +181,8 @@ macro_rules! do_async_tasks {
         println!("[main] Receiving message !");
         while let Some(payload) = rx.recv().await {
             // Optional: update progress bar
-            ind.println(&payload.message);
-            if payload.done {
+            ind.println(format!("{payload:?}"));
+            if payload.is_done() {
                 ind.inc(1);
             }
         }
@@ -173,13 +194,17 @@ macro_rules! do_async_tasks {
     };
 }
 
+async fn exec<T: RunAsync>() {
+    let (tables, num_job) = T::prepare_shared_backlog();
+    let eps = T::prepare_workers();
+    let handle_func = T::handle;
+    let prepare_context_func = T::prepare_context;
+    do_async_tasks!(eps, num_job, tables, handle_func, prepare_context_func);
+}
+
 #[tokio::main]
 async fn main() {
-    let (tables, num_job) = DemoProject::prepare_shared_backlog();
-    let eps = DemoProject::prepare_workers();
-    let handle_func = DemoProject::handle;
-    let prepare_context_func = DemoProject::prepare_context;
-    do_async_tasks!(eps, num_job, tables, handle_func, prepare_context_func);
+    exec::<DemoProject>().await;
 }
 
 /*
