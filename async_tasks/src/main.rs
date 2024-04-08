@@ -12,7 +12,7 @@ macro_rules! send_message {
     ($tx:ident, $client_id: ident, $payload: ident) => {
         if let Err(e) = $tx.send($payload).await {
             println!(
-                "[WARN] ckh-{}: Send message with error returned: {}",
+                "[WARN] Worker {}: Send message with error returned: {}",
                 $client_id, e
             );
         };
@@ -23,10 +23,15 @@ trait RunAsync {
     type Backlog;
     type Context;
     type Payload;
+    type Worker;
 
     fn prepare_shared_backlog() -> (Arc<Mutex<Self::Backlog>>, usize);
-    fn handle(ctx: DemoContext, tx: Sender<DemoPayload>) -> impl Future<Output = ()>;
-    fn prepare_workers() -> Vec<String>;
+    fn handle(ctx: Self::Context, tx: Sender<Self::Payload>) -> impl Future<Output = ()>;
+    fn prepare_workers() -> Vec<Self::Worker>;
+    fn prepare_context(
+        worker: Self::Worker,
+        task_list: Arc<Mutex<Self::Backlog>>,
+    ) -> Self::Context;
 }
 
 struct DemoProject {}
@@ -35,29 +40,30 @@ impl RunAsync for DemoProject {
     type Backlog = VecDeque<String>;
     type Context = DemoContext;
     type Payload = DemoPayload;
+    type Worker = String;
 
     fn prepare_shared_backlog() -> (Arc<Mutex<Self::Backlog>>, usize) {
         let path = env::args()
             .nth(1)
             .expect("Expect a path to file containing list of tables to be dealt with.");
 
-        let mut table_list = VecDeque::new();
+        let mut task_list = VecDeque::new();
         for line in read_to_string(path).unwrap().lines() {
-            table_list.push_back(line.to_string())
+            task_list.push_back(line.to_string())
         }
-        let num_job = table_list.len();
+        let num_job = task_list.len();
 
-        (Arc::new(Mutex::new(table_list)), num_job)
+        (Arc::new(Mutex::new(task_list)), num_job)
     }
 
     async fn handle(ctx: DemoContext, tx: Sender<DemoPayload>) {
         let client_id = ctx.client_id;
-        println!("ckh-{}: Worker start !", client_id);
+        println!("Worker {}: Worker start !", client_id);
 
         loop {
             let table;
             {
-                let mut garde = ctx.table_list.lock().unwrap();
+                let mut garde = ctx.task_list.lock().unwrap();
                 table = garde.pop_front();
             }
 
@@ -68,7 +74,7 @@ impl RunAsync for DemoProject {
                     // Notify start task
                     let payload = DemoPayload::new(
                         format!(
-                            "[ckh-{}] Dealing with the table {}, estimate done in {} secs",
+                            "[Worker {}] Dealing with the table {}, estimate done in {} secs",
                             client_id, table_name, secs
                         ),
                         false,
@@ -80,7 +86,7 @@ impl RunAsync for DemoProject {
 
                     // Notify end task
                     let payload = DemoPayload::new(
-                        format!("[ckh-{}] Done with the table {}", client_id, table_name),
+                        format!("[Worker {}] Done with the table {}", client_id, table_name),
                         true,
                     );
                     send_message!(tx, client_id, payload);
@@ -88,7 +94,7 @@ impl RunAsync for DemoProject {
                 None => {
                     // Notify quit
                     let payload = DemoPayload::new(
-                        format!("[ckh-{}] Todo list is empty, mission complete", client_id),
+                        format!("[Worker {}] Todo list is empty, mission complete", client_id),
                         false,
                     );
                     send_message!(tx, client_id, payload);
@@ -99,17 +105,27 @@ impl RunAsync for DemoProject {
         }
     }
 
-    fn prepare_workers() -> Vec<String> {
-        ["0-0", "0-1", "1-0", "1-1"]
+    fn prepare_workers() -> Vec<Self::Worker> {
+        ["w0", "w1", "w2", "w3"]
             .iter()
             .map(|&s| s.into())
-            .collect()
+            .collect::<Vec<_>>()
+    }
+
+    fn prepare_context(
+        worker: Self::Worker,
+        task_list: Arc<Mutex<Self::Backlog>>,
+    ) -> Self::Context {
+        DemoContext {
+            client_id: worker,
+            task_list,
+        }
     }
 }
 
 struct DemoContext {
     client_id: String,
-    table_list: Arc<Mutex<VecDeque<String>>>,
+    task_list: Arc<Mutex<VecDeque<String>>>,
 }
 
 struct DemoPayload {
@@ -124,7 +140,7 @@ impl DemoPayload {
 }
 
 macro_rules! do_async_tasks {
-    ($eps:ident, $num_job:ident, $tables:ident, $handle_func:ident) => {
+    ($eps:ident, $num_job:ident, $tables:ident, $handle_func:ident, $prepare_context_func:ident) => {
         // Prepare mpsc channels
         let (tx, mut rx) = channel(min($num_job, 10));
         let mut senders = Vec::with_capacity($eps.len());
@@ -137,10 +153,7 @@ macro_rules! do_async_tasks {
         // Dispatch jobs to workers
         let mut tasks = Vec::with_capacity($eps.len());
         for ep in $eps.into_iter() {
-            let context = DemoContext {
-                client_id: ep,
-                table_list: $tables.clone(),
-            };
+            let context = $prepare_context_func(ep, $tables.clone());
             tasks.push(tokio::spawn($handle_func(context, senders.pop().unwrap())));
         }
 
@@ -165,7 +178,8 @@ async fn main() {
     let (tables, num_job) = DemoProject::prepare_shared_backlog();
     let eps = DemoProject::prepare_workers();
     let handle_func = DemoProject::handle;
-    do_async_tasks!(eps, num_job, tables, handle_func);
+    let prepare_context_func = DemoProject::prepare_context;
+    do_async_tasks!(eps, num_job, tables, handle_func, prepare_context_func);
 }
 
 /*
