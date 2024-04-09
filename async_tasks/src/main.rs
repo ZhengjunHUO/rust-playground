@@ -3,5 +3,6 @@ use async_tasks::exec::exec_async_tasks;
 
 #[tokio::main]
 async fn main() {
-    exec_async_tasks::<DemoProject>().await;
+    let demo = DemoProject::new();
+    exec_async_tasks::<DemoProject>(demo).await;
 }

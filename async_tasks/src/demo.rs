@@ -1,4 +1,5 @@
 use crate::traits::{IsDone, RunAsync};
+use indicatif::ProgressBar;
 use std::collections::VecDeque;
 use std::env;
 use std::fmt::Debug;
@@ -18,7 +19,17 @@ macro_rules! send_message {
     };
 }
 
-pub struct DemoProject {}
+pub struct DemoProject {
+    progress_bar: ProgressBar,
+}
+
+impl DemoProject {
+    pub fn new() -> Self {
+        DemoProject {
+            progress_bar: ProgressBar::new(1),
+        }
+    }
+}
 
 impl RunAsync for DemoProject {
     type Backlog = VecDeque<String>;
