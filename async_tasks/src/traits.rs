@@ -13,7 +13,7 @@ pub trait RunAsync {
     type Payload: Debug + IsDone;
     type Worker;
 
-    fn prepare_shared_backlog() -> (Arc<Mutex<Self::Backlog>>, usize);
+    fn prepare_shared_backlog(&mut self) -> (Arc<Mutex<Self::Backlog>>, usize);
     fn handle(
         ctx: Self::Context,
         tx: Sender<Self::Payload>,
@@ -21,4 +21,8 @@ pub trait RunAsync {
     fn prepare_workers() -> Vec<Self::Worker>;
     fn prepare_context(worker: Self::Worker, task_list: Arc<Mutex<Self::Backlog>>)
         -> Self::Context;
+
+    fn pre_dispatch_hook(&self);
+    fn in_dispatch_hook(&self, payload: Self::Payload);
+    fn post_dispatch_hook(&self);
 }

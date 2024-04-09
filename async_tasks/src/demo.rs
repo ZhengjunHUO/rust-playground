@@ -21,12 +21,14 @@ macro_rules! send_message {
 
 pub struct DemoProject {
     progress_bar: ProgressBar,
+    backlog_size: usize,
 }
 
 impl DemoProject {
     pub fn new() -> Self {
         DemoProject {
             progress_bar: ProgressBar::new(1),
+            backlog_size: 0,
         }
     }
 }
@@ -35,9 +37,9 @@ impl RunAsync for DemoProject {
     type Backlog = VecDeque<String>;
     type Context = DemoContext;
     type Payload = DemoPayload;
-    type Worker = String;
+    type Worker = usize;
 
-    fn prepare_shared_backlog() -> (Arc<Mutex<Self::Backlog>>, usize) {
+    fn prepare_shared_backlog(&mut self) -> (Arc<Mutex<Self::Backlog>>, usize) {
         let path = env::args()
             .nth(1)
             .expect("Expect a path to file containing list of tables to be dealt with.");
@@ -47,6 +49,8 @@ impl RunAsync for DemoProject {
             task_list.push_back(line.to_string())
         }
         let num_job = task_list.len();
+
+        self.backlog_size = num_job;
 
         (Arc::new(Mutex::new(task_list)), num_job)
     }
@@ -62,7 +66,7 @@ impl RunAsync for DemoProject {
                 table = garde.pop_front();
             }
 
-            let secs = 3;
+            let secs = 2 * (client_id + 1) as u64;
 
             match table {
                 Some(table_name) => {
@@ -104,10 +108,7 @@ impl RunAsync for DemoProject {
     }
 
     fn prepare_workers() -> Vec<Self::Worker> {
-        ["w0", "w1", "w2", "w3"]
-            .iter()
-            .map(|&s| s.into())
-            .collect::<Vec<_>>()
+        (0..4).collect()
     }
 
     fn prepare_context(
@@ -119,10 +120,25 @@ impl RunAsync for DemoProject {
             task_list,
         }
     }
+
+    fn pre_dispatch_hook(&self) {
+        self.progress_bar.set_length(self.backlog_size as u64);
+    }
+
+    fn in_dispatch_hook(&self, payload: Self::Payload) {
+        self.progress_bar.println(format!("{payload:?}"));
+        if payload.is_done() {
+            self.progress_bar.inc(1);
+        }
+    }
+
+    fn post_dispatch_hook(&self) {
+        self.progress_bar.finish_with_message("Complete");
+    }
 }
 
 pub struct DemoContext {
-    client_id: String,
+    client_id: usize,
     task_list: Arc<Mutex<VecDeque<String>>>,
 }
 

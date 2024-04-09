@@ -1,7 +1,7 @@
-use crate::traits::{IsDone, RunAsync};
+use crate::traits::RunAsync;
 
-pub async fn exec_async_tasks<T: RunAsync>(run_async: T) {
-    let (tables, num_job) = T::prepare_shared_backlog();
+pub async fn exec_async_tasks<T: RunAsync>(mut run_async: T) {
+    let (tables, num_job) = run_async.prepare_shared_backlog();
     let eps = T::prepare_workers();
 
     // (1) Prepare mpsc channels
@@ -10,8 +10,7 @@ pub async fn exec_async_tasks<T: RunAsync>(run_async: T) {
     (0..eps.len() - 1).for_each(|_| senders.push(tx.clone()));
     senders.push(tx);
 
-    // Optional: init progress bar
-    let ind = indicatif::ProgressBar::new(num_job as u64);
+    run_async.pre_dispatch_hook();
 
     // (2) Dispatch jobs to workers
     let mut tasks = Vec::with_capacity(eps.len());
@@ -21,17 +20,12 @@ pub async fn exec_async_tasks<T: RunAsync>(run_async: T) {
     }
 
     // (3) Join all threads
-    println!("[main] Receiving message !");
+    println!("[Main] Start exec ... ");
     while let Some(payload) = rx.recv().await {
-        // Optional: update progress bar
-        ind.println(format!("{payload:?}"));
-        if payload.is_done() {
-            ind.inc(1);
-        }
+        run_async.in_dispatch_hook(payload);
     }
 
-    // Optional: quit progress bar
-    ind.finish_with_message("Complete");
+    run_async.post_dispatch_hook();
 
-    println!("[main] All done!");
+    println!("[Main] All done!");
 }
