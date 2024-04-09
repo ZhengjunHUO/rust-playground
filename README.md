@@ -16,6 +16,11 @@ $ rustup override set nightly
 $ rustc -Zunpretty=expanded src/main.rs
 ```
 
+### Log level
+```sh
+$ RUST_LOG=debug ...
+```
+
 ### Fmt & Lint
 ```sh
 $ rustup component add rustfmt
