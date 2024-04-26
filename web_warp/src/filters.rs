@@ -26,13 +26,13 @@ fn all_routes() -> impl Filter<Extract = (impl warp::Reply,), Error = warp::Reje
     let dummy = get_dummy();
 
     // Check if the dummy api is still working
-    // $ 127.0.0.1:8000/status
+    // $ curl 127.0.0.1:8000/status
     let status = status();
 
     vote.or(show).or(dummy).or(status)
 }
 
-/// POST /vote with json body. eg. '{"name": "foo","votes": 1}'
+/// POST /vote with json body. eg. '{"name": "foo", "votes": 1}'
 fn update_votes(
     db: CandidateList,
 ) -> impl Filter<Extract = (impl warp::Reply,), Error = warp::Rejection> + Clone {
@@ -54,10 +54,10 @@ fn show_all(
 ) -> impl Filter<Extract = (impl warp::Reply,), Error = warp::Rejection> + Clone {
     warp::get()
         .and(warp::path!("show"))
-        .and(auth_check())
+        //.and(auth_check())
         //.and(retrieve_token())
         //.and_then(move |token: String| verify_token(token))
-        .untuple_one()
+        //.untuple_one()
         .and(with_candlist(db))
         .map(|candlist: CandidateList| print_all(candlist))
 }

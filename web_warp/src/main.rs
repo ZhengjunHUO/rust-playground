@@ -8,7 +8,7 @@ const SRV_PORT: &str = "DR_API_SERVER_PORT";
 #[tokio::main]
 async fn main() {
     let mut port = 8000;
-    let mut ipv4 = Ipv4Addr::new(127, 0, 0, 1);
+    let mut ipv4 = Ipv4Addr::new(0, 0, 0, 0);
 
     if let Ok(s_port) = env::var(SRV_PORT) {
         if let Ok(val) = s_port.parse::<u16>() {
