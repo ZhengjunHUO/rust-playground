@@ -125,6 +125,35 @@ pub(crate) async fn dummy_handle_request() -> Result<impl warp::Reply, std::conv
     Ok(reply::with_status("Done", StatusCode::OK))
 }
 
+pub(crate) async fn dummy_submit_handle_request(
+) -> Result<impl warp::Reply, std::convert::Infallible> {
+    use std::{thread, time};
+
+    {
+        if *IS_WORKING.lock().unwrap() {
+            return Ok(reply::with_status(
+                "Still working, try later !",
+                StatusCode::TOO_MANY_REQUESTS,
+            ));
+        }
+    }
+
+    {
+        *IS_WORKING.lock().unwrap() = true;
+    }
+
+    tokio::spawn(async {
+        thread::sleep(time::Duration::from_secs(20));
+
+        {
+            *IS_WORKING.lock().unwrap() = false;
+        }
+    });
+
+    // Response sent immediately, but working in the background
+    Ok(reply::with_status("Submitted", StatusCode::OK))
+}
+
 pub(crate) fn check_status() -> Result<impl warp::Reply, std::convert::Infallible> {
     if *IS_WORKING.lock().unwrap() {
         Ok(reply::with_status(

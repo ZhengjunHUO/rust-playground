@@ -1,6 +1,6 @@
 use crate::handlers::{
-    auth_check, check_status, dummy_handle_request, error_handler, print_all, update_candidate,
-    with_candlist,
+    auth_check, check_status, dummy_handle_request, dummy_submit_handle_request, error_handler,
+    print_all, update_candidate, with_candlist,
 };
 use crate::models::{init_demo_db, Candidate, CandidateList};
 use warp::Filter;
@@ -25,11 +25,15 @@ fn all_routes() -> impl Filter<Extract = (impl warp::Reply,), Error = warp::Reje
     // $ curl 127.0.0.1:8000/dummy
     let dummy = get_dummy();
 
+    // Non blocking version of /dummy
+    // $ curl 127.0.0.1:8000/dummy_submit
+    let dummy_submit = get_dummy_submit();
+
     // Check if the dummy api is still working
     // $ curl 127.0.0.1:8000/status
     let status = status();
 
-    vote.or(show).or(dummy).or(status)
+    vote.or(show).or(dummy).or(dummy_submit).or(status)
 }
 
 /// POST /vote with json body. eg. '{"name": "foo", "votes": 1}'
@@ -67,6 +71,14 @@ fn get_dummy() -> impl Filter<Extract = (impl warp::Reply,), Error = warp::Rejec
     warp::get()
         .and(warp::path!("dummy"))
         .then(dummy_handle_request)
+}
+
+/// GET /dummy_submit
+fn get_dummy_submit() -> impl Filter<Extract = (impl warp::Reply,), Error = warp::Rejection> + Clone
+{
+    warp::get()
+        .and(warp::path!("dummy_submit"))
+        .then(dummy_submit_handle_request)
 }
 
 /// GET /status
