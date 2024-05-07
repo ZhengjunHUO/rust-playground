@@ -91,10 +91,12 @@ fn main() {
     let v1 = [1, 2, 3];
     let v2 = [4, 5, 6];
     assert_eq!(dot(&v1, &v2), 32);
+    assert_eq!(dot_adv(&v1, &v2), 32);
 
     let v3 = [1.0, 2.0, 3.0];
     let v4 = [4.0, 5.0, 6.0];
     assert_eq!(dot(&v3, &v4), 32.0);
+    assert_eq!(dot_adv(&v3, &v4), 32.0);
 }
 
 fn dot<T>(v1: &[T], v2: &[T]) -> T
@@ -106,4 +108,13 @@ where
         result += v1[i] * v2[i];
     }
     result
+}
+
+fn dot_adv<T, const N: usize>(v1: &[T; N], v2: &[T; N]) -> T
+where
+    T: Add<Output = T> + Mul<Output = T> + Default + Copy + AddAssign,
+{
+    v1.iter()
+        .zip(v2.iter())
+        .fold(T::default(), |acc, (&a, &b)| acc + a * b)
 }
