@@ -110,8 +110,32 @@ fn main() {
     //let cname = std::mem::replace(&mut clusters[0].name, None);
     assert_eq!(cname, Some("internal".to_string()));
     assert_eq!(clusters[0].name, None);
+
+    let poly = Polynom::new([1., 2., 3.]);
+    assert_eq!(poly.eval(1.), 6.);
+    assert_eq!(poly.eval(2.), 17.);
+    assert_eq!(poly.eval(3), 34.);
 }
 
 fn size(rct: &Rectangle) -> u32 {
     rct.width * rct.height
+}
+
+struct Polynom<const N: usize> {
+    coeff: [f64; N], // C0 + C1*x + C2*x^2 + ... + Cn-1*x^(n-1)
+}
+
+impl<const N: usize> Polynom<N> {
+    fn new(coeff: [f64; N]) -> Polynom<N> {
+        Polynom { coeff }
+    }
+
+    fn eval<T>(&self, x: T) -> f64
+    where
+        T: std::convert::Into<f64> + Copy,
+    {
+        (0..N)
+            .rev()
+            .fold(0., |acc, i| x.into() * acc + self.coeff[i])
+    }
 }
