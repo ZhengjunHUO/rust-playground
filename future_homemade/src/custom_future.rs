@@ -3,6 +3,7 @@ use std::pin::Pin;
 use std::sync::{Arc, Mutex};
 use std::task::{Context, Poll, Waker};
 use std::thread::spawn;
+use std::time::Instant;
 
 struct Inner<T> {
     data: Option<T>,
@@ -47,4 +48,20 @@ where
     });
 
     CustomFuture(fut)
+}
+
+pub(crate) struct DelayFuture(pub(crate) Instant);
+
+impl Future for DelayFuture {
+    type Output = String;
+
+    fn poll(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Self::Output> {
+        if Instant::now() >= self.0 {
+            return Poll::Ready("From delay future".to_owned());
+        }
+
+        println!("Not ready yet !");
+        cx.waker().wake_by_ref();
+        Poll::Pending
+    }
 }

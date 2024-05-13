@@ -11,4 +11,12 @@ mod tests {
         let rslt = executor::block_on(f);
         assert_eq!(rslt, "From custom future".to_owned());
     }
+
+    #[test]
+    fn test_delay_future() {
+        use std::time::{Duration, Instant};
+        let f = custom_future::DelayFuture(Instant::now() + Duration::from_micros(20));
+        let rslt = executor::block_on(f);
+        assert_eq!(rslt, "From delay future".to_owned());
+    }
 }
