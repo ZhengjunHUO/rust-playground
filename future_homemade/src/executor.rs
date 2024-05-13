@@ -54,7 +54,10 @@ impl MiniTokio {
         while let Some(mut f) = self.tasks.pop_front() {
             match f.as_mut().poll(&mut cx) {
                 Poll::Ready(data) => println!("{data}"),
-                Poll::Pending => self.tasks.push_back(f),
+                Poll::Pending => {
+                    self.tasks.push_back(f);
+                    p.park();
+                }
             }
         }
     }

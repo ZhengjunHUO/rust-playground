@@ -16,7 +16,7 @@ mod tests {
     fn test_delay_future() {
         use std::time::{Duration, Instant};
         let mut tokio = executor::MiniTokio::new();
-        let f = custom_future::DelayFuture(Instant::now() + Duration::from_micros(20));
+        let f = custom_future::DelayFuture(Instant::now() + Duration::from_millis(100));
         tokio.spawn(f);
         tokio.exec();
     }

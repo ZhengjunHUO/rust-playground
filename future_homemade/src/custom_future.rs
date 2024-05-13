@@ -2,7 +2,7 @@ use std::future::Future;
 use std::pin::Pin;
 use std::sync::{Arc, Mutex};
 use std::task::{Context, Poll, Waker};
-use std::thread::spawn;
+use std::thread;
 use std::time::Instant;
 
 struct Inner<T> {
@@ -38,7 +38,7 @@ where
     }));
 
     let my_fut = fut.clone();
-    spawn(move || {
+    thread::spawn(move || {
         let data = closure();
         let mut guard = my_fut.lock().unwrap();
         guard.data = Some(data);
@@ -60,8 +60,20 @@ impl Future for DelayFuture {
             return Poll::Ready("From delay future".to_owned());
         }
 
-        println!("Not ready yet !");
-        cx.waker().wake_by_ref();
+        println!("[DEBUG] Not ready yet !");
+        let waker = cx.waker().clone();
+        let timestamp = self.0;
+
+        thread::spawn(move || {
+            let now = Instant::now();
+
+            if now < timestamp {
+                thread::sleep(timestamp - now);
+            }
+
+            waker.wake();
+        });
+
         Poll::Pending
     }
 }
