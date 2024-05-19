@@ -20,4 +20,13 @@ mod tests {
         tokio.spawn(f);
         tokio.exec();
     }
+
+    #[test]
+    fn test_adv_mini_tokio() {
+        use std::time::{Duration, Instant};
+        let tokio = executor::MiniTokioAdv::new();
+        let f = custom_future::DelayFuture(Instant::now() + Duration::from_millis(100));
+        tokio.spawn(f);
+        tokio.exec();
+    }
 }

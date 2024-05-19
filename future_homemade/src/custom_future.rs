@@ -5,6 +5,7 @@ use std::task::{Context, Poll, Waker};
 use std::thread;
 use std::time::Instant;
 
+/// 1st example
 struct Inner<T> {
     data: Option<T>,
     callback: Option<Waker>,
@@ -50,6 +51,7 @@ where
     CustomFuture(fut)
 }
 
+/// 2nd example
 pub(crate) struct DelayFuture(pub(crate) Instant);
 
 impl Future for DelayFuture {
