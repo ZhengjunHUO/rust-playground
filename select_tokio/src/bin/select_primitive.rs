@@ -1,24 +1,22 @@
+use std::{thread, time};
+use tokio::net::TcpListener;
 use tokio::sync::oneshot;
 
 #[tokio::main]
 async fn main() {
-    let (tx1, rx1) = oneshot::channel();
-    let (tx2, rx2) = oneshot::channel();
+    let (tx, rx) = oneshot::channel();
 
     tokio::spawn(async {
-        let _ = tx1.send("foo");
-    });
-
-    tokio::spawn(async {
-        let _ = tx2.send("bar");
+        thread::sleep(time::Duration::from_millis(100));
+        let _ = tx.send("foo");
     });
 
     tokio::select! {
-        resp = rx1 => {
-            println!("rx1 won the race with [{:?}]", resp);
+        Ok(resp) = rx => {
+            println!("rx won the race with [{:?}]", resp);
         }
-        resp = rx2 => {
-            println!("rx2 won the race with [{:?}]", resp);
+        sock = TcpListener::bind("127.0.0.1:1234") => {
+            println!("binding [{:?}] won the race", sock);
         }
     }
     println!("Done !");
