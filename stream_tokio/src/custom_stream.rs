@@ -1,4 +1,5 @@
 use crate::custom_future::DelayFuture;
+use async_stream::stream;
 use std::future::Future;
 use std::pin::Pin;
 use std::task::{Context, Poll};
@@ -35,6 +36,18 @@ impl Stream for CustomStream {
                 Poll::Ready(Some(()))
             }
             Poll::Pending => Poll::Pending,
+        }
+    }
+}
+
+pub(crate) fn new_custom_stream() -> impl Stream<Item = ()> {
+    stream! {
+        let mut next = Instant::now();
+        for _ in 0..5 {
+            let delay = DelayFuture(next);
+            delay.await;
+            yield ();
+            next += Duration::from_millis(10);
         }
     }
 }
