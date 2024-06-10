@@ -13,3 +13,4 @@ kube = "0.82.0"
 reqwest = "0.11.16"
 tokio = { version = "1.26.0", features = ["macros", "rt-multi-thread"] }
 tower = "0.4.13"
+openssl-sys = { version = "0.9.90", features = ["vendored"] }
