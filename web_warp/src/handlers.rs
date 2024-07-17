@@ -33,6 +33,7 @@ fn retrieve_token() -> impl Filter<Extract = (String,), Error = Rejection> + Cop
 
                 let (_, raw_token) = text.split_at(7);
 
+                /*
                 match decrypt_token(raw_token.to_owned()) {
                     Ok(token) => {
                         println!("[DEBUG] Recv token: {}", token);
@@ -40,6 +41,9 @@ fn retrieve_token() -> impl Filter<Extract = (String,), Error = Rejection> + Cop
                     }
                     Err(e) => Err(e),
                 }
+                */
+                println!("[DEBUG] Recv token: {}", raw_token);
+                Ok(raw_token.to_owned())
             }
         }
     })

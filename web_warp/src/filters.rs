@@ -58,10 +58,10 @@ fn show_all(
 ) -> impl Filter<Extract = (impl warp::Reply,), Error = warp::Rejection> + Clone {
     warp::get()
         .and(warp::path!("show"))
-        //.and(auth_check())
+        .and(auth_check())
         //.and(retrieve_token())
         //.and_then(move |token: String| verify_token(token))
-        //.untuple_one()
+        .untuple_one()
         .and(with_candlist(db))
         .map(|candlist: CandidateList| print_all(candlist))
 }
