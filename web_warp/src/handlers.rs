@@ -33,7 +33,11 @@ fn retrieve_token() -> impl Filter<Extract = (String,), Error = Rejection> + Cop
 
                 let (_, raw_token) = text.split_at(7);
 
-                /*
+                if std::env::var("DR_NEED_DECRYPT").is_err() {
+                    println!("[DEBUG] Recv token: {}", raw_token);
+                    return Ok(raw_token.to_owned());
+                }
+
                 match decrypt_token(raw_token.to_owned()) {
                     Ok(token) => {
                         println!("[DEBUG] Recv token: {}", token);
@@ -41,9 +45,6 @@ fn retrieve_token() -> impl Filter<Extract = (String,), Error = Rejection> + Cop
                     }
                     Err(e) => Err(e),
                 }
-                */
-                println!("[DEBUG] Recv token: {}", raw_token);
-                Ok(raw_token.to_owned())
             }
         }
     })
@@ -64,7 +65,10 @@ async fn verify_token(token: String) -> Result<(), Rejection> {
         .await;
     match res {
         Ok(resp) => match resp.status().as_u16() {
-            200 => Ok(()),
+            200 => {
+                println!("Keycloak responds: {:?}", resp.text().await);
+                Ok(())
+            }
             401 => {
                 println!("[DEBUG] Failed to authorize, please use a valid token",);
                 Err(reject::custom(InvalidToken))
