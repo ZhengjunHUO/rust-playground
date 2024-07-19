@@ -1,6 +1,5 @@
 use crate::handlers::{
-    auth_check, check_status, dummy_handle_request, dummy_submit_handle_request, error_handler,
-    print_all, update_candidate, with_candlist,
+    auth_check, check_status, dummy_handle_request, dummy_submit_handle_request, error_handler, print_all, update_candidate, with_candlist
 };
 use crate::models::{init_demo_db, Candidate, CandidateList};
 use warp::Filter;
@@ -33,7 +32,18 @@ fn all_routes() -> impl Filter<Extract = (impl warp::Reply,), Error = warp::Reje
     // $ curl 127.0.0.1:8000/status
     let status = status();
 
-    vote.or(show).or(dummy).or(dummy_submit).or(status)
+    let health_check = health_check();
+
+    let probe_paths = health_check.or(status);
+    let protected_paths = vote.or(show).or(dummy).or(dummy_submit);
+
+    //health_check.or(vote).or(show).or(dummy).or(dummy_submit).or(status)
+    probe_paths.or(auth_check().untuple_one().and(protected_paths))
+}
+
+// GET /
+fn health_check() -> impl Filter<Extract = (impl warp::Reply,), Error = warp::Rejection> + Clone {
+    warp::get().and(warp::path::end()).map(|| "ok")
 }
 
 /// POST /vote with json body. eg. '{"name": "foo", "votes": 1}'
@@ -58,10 +68,10 @@ fn show_all(
 ) -> impl Filter<Extract = (impl warp::Reply,), Error = warp::Rejection> + Clone {
     warp::get()
         .and(warp::path!("show"))
-        .and(auth_check())
+        //.and(auth_check())
         //.and(retrieve_token())
         //.and_then(move |token: String| verify_token(token))
-        .untuple_one()
+        //.untuple_one()
         .and(with_candlist(db))
         .map(|candlist: CandidateList| print_all(candlist))
 }
