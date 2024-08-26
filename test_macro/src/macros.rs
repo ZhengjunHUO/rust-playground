@@ -35,3 +35,14 @@ macro_rules! rendered_from_env {
         }
     };
 }
+
+#[macro_export]
+macro_rules! is_activated {
+    ($envname:literal) => {
+        if std::env::var($envname).is_ok() && std::env::var($envname) == Ok(String::from("1")) {
+            true
+        } else {
+            false
+        }
+    };
+}

@@ -4,7 +4,7 @@
 use std::env;
 use test_macro::{
     capture_then_check_attribute, capture_then_check_tokens, capture_then_stringify,
-    check_attribute, check_tokens, expr_len, json, pop_head, pop_tail, print_fibo,
+    check_attribute, check_tokens, expr_len, is_activated, json, pop_head, pop_tail, print_fibo,
     rendered_from_env, vec_string, Json,
 };
 
@@ -95,4 +95,14 @@ fn main() {
 
     let rslt = vec_string!["foo", "bar", "baz"];
     println!("{:?}", rslt);
+
+    println!(
+        "ENV_VAR_NOT_SET is activated: {}",
+        is_activated!("ENV_VAR_NOT_SET")
+    );
+    std::env::set_var("ENV_VAR_TEST_SET", "1");
+    println!(
+        "ENV_VAR_TEST_SET is activated: {}",
+        is_activated!("ENV_VAR_TEST_SET")
+    );
 }
