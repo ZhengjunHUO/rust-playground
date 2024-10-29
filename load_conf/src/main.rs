@@ -17,7 +17,9 @@ fn non_empty(list: &Option<Vec<String>>) -> Result<(), serde_valid::validation::
     if list.is_some() {
         let l = list.as_ref().unwrap();
         if l.len() < 1 {
-            return Err(Custom(String::from("Should contains at least one element !")));
+            return Err(Custom(String::from(
+                "Should contains at least one element !",
+            )));
         }
     }
     Ok(())
