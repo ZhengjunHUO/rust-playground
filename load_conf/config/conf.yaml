@@ -1,5 +1,5 @@
 full_name: ctn-test
-alias: ctn2
+alias: [ctn1, ctn2]
 serial_no: 19
 ingress_rules:
   l3:

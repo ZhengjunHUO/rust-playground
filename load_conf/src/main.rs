@@ -13,6 +13,16 @@ fn odd_only(val: &u8) -> Result<(), serde_valid::validation::Error> {
     Ok(())
 }
 
+fn non_empty(list: &Option<Vec<String>>) -> Result<(), serde_valid::validation::Error> {
+    if list.is_some() {
+        let l = list.as_ref().unwrap();
+        if l.len() < 1 {
+            return Err(Custom(String::from("Should contains at least one element !")));
+        }
+    }
+    Ok(())
+}
+
 #[derive(Deserialize, Debug, Serialize, Validate)]
 struct Config {
     #[validate(
@@ -20,7 +30,8 @@ struct Config {
         message = "The full name should be like: <CLIENT-NAME>-<PROJECT-NAME>"
     )]
     full_name: String,
-    alias: Option<String>,
+    #[validate(custom(non_empty))]
+    alias: Option<Vec<String>>,
     #[validate(custom(odd_only))]
     serial_no: u8,
     #[validate]
@@ -28,6 +39,14 @@ struct Config {
     #[validate]
     egress_rules: Rules,
 }
+
+/*
+#[derive(Deserialize, Debug, Serialize, Validate)]
+enum Alias {
+    Single(String),
+    List(Vec<String>),
+}
+*/
 
 #[derive(Deserialize, Debug, Serialize, Validate)]
 struct Rules {
