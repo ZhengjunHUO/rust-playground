@@ -1,5 +1,6 @@
 use anyhow::{bail, Result};
 use std::env;
+use std::ffi::OsStr;
 use std::fs::{self, File};
 use std::process::{Command, Stdio};
 
@@ -7,12 +8,28 @@ fn main() -> Result<()> {
     // should be a superuser and its password
     //dump_sql(
     //restore_sql(
-    //    "postgresql://user:password@127.0.0.1:5432/dbname",
+    //    "postgresql://postgres:mysecretpassword@172.19.0.2:5432/rafaldb",
     //    "dump.sql",
     //)?;
+
     sql_client_version()?;
-    println!("Done");
+    //println!("Done");
+
+    let rslt = list_dbs("postgresql://postgres:mysecretpassword@172.19.0.2:5432/rafaldb")?;
+    println!("result: {:?}", rslt);
     Ok(())
+}
+
+fn list_dbs(db_name: &str) -> Result<Vec<String>> {
+    let dbs = exec_cmd(
+        "psql",
+        [db_name, "-t", "-c", "SELECT datname FROM pg_database;"],
+    )?;
+    Ok(dbs
+        .split('\n')
+        .filter(|s| s.len() > 0)
+        .map(|s| s.trim().to_owned())
+        .collect::<Vec<String>>())
 }
 
 fn sql_client_version() -> Result<()> {
@@ -61,8 +78,7 @@ fn dump_sql(db_name: &str, dump_name: &str) -> Result<()> {
         bail!("Can't find binary {} in $PATH", binary);
     }
 
-    let file_name = format!("{}.sql", dump_name);
-    let file = File::create(&file_name).unwrap();
+    let file = File::create(dump_name).unwrap();
     let stdio = Stdio::from(file);
 
     let dump = Command::new(binary)
@@ -80,7 +96,7 @@ fn dump_sql(db_name: &str, dump_name: &str) -> Result<()> {
 
     let error = String::from_utf8_lossy(&cat.stdout);
     if error.len() > 0 {
-        fs::remove_file(&file_name)?;
+        fs::remove_file(dump_name)?;
         bail!("while dumping the db: {}", error);
     }
 
@@ -132,4 +148,39 @@ fn binary_exist_in_path(bin: &str) -> bool {
         }
     }
     false
+}
+
+fn exec_cmd<T, S>(bin: &str, args: T) -> Result<String>
+where
+    T: IntoIterator<Item = S>,
+    S: AsRef<OsStr>,
+{
+    if !binary_exist_in_path(bin) {
+        bail!("Can't find binary {} in $PATH", bin);
+    }
+
+    let cmd = Command::new(bin)
+        .args(args)
+        .stderr(Stdio::piped())
+        .stdout(Stdio::piped())
+        .spawn()
+        .expect("Exec cmd failed.");
+
+    let err_out = Command::new("cat")
+        .arg("-")
+        .stdin(cmd.stderr.unwrap())
+        .output()
+        .expect("Cat stderr failed.");
+    let error = String::from_utf8_lossy(&err_out.stdout);
+    if error.len() > 0 {
+        bail!("Error occurred while executing {}: \n{}", bin, error);
+    }
+
+    let out = Command::new("cat")
+        .arg("-")
+        .stdin(cmd.stdout.unwrap())
+        .output()
+        .expect("Cat stdout failed.");
+
+    Ok(String::from_utf8_lossy(&out.stdout).to_string())
 }
