@@ -6,8 +6,8 @@ use futures::stream::StreamExt;
 async fn main() -> azure_core::Result<()> {
     let account = std::env::var("AZURE_ACCOUNT_NAME").expect("AZURE_ACCOUNT_NAME not set");
     let access_key = std::env::var("AZURE_ACCESS_KEY").expect("AZURE_ACCESS_KEY not set");
-    let container = String::from("test");
-    let blob_name = String::from("rusty");
+    let container = String::from("rustacean");
+    let blob_name = String::from("foo");
 
     let storage_credentials = StorageCredentials::access_key(account.clone(), access_key);
     let blob_client =
