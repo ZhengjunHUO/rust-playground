@@ -3,7 +3,7 @@ use azure_storage::prelude::*;
 use azure_storage_blobs::prelude::*;
 use futures::stream::StreamExt;
 use lazy_static::lazy_static;
-use std::sync::Mutex;
+use std::{collections::HashSet, sync::Mutex};
 
 lazy_static! {
     pub(crate) static ref IS_WORKING: Mutex<Vec<String>> = Mutex::new(Vec::new());
@@ -40,20 +40,42 @@ async fn list(client: &ContainerClient, path: String) -> Result<Vec<String>> {
     Ok(rslt)
 }
 
+async fn check_or_provision_cache(client: &ContainerClient) -> Result<()> {
+    if IS_WORKING.lock().is_ok_and(|list| list.is_empty()) {
+        println!("[DEBUG] Retrieve info from remote ...");
+        *IS_WORKING.lock().unwrap() = list(client, String::new()).await?;
+    }
+    Ok(())
+}
+
+fn find_folders(list: Vec<String>) -> Vec<String> {
+    let mut result = HashSet::<String>::new();
+    list.into_iter().for_each(|path| {
+        if path.contains('/') {
+            let elems = path.split('/').collect::<Vec<_>>();
+
+            if !elems.is_empty() {
+                result.insert(String::from(elems[0]));
+            }
+        }
+    });
+
+    result.into_iter().collect()
+}
+
 impl Crud for ContainerClient {
     async fn list_folders(&self, path: String) -> Result<Vec<String>> {
-        if IS_WORKING.lock().is_ok_and(|list| list.is_empty()) {
-            println!("[DEBUG] Retrieve info");
-            *IS_WORKING.lock().unwrap() = list(self, String::new()).await?;
-        }
+        check_or_provision_cache(self).await?;
 
-        Ok(IS_WORKING
+        let matched_path = IS_WORKING
             .lock()
             .unwrap()
             .iter()
-            .filter(|&elem| elem.starts_with(&path))
-            .map(|elem| format!("{}", elem))
-            .collect())
+            .filter_map(|elem| elem.strip_prefix(&path))
+            .map(|striped| striped.to_owned())
+            .collect();
+
+        Ok(find_folders(matched_path))
     }
 
     async fn put_obj(&self, path: String, content: &[u8]) -> Result<()> {
@@ -83,10 +105,8 @@ async fn main() -> Result<()> {
             .await?;
     */
     //println!("Result: {:?}", container_client.list(String::default()).await?);
-    println!(
-        "Result: {:?}",
-        container_client.list_folders(String::from("xva")).await?
-    );
+    let result = container_client.list_folders(String::from("xva/")).await?;
+    println!("Result: {:?}({})", result, result.len());
 
     Ok(())
 }
