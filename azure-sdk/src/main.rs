@@ -18,10 +18,8 @@ trait Crud {
     async fn get_obj(&self, path: String) -> Result<String>;
     /// Create an object in bucket
     async fn put_obj(&self, path: String, content: &[u8]) -> Result<()>;
-
-    // /// Should delete recursively all the objects inside if the path is a "folder"
-    //async fn del_obj(&self, path: String) -> Result<()>;
-    //fn clone_client(&self, config: &Config, access_key: String, secret_key: String) -> Self;
+    /// Should delete recursively all the objects inside if the path is a "folder"
+    async fn del_obj(&self, path: String) -> Result<()>;
     async fn put_obj_stream(&self, dump_name: &str, s3_path: String) -> Result<()>;
 }
 
@@ -110,7 +108,7 @@ impl Crud for ContainerClient {
             .blob_client(path)
             .put_block_blob(content.to_vec())
             .await?;
-        println!("[DEBUG] Got resp: {:?}", resp);
+        println!("[DEBUG] put_obj got resp: {:?}", resp);
         Ok(())
     }
 
@@ -119,13 +117,29 @@ impl Crud for ContainerClient {
         let mut content = Vec::new();
         buf_reader.read_to_end(&mut content)?;
         let resp = self.blob_client(s3_path).put_block_blob(content).await?;
-        println!("[DEBUG] Got resp: {:?}", resp);
+        println!("[DEBUG] put_obj_stream got resp: {:?}", resp);
         Ok(())
     }
 
     async fn get_obj(&self, path: String) -> Result<String> {
         let content = self.blob_client(path).get_content().await?;
         Ok(String::from_utf8_lossy(&content).to_string())
+    }
+
+    async fn del_obj(&self, path: String) -> Result<()> {
+        if !path.ends_with('/') {
+            let resp = self.blob_client(path).delete().await?;
+            println!("[DEBUG] del_obj got resp: {:?}", resp);
+        } else {
+            let list_to_delete = list(self, path).await?;
+            for elem in list_to_delete {
+                println!("[DEBUG] delete {}", elem);
+                let resp = self.blob_client(elem).delete().await?;
+                println!("[DEBUG] del_obj got resp: {:?}", resp);
+            }
+        }
+
+        Ok(())
     }
 }
 
@@ -163,8 +177,9 @@ async fn main() -> Result<()> {
 
     println!(
         "Read content: {}",
-        container_client.get_obj(new_blob).await?
+        container_client.get_obj(new_blob.clone()).await?
     );
 
+    //container_client.del_obj("bar/rust/".to_string()).await?;
     Ok(())
 }
