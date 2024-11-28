@@ -92,19 +92,20 @@ fn find_files(list: Vec<String>) -> Vec<String> {
         .collect()
 }
 
-impl Crud for ContainerClient {
+impl Crud for AzureStorageClient {
     async fn list_folders(&self, path: String) -> Result<Vec<String>> {
-        check_or_provision_cache(self).await?;
+        check_or_provision_cache(&self.container).await?;
         Ok(find_folders(files_under_path(&path)))
     }
 
     async fn list_files(&self, path: String) -> Result<Vec<String>> {
-        check_or_provision_cache(self).await?;
+        check_or_provision_cache(&self.container).await?;
         Ok(find_files(files_under_path(&path)))
     }
 
     async fn put_obj(&self, path: String, content: &[u8]) -> Result<()> {
         let resp = self
+            .container
             .blob_client(path)
             .put_block_blob(content.to_vec())
             .await?;
@@ -116,25 +117,29 @@ impl Crud for ContainerClient {
         let mut buf_reader = std::io::BufReader::new(std::fs::File::open(dump_name)?);
         let mut content = Vec::new();
         buf_reader.read_to_end(&mut content)?;
-        let resp = self.blob_client(s3_path).put_block_blob(content).await?;
+        let resp = self
+            .container
+            .blob_client(s3_path)
+            .put_block_blob(content)
+            .await?;
         println!("[DEBUG] put_obj_stream got resp: {:?}", resp);
         Ok(())
     }
 
     async fn get_obj(&self, path: String) -> Result<String> {
-        let content = self.blob_client(path).get_content().await?;
+        let content = self.container.blob_client(path).get_content().await?;
         Ok(String::from_utf8_lossy(&content).to_string())
     }
 
     async fn del_obj(&self, path: String) -> Result<()> {
         if !path.ends_with('/') {
-            let resp = self.blob_client(path).delete().await?;
+            let resp = self.container.blob_client(path).delete().await?;
             println!("[DEBUG] del_obj got resp: {:?}", resp);
         } else {
-            let list_to_delete = list(self, path).await?;
+            let list_to_delete = list(&self.container, path).await?;
             for elem in list_to_delete {
                 println!("[DEBUG] delete {}", elem);
-                let resp = self.blob_client(elem).delete().await?;
+                let resp = self.container.blob_client(elem).delete().await?;
                 println!("[DEBUG] del_obj got resp: {:?}", resp);
             }
         }
@@ -143,15 +148,26 @@ impl Crud for ContainerClient {
     }
 }
 
+struct AzureStorageClient {
+    container: ContainerClient,
+}
+
+impl AzureStorageClient {
+    fn new(account: String, access_key: String, container: String) -> Self {
+        let storage_credentials = StorageCredentials::access_key(account.clone(), access_key);
+        AzureStorageClient {
+            container: ClientBuilder::new(account, storage_credentials)
+                .container_client(&container),
+        }
+    }
+}
+
 #[tokio::main]
 async fn main() -> Result<()> {
     let account = std::env::var("AZURE_ACCOUNT_NAME").expect("AZURE_ACCOUNT_NAME not set");
     let access_key = std::env::var("AZURE_ACCESS_KEY").expect("AZURE_ACCESS_KEY not set");
     let container = std::env::var("AZURE_CONTAINER_NAME").expect("AZURE_CONTAINER_NAME not set");
-
-    let storage_credentials = StorageCredentials::access_key(account.clone(), access_key);
-    let container_client =
-        ClientBuilder::new(account, storage_credentials).container_client(&container);
+    let container_client = AzureStorageClient::new(account, access_key, container);
 
     let new_blob = String::from("bar/baz/newfile");
     /*
