@@ -3,7 +3,7 @@ use azure_storage::prelude::*;
 use azure_storage_blobs::prelude::*;
 use futures::stream::StreamExt;
 use lazy_static::lazy_static;
-use std::{collections::HashSet, sync::Mutex};
+use std::{collections::HashSet, io::Read, sync::Mutex};
 
 lazy_static! {
     pub(crate) static ref REMOTE_STORAGE_CACHE: Mutex<Vec<String>> = Mutex::new(Vec::new());
@@ -14,17 +14,15 @@ trait Crud {
     async fn list_folders(&self, path: String) -> Result<Vec<String>>;
     /// List all files under path in bucket
     async fn list_files(&self, path: String) -> Result<Vec<String>>;
-
-    // /// Read the object's content
-    //async fn get_obj(&self, path: String) -> Result<String>;
-
+    /// Read the object's content
+    async fn get_obj(&self, path: String) -> Result<String>;
     /// Create an object in bucket
     async fn put_obj(&self, path: String, content: &[u8]) -> Result<()>;
 
     // /// Should delete recursively all the objects inside if the path is a "folder"
     //async fn del_obj(&self, path: String) -> Result<()>;
     //fn clone_client(&self, config: &Config, access_key: String, secret_key: String) -> Self;
-    //async fn put_obj_stream(&self, dump_name: &str, s3_path: String) -> Result<()>;
+    async fn put_obj_stream(&self, dump_name: &str, s3_path: String) -> Result<()>;
 }
 
 async fn list(client: &ContainerClient, path: String) -> Result<Vec<String>> {
@@ -115,6 +113,20 @@ impl Crud for ContainerClient {
         println!("[DEBUG] Got resp: {:?}", resp);
         Ok(())
     }
+
+    async fn put_obj_stream(&self, dump_name: &str, s3_path: String) -> Result<()> {
+        let mut buf_reader = std::io::BufReader::new(std::fs::File::open(dump_name)?);
+        let mut content = Vec::new();
+        buf_reader.read_to_end(&mut content)?;
+        let resp = self.blob_client(s3_path).put_block_blob(content).await?;
+        println!("[DEBUG] Got resp: {:?}", resp);
+        Ok(())
+    }
+
+    async fn get_obj(&self, path: String) -> Result<String> {
+        let content = self.blob_client(path).get_content().await?;
+        Ok(String::from_utf8_lossy(&content).to_string())
+    }
 }
 
 #[tokio::main]
@@ -127,9 +139,17 @@ async fn main() -> Result<()> {
     let container_client =
         ClientBuilder::new(account, storage_credentials).container_client(&container);
 
-    let content = String::from("RTFM");
+    let new_blob = String::from("bar/baz/newfile");
+    /*
+    let content = String::from("RTFM please");
     container_client
-        .put_obj(String::from("bar/baz/newfile"), content.as_bytes())
+        .put_obj(new_blob.clone(), content.as_bytes())
+        .await?;
+    */
+
+    let upload_file_path = String::from("Cargo.toml");
+    container_client
+        .put_obj_stream(&upload_file_path, new_blob.clone())
         .await?;
 
     //println!("Result: {:?}", container_client.list(String::default()).await?);
@@ -140,6 +160,11 @@ async fn main() -> Result<()> {
 
     let files = container_client.list_files(path.clone()).await?;
     println!("Files: {:?}({})", files, files.len());
+
+    println!(
+        "Read content: {}",
+        container_client.get_obj(new_blob).await?
+    );
 
     Ok(())
 }
