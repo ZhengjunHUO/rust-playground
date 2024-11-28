@@ -6,12 +6,25 @@ use lazy_static::lazy_static;
 use std::{collections::HashSet, sync::Mutex};
 
 lazy_static! {
-    pub(crate) static ref IS_WORKING: Mutex<Vec<String>> = Mutex::new(Vec::new());
+    pub(crate) static ref REMOTE_STORAGE_CACHE: Mutex<Vec<String>> = Mutex::new(Vec::new());
 }
 
 trait Crud {
+    /// List all folders under path in bucket
     async fn list_folders(&self, path: String) -> Result<Vec<String>>;
+    /// List all files under path in bucket
+    async fn list_files(&self, path: String) -> Result<Vec<String>>;
+
+    // /// Read the object's content
+    //async fn get_obj(&self, path: String) -> Result<String>;
+
+    /// Create an object in bucket
     async fn put_obj(&self, path: String, content: &[u8]) -> Result<()>;
+
+    // /// Should delete recursively all the objects inside if the path is a "folder"
+    //async fn del_obj(&self, path: String) -> Result<()>;
+    //fn clone_client(&self, config: &Config, access_key: String, secret_key: String) -> Self;
+    //async fn put_obj_stream(&self, dump_name: &str, s3_path: String) -> Result<()>;
 }
 
 async fn list(client: &ContainerClient, path: String) -> Result<Vec<String>> {
@@ -41,11 +54,24 @@ async fn list(client: &ContainerClient, path: String) -> Result<Vec<String>> {
 }
 
 async fn check_or_provision_cache(client: &ContainerClient) -> Result<()> {
-    if IS_WORKING.lock().is_ok_and(|list| list.is_empty()) {
+    if REMOTE_STORAGE_CACHE
+        .lock()
+        .is_ok_and(|list| list.is_empty())
+    {
         println!("[DEBUG] Retrieve info from remote ...");
-        *IS_WORKING.lock().unwrap() = list(client, String::new()).await?;
+        *REMOTE_STORAGE_CACHE.lock().unwrap() = list(client, String::new()).await?;
     }
     Ok(())
+}
+
+fn files_under_path(path: &str) -> Vec<String> {
+    REMOTE_STORAGE_CACHE
+        .lock()
+        .unwrap()
+        .iter()
+        .filter_map(|elem| elem.strip_prefix(path))
+        .map(|striped| striped.to_owned())
+        .collect()
 }
 
 fn find_folders(list: Vec<String>) -> Vec<String> {
@@ -63,19 +89,22 @@ fn find_folders(list: Vec<String>) -> Vec<String> {
     result.into_iter().collect()
 }
 
+fn find_files(list: Vec<String>) -> Vec<String> {
+    list.into_iter()
+        .filter(|path| !path.contains('/'))
+        .map(|elem| elem.to_owned())
+        .collect()
+}
+
 impl Crud for ContainerClient {
     async fn list_folders(&self, path: String) -> Result<Vec<String>> {
         check_or_provision_cache(self).await?;
+        Ok(find_folders(files_under_path(&path)))
+    }
 
-        let matched_path = IS_WORKING
-            .lock()
-            .unwrap()
-            .iter()
-            .filter_map(|elem| elem.strip_prefix(&path))
-            .map(|striped| striped.to_owned())
-            .collect();
-
-        Ok(find_folders(matched_path))
+    async fn list_files(&self, path: String) -> Result<Vec<String>> {
+        check_or_provision_cache(self).await?;
+        Ok(find_files(files_under_path(&path)))
     }
 
     async fn put_obj(&self, path: String, content: &[u8]) -> Result<()> {
@@ -92,21 +121,25 @@ impl Crud for ContainerClient {
 async fn main() -> Result<()> {
     let account = std::env::var("AZURE_ACCOUNT_NAME").expect("AZURE_ACCOUNT_NAME not set");
     let access_key = std::env::var("AZURE_ACCESS_KEY").expect("AZURE_ACCESS_KEY not set");
-    let container = String::from("solution-blob-container");
+    let container = std::env::var("AZURE_CONTAINER_NAME").expect("AZURE_CONTAINER_NAME not set");
 
     let storage_credentials = StorageCredentials::access_key(account.clone(), access_key);
     let container_client =
         ClientBuilder::new(account, storage_credentials).container_client(&container);
 
-    /*
-        let content = String::from("RTFM");
-        container_client
-            .put_obj(String::from("bar/baz/readme"), content.as_bytes())
-            .await?;
-    */
+    let content = String::from("RTFM");
+    container_client
+        .put_obj(String::from("bar/baz/newfile"), content.as_bytes())
+        .await?;
+
     //println!("Result: {:?}", container_client.list(String::default()).await?);
-    let result = container_client.list_folders(String::from("xva/")).await?;
-    println!("Result: {:?}({})", result, result.len());
+    //let result = container_client.list_folders(String::from("xva/")).await?;
+    let path = String::from("bar/");
+    let folders = container_client.list_folders(path.clone()).await?;
+    println!("Folders: {:?}({})", folders, folders.len());
+
+    let files = container_client.list_files(path.clone()).await?;
+    println!("Files: {:?}({})", files, files.len());
 
     Ok(())
 }
