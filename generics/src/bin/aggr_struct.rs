@@ -35,16 +35,20 @@ impl Bar for SomeBar {
 trait AggrTrait {
     fn do_something(&self);
     fn get_bar_ref(&self) -> &dyn Bar;
+    fn grab_foo(&mut self) -> Option<Vec<Box<dyn Foo>>>;
 }
 
-struct Aggr<T1, T2> {
-    mem1: Vec<T1>,
+struct Aggr<T2> {
+    mem1: Option<Vec<Box<dyn Foo>>>,
     mem2: Option<T2>,
 }
 
-impl<T1: Foo, T2: Bar> AggrTrait for Aggr<T1, T2> {
+impl<T2: Bar> AggrTrait for Aggr<T2> {
     fn do_something(&self) {
-        self.mem1.iter().for_each(|elem| elem.do_foo());
+        match self.mem1.as_ref() {
+            Some(list) => list.iter().for_each(|elem| elem.do_foo()),
+            None => (),
+        };
 
         match &self.mem2 {
             Some(obj) => obj.do_bar(),
@@ -54,6 +58,10 @@ impl<T1: Foo, T2: Bar> AggrTrait for Aggr<T1, T2> {
 
     fn get_bar_ref(&self) -> &dyn Bar {
         self.mem2.as_ref().unwrap()
+    }
+
+    fn grab_foo(&mut self) -> Option<Vec<Box<dyn Foo>>> {
+        self.mem1.take()
     }
 }
 
@@ -74,18 +82,31 @@ fn new_bar() -> SomeBar {
 }
 
 fn main() {
-    let instance: Box<dyn AggrTrait> = match std::env::var("USE_ANOTHER_FOO") {
+    let mut instance: Box<dyn AggrTrait> = match std::env::var("USE_ANOTHER_FOO") {
         Ok(_) => Box::new(Aggr {
-            mem1: vec![new_another(0), new_another(1), new_another(2)],
+            mem1: Some(vec![
+                Box::new(new_another(0)),
+                Box::new(new_another(1)),
+                Box::new(new_another(2)),
+            ]),
             mem2: Some(new_bar()),
         }),
         Err(_) => Box::new(Aggr {
-            mem1: vec![new_foo(0), new_foo(1), new_foo(2)],
+            mem1: Some(vec![
+                Box::new(new_foo(0)),
+                Box::new(new_foo(1)),
+                Box::new(new_foo(2)),
+            ]),
             mem2: Some(new_bar()),
         }),
     };
 
     instance.get_bar_ref().do_bar();
+    println!("[DEBUG] Do handle:");
+    handle(&*instance);
 
+    println!("[DEBUG] Do grab_foo.");
+    instance.grab_foo();
+    println!("[DEBUG] Do handle:");
     handle(&*instance);
 }
