@@ -2,9 +2,15 @@ trait Foo {
     fn do_foo(&self);
 }
 
+trait ExtraFoo {
+    fn do_extra(&self);
+}
+
 trait Bar {
     fn do_bar(&self);
 }
+
+trait FooAggr: Foo + ExtraFoo {}
 
 struct SomeFoo {
     num: u8,
@@ -20,11 +26,27 @@ impl Foo for SomeFoo {
     }
 }
 
+impl ExtraFoo for SomeFoo {
+    fn do_extra(&self) {
+        println!("SomeFoo {} is thinking", self.num);
+    }
+}
+
+impl FooAggr for SomeFoo {}
+
 impl Foo for AnotherFoo {
     fn do_foo(&self) {
         println!("AnotherFoo {} is speaking", self.num);
     }
 }
+
+impl ExtraFoo for AnotherFoo {
+    fn do_extra(&self) {
+        println!("AnotherFoo {} is thinking", self.num);
+    }
+}
+
+impl FooAggr for AnotherFoo {}
 
 impl Bar for SomeBar {
     fn do_bar(&self) {
@@ -35,18 +57,21 @@ impl Bar for SomeBar {
 trait AggrTrait {
     fn do_something(&self);
     fn get_bar_ref(&self) -> &dyn Bar;
-    fn grab_foo(&mut self) -> Option<Vec<Box<dyn Foo>>>;
+    fn grab_foo(&mut self) -> Vec<Box<dyn FooAggr + Send>>;
 }
 
 struct Aggr<T2> {
-    mem1: Option<Vec<Box<dyn Foo>>>,
+    mem1: Option<Vec<Box<dyn FooAggr + Send>>>,
     mem2: Option<T2>,
 }
 
 impl<T2: Bar> AggrTrait for Aggr<T2> {
     fn do_something(&self) {
         match self.mem1.as_ref() {
-            Some(list) => list.iter().for_each(|elem| elem.do_foo()),
+            Some(list) => list.iter().for_each(|elem| {
+                elem.do_foo();
+                elem.do_extra();
+            }),
             None => (),
         };
 
@@ -60,8 +85,8 @@ impl<T2: Bar> AggrTrait for Aggr<T2> {
         self.mem2.as_ref().unwrap()
     }
 
-    fn grab_foo(&mut self) -> Option<Vec<Box<dyn Foo>>> {
-        self.mem1.take()
+    fn grab_foo(&mut self) -> Vec<Box<dyn FooAggr + Send>> {
+        self.mem1.take().unwrap_or_default()
     }
 }
 
@@ -106,7 +131,8 @@ fn main() {
     handle(&*instance);
 
     println!("[DEBUG] Do grab_foo.");
-    instance.grab_foo();
+    let list = instance.grab_foo();
+    println!("[DEBUG] Size of foo is: {}", list.len());
     println!("[DEBUG] Do handle:");
     handle(&*instance);
 }
