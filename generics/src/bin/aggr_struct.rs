@@ -107,13 +107,15 @@ fn new_bar() -> SomeBar {
 }
 
 fn main() {
+    //Don't work: let list = (0..2).map(|i| Box::new(new_another(i))).collect();
+    let mut list: Vec<Box<dyn FooAggr + Send>> = vec![];
+    for i in (0..2) {
+        list.push(Box::new(new_another(i)));
+    }
+
     let mut instance: Box<dyn AggrTrait> = match std::env::var("USE_ANOTHER_FOO") {
         Ok(_) => Box::new(Aggr {
-            mem1: Some(vec![
-                Box::new(new_another(0)),
-                Box::new(new_another(1)),
-                Box::new(new_another(2)),
-            ]),
+            mem1: Some(list),
             mem2: Some(new_bar()),
         }),
         Err(_) => Box::new(Aggr {
