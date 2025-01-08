@@ -5,5 +5,7 @@ edition = "2021"
 
 [dependencies]
 async-task = "4.7.1"
+env_logger = "0.11.6"
 futures-lite = "2.5.0"
 flume = "0.11.1"
+log = "0.4.22"
