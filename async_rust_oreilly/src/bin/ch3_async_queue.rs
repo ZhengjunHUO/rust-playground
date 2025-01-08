@@ -14,17 +14,32 @@ where
     // task queue, transmitting end of a channel
     static QUEUE: LazyLock<flume::Sender<Runnable>> = LazyLock::new(|| {
         let (tx, rx) = flume::unbounded::<Runnable>();
+        /*
+        // single worker; 独立的thread来处理runnable, 会被task中的std::thread::sleep中断
         std::thread::spawn(move || {
             while let Ok(runnable) = rx.recv() {
                 info!("[RX thread] Accept runnable");
                 let _ = catch_unwind(|| runnable.run());
             }
         });
+        */
+
+        // multiple workers; msg不是以广播形式而是被分配给各rx
+        for i in 0..3 {
+            let rx_clone = rx.clone();
+            std::thread::spawn(move || {
+                while let Ok(runnable) = rx_clone.recv() {
+                    info!("[RX thread {i}] Accept runnable");
+                    let _ = catch_unwind(|| runnable.run());
+                }
+            });
+        }
         tx
     });
 
     let schedule = |runnable| QUEUE.send(runnable).unwrap();
     // The returned Runnable is used to poll the future, and the Task is used to await its output.
+    // 本自定async runtime的核心为async_task::spawn
     let (runnable, task) = async_task::spawn(future, schedule);
     runnable.schedule();
     info!(
