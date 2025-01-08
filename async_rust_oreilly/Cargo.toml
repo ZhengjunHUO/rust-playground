@@ -1,0 +1,9 @@
+[package]
+name = "async_rust_oreilly"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+async-task = "4.7.1"
+futures-lite = "2.5.0"
+flume = "0.11.1"
