@@ -10,6 +10,9 @@ $ rustup update
 ```sh
 $ rustup override set nightly
 ```
+```sh
+$ echo '[toolchain]\nchannel = "nightly"' > rust-toolchain.toml
+```
 
 ### Perform macro expansion to debug
 ```sh
