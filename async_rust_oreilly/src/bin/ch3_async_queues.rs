@@ -5,13 +5,11 @@ use std::task::Poll;
 use std::time::Duration;
 use std::{future::Future, panic::catch_unwind};
 
-// basic async runtime: task-spawning func, convert future into task, put the task on the task queue
 fn spawn_task<F, T>(future: F) -> Task<T>
 where
     F: Future<Output = T> + Send + 'static + FuturePrioShow,
     T: Send + 'static,
 {
-    // task queue, transmitting end of a channel
     static QUEUE: LazyLock<flume::Sender<Runnable>> = LazyLock::new(|| {
         let (tx, rx) = flume::unbounded::<Runnable>();
         std::thread::spawn(move || {
@@ -42,8 +40,6 @@ where
         FuturePrio::Low => |runnable| QUEUE.send(runnable).unwrap(),
     };
 
-    // The returned Runnable is used to poll the future, and the Task is used to await its output.
-    // 本自定async runtime的核心为async_task::spawn
     let (runnable, task) = async_task::spawn(future, schedule);
     runnable.schedule();
     return task;
@@ -100,7 +96,7 @@ fn main() {
         count: 0,
         prio: FuturePrio::Low,
     };
-    // future被送到一个持有rx的独立进程中，poll被激活
+    // 高优先级通道有两个worker，所以在处理单个高优先级的task时，每次被唤醒会round robin到其中一个worker上执行
     let task_ctr = spawn_task(ctr);
     let task_another_ctr = spawn_task(another_ctr);
 
