@@ -6,10 +6,43 @@ use std::task::Poll;
 use std::time::Duration;
 use std::{future::Future, panic::catch_unwind};
 
+macro_rules! task_spawn {
+    ($future:expr) => {
+        task_spawn!($future, FuturePrio::Low)
+    };
+    ($future:expr, $prio:expr) => {
+        spawn_task($future, $prio)
+    };
+}
+
+macro_rules! join {
+    ($($future:expr),*) => {
+        {
+            let mut result = Vec::new();
+            $(
+                result.push(futures_lite::future::block_on($future));
+            )*
+            result
+        }
+    };
+}
+
+macro_rules! try_join {
+    ($($future:expr),*) => {
+        {
+            let mut result = Vec::new();
+            $(
+                result.push(catch_unwind(|| futures_lite::future::block_on($future)));
+            )*
+            result
+        }
+    };
+}
+
 // basic async runtime: task-spawning func, convert future into task, put the task on the task queue
-fn spawn_task<F, T>(future: F) -> Task<T>
+fn spawn_task<F, T>(future: F, prio: FuturePrio) -> Task<T>
 where
-    F: Future<Output = T> + Send + 'static + FuturePrioShow,
+    F: Future<Output = T> + Send + 'static,
     T: Send + 'static,
 {
     static CHANNEL: LazyLock<(Sender<Runnable>, Receiver<Runnable>)> =
@@ -62,7 +95,7 @@ where
         CHANNEL_PREMIUM.0.clone()
     });
 
-    let schedule = match future.show_prio() {
+    let schedule = match prio {
         FuturePrio::High => |runnable| QUEUE_PREMIUM.send(runnable).unwrap(),
         FuturePrio::Low => |runnable| QUEUE.send(runnable).unwrap(),
     };
@@ -78,25 +111,13 @@ enum FuturePrio {
     Low,
 }
 
-trait FuturePrioShow: Future {
-    fn show_prio(&self) -> FuturePrio;
-}
-
 struct Counter {
     count: u32,
-    prio: FuturePrio,
 }
 
 impl Counter {
-    fn new(is_premium: bool) -> Self {
-        Counter {
-            count: 0,
-            prio: if is_premium {
-                FuturePrio::High
-            } else {
-                FuturePrio::Low
-            },
-        }
+    fn new() -> Self {
+        Counter { count: 0 }
     }
 }
 
@@ -119,10 +140,10 @@ impl Future for Counter {
     }
 }
 
-impl FuturePrioShow for Counter {
-    fn show_prio(&self) -> FuturePrio {
-        self.prio
-    }
+async fn fn_async() {
+    info!("Enter async func");
+    std::thread::sleep(Duration::from_secs(1));
+    info!("Quit async func");
 }
 
 fn main() {
@@ -131,21 +152,33 @@ fn main() {
     // 创建很多普通任务
     let mut counters = vec![];
     for _ in 0..5 {
-        counters.push(Counter::new(false));
+        counters.push(Counter::new());
     }
     // 创建一个高级任务（如果没有这个任务来激活高级worker（lazy），高级worker就不会启动）
-    let c_prem = Counter::new(true);
+    let c_prem_1 = Counter::new();
+    let c_prem_2 = Counter::new();
 
     let mut tasks = vec![];
     for c in counters {
-        tasks.push(spawn_task(c));
+        tasks.push(task_spawn!(c));
     }
-    let t_prem = spawn_task(c_prem);
+    let t_prem_1 = task_spawn!(c_prem_1, FuturePrio::High);
+    let t_prem_2 = task_spawn!(c_prem_2, FuturePrio::High);
+
+    let task_fns = task_spawn!(async {
+        fn_async().await;
+        fn_async().await;
+        fn_async().await;
+        fn_async().await;
+        fn_async().await;
+    });
 
     info!("[main] block on tasks");
     for t in tasks {
         futures_lite::future::block_on(t);
     }
-    futures_lite::future::block_on(t_prem);
+    // 不同的Output的future不能在同一个join!中
+    try_join!(t_prem_1, t_prem_2);
+    join!(task_fns);
     info!("[main] Done");
 }
