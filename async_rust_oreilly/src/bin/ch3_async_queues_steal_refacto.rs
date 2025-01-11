@@ -1,5 +1,5 @@
 use async_rust_oreilly::{join, task_spawn};
-use async_rust_oreilly::tasks::{spawn_task, FuturePrio};
+use async_rust_oreilly::tasks::FuturePrio;
 use log::info;
 use std::task::Poll;
 use std::time::Duration;

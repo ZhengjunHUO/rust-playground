@@ -1,10 +1,10 @@
 #[macro_export]
 macro_rules! task_spawn {
     ($future:expr) => {
-        task_spawn!($future, FuturePrio::Low)
+        task_spawn!($future, $crate::tasks::FuturePrio::Low)
     };
     ($future:expr, $prio:expr) => {
-        spawn_task($future, $prio)
+        $crate::tasks::spawn_task($future, $prio)
     };
 }
 
