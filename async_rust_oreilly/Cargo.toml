@@ -4,8 +4,14 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+anyhow = "1.0.95"
+async-native-tls = "0.5.0"
 async-task = "4.7.1"
 env_logger = "0.11.6"
 futures-lite = "2.5.0"
 flume = "0.11.1"
+http = "0.2.9"
+hyper = { version = "0.14.26", features = ["http1", "http2", "client", "runtime"] }
 log = "0.4.22"
+smol = "1.3.0"
+tokio = "1.14.0"

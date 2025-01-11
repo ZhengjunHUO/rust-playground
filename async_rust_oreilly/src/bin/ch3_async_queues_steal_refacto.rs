@@ -1,9 +1,9 @@
+use async_rust_oreilly::tasks::Runtime;
 use async_rust_oreilly::{join, task_spawn};
-use async_rust_oreilly::tasks::FuturePrio;
 use log::info;
+use std::future::Future;
 use std::task::Poll;
 use std::time::Duration;
-use std::future::Future;
 
 struct Counter {
     count: u32,
@@ -40,45 +40,8 @@ async fn fn_async() {
     info!("Quit async func");
 }
 
-struct Runtime {
-    std_chan_num: usize,
-    premium_chan_num: usize,
-}
-
-impl Runtime {
-    fn new() -> Self {
-        let paral = std::thread::available_parallelism().unwrap().get();
-        Runtime {
-            std_chan_num: 1,
-            premium_chan_num: paral - 2,
-        }
-    }
-
-    fn with_std_chan_num(mut self, num: usize) -> Self {
-        self.std_chan_num = num;
-        self
-    }
-
-    fn with_premium_chan_num(mut self, num: usize) -> Self {
-        self.premium_chan_num = num;
-        self
-    }
-
-    fn run(&self) {
-        std::env::set_var("STD_CHAN_NUM", self.std_chan_num.to_string());
-        std::env::set_var("PREMIUM_CHAN_NUM", self.premium_chan_num.to_string());
-
-        // 激活lazy的workers，在正式接受任务前进入待命模式
-        join!(
-            task_spawn!(async {}, FuturePrio::High),
-            task_spawn!(async {}, FuturePrio::Low)
-        );
-    }
-}
-
 #[derive(Debug, Clone, Copy)]
 struct Daemon;
-
 impl Future for Daemon {
     type Output = ();
 
