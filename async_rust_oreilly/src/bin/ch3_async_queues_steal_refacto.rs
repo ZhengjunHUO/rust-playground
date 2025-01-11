@@ -141,7 +141,7 @@ impl Future for Counter {
         self.count += 1;
         info!("[Counter_poll] Get count: {}", self.count);
         std::thread::sleep(Duration::from_secs(1));
-        if self.count < 5 {
+        if self.count < 3 {
             cx.waker().wake_by_ref();
             Poll::Pending
         } else {
@@ -192,6 +192,20 @@ impl Runtime {
     }
 }
 
+#[derive(Debug, Clone, Copy)]
+struct Daemon;
+
+impl Future for Daemon {
+    type Output = ();
+
+    fn poll(self: std::pin::Pin<&mut Self>, cx: &mut std::task::Context<'_>) -> Poll<Self::Output> {
+        info!("Daemon is running ...");
+        std::thread::sleep(Duration::from_secs(1));
+        cx.waker().wake_by_ref();
+        Poll::Pending
+    }
+}
+
 fn main() {
     env_logger::init();
     // 设定两个队列的长度，并激活队列
@@ -199,6 +213,9 @@ fn main() {
         .with_std_chan_num(2)
         .with_premium_chan_num(3)
         .run();
+
+    // 把任务放到后台，生命周期贯穿整个程序
+    task_spawn!(Daemon {}).detach();
 
     // 创建很多普通任务
     let mut counters = vec![];
