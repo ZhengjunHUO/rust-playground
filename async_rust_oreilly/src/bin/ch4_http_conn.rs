@@ -4,10 +4,12 @@ use std::{
     task::{Context, Poll},
 };
 
-use anyhow::{bail, Context as _, Error, Ok};
+use anyhow::{bail, Context as _, Error, Result};
 use async_native_tls::TlsStream;
-use async_rust_oreilly::task_spawn;
-use hyper::{Client, Request, Uri};
+use async_rust_oreilly::{task_spawn, tasks::Runtime};
+use futures_lite::{AsyncRead, AsyncWrite};
+use http::Uri;
+use hyper::{Body, Client, Request, Response};
 use smol::{future, Async};
 
 struct MyExecutor;
@@ -27,6 +29,65 @@ enum MyStream {
     Ciphered(TlsStream<Async<TcpStream>>),
 }
 
+impl tokio::io::AsyncRead for MyStream {
+    fn poll_read(
+        mut self: Pin<&mut Self>,
+        cx: &mut Context<'_>,
+        buf: &mut tokio::io::ReadBuf<'_>,
+    ) -> Poll<std::io::Result<()>> {
+        match &mut *self {
+            MyStream::PlainText(s) => Pin::new(s)
+                .poll_read(cx, buf.initialize_unfilled())
+                .map_ok(|size| buf.advance(size)),
+            MyStream::Ciphered(s) => Pin::new(s)
+                .poll_read(cx, buf.initialize_unfilled())
+                .map_ok(|size| buf.advance(size)),
+        }
+    }
+}
+
+impl tokio::io::AsyncWrite for MyStream {
+    fn poll_write(
+        mut self: Pin<&mut Self>,
+        cx: &mut Context<'_>,
+        buf: &[u8],
+    ) -> Poll<Result<usize, std::io::Error>> {
+        match &mut *self {
+            MyStream::PlainText(s) => Pin::new(s).poll_write(cx, buf),
+            MyStream::Ciphered(s) => Pin::new(s).poll_write(cx, buf),
+        }
+    }
+
+    fn poll_flush(
+        mut self: Pin<&mut Self>,
+        cx: &mut Context<'_>,
+    ) -> Poll<Result<(), std::io::Error>> {
+        match &mut *self {
+            MyStream::PlainText(s) => Pin::new(s).poll_flush(cx),
+            MyStream::Ciphered(s) => Pin::new(s).poll_flush(cx),
+        }
+    }
+
+    fn poll_shutdown(
+        mut self: Pin<&mut Self>,
+        cx: &mut Context<'_>,
+    ) -> Poll<Result<(), std::io::Error>> {
+        match &mut *self {
+            MyStream::PlainText(s) => {
+                s.get_ref().shutdown(std::net::Shutdown::Write)?;
+                Poll::Ready(Ok(()))
+            }
+            MyStream::Ciphered(s) => Pin::new(s).poll_close(cx),
+        }
+    }
+}
+
+impl hyper::client::connect::Connection for MyStream {
+    fn connected(&self) -> hyper::client::connect::Connected {
+        hyper::client::connect::Connected::new()
+    }
+}
+
 #[derive(Clone)]
 struct MyConnector;
 // The Service trait defines the future for the connection.
@@ -38,7 +99,7 @@ impl hyper::service::Service<Uri> for MyConnector {
 
     fn poll_ready(
         &mut self,
-        cx: &mut std::task::Context<'_>,
+        _cx: &mut std::task::Context<'_>,
     ) -> std::task::Poll<Result<(), Self::Error>> {
         Poll::Ready(Ok(()))
     }
@@ -79,21 +140,37 @@ impl hyper::service::Service<Uri> for MyConnector {
     }
 }
 
+async fn fetch(req: Request<Body>) -> Result<Response<Body>> {
+    Ok(Client::builder()
+        .executor(MyExecutor)
+        .build::<_, Body>(MyConnector)
+        .request(req)
+        .await?)
+}
+
 fn main() {
-    let uri: Uri = "http://www.rust-lang.org".parse().unwrap();
-    let req = Request::builder()
-        .method("GET")
-        .uri(uri)
-        .header("User-Agent", "hyper/0.14.2")
-        .header("Accept", "text/html")
-        .body(hyper::Body::empty())
-        .unwrap();
+    Runtime::new()
+        .with_std_chan_num(1)
+        .with_premium_chan_num(2)
+        .run();
 
     let future = async {
-        let client = Client::new();
-        client.request(req).await.unwrap()
+        let uri: Uri = "http://www.rust-lang.org".parse().unwrap();
+        let req = Request::builder()
+            .method("GET")
+            .uri(uri)
+            .header("User-Agent", "hyper/0.14.2")
+            .header("Accept", "text/html")
+            .body(hyper::Body::empty())
+            .unwrap();
+
+        let resp = fetch(req).await.unwrap();
+        let bytes = hyper::body::to_bytes(resp.into_body()).await.unwrap();
+        let rslt = String::from_utf8(bytes.to_vec()).unwrap();
+        println!("Got resp: {}", rslt);
     };
+
     let handle = task_spawn!(future);
-    let resp = future::block_on(handle);
-    println!("Get response: {}", resp.status());
+    let _ = future::block_on(handle);
+    println!("Done");
 }
