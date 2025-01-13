@@ -10,10 +10,10 @@ use async_rust_oreilly::{task_spawn, tasks::Runtime};
 use futures_lite::{AsyncRead, AsyncWrite};
 use http::Uri;
 use hyper::{Body, Client, Request, Response};
-use smol::{future, Async};
+use smol::{io, prelude::*, Async};
 
 struct MyExecutor;
-impl<F: std::future::Future + Send + 'static> hyper::rt::Executor<F> for MyExecutor {
+impl<F: Future + Send + 'static> hyper::rt::Executor<F> for MyExecutor {
     fn execute(&self, fut: F) {
         task_spawn!(async {
             println!("Try sending req ...");
@@ -34,7 +34,7 @@ impl tokio::io::AsyncRead for MyStream {
         mut self: Pin<&mut Self>,
         cx: &mut Context<'_>,
         buf: &mut tokio::io::ReadBuf<'_>,
-    ) -> Poll<std::io::Result<()>> {
+    ) -> Poll<io::Result<()>> {
         match &mut *self {
             MyStream::PlainText(s) => Pin::new(s)
                 .poll_read(cx, buf.initialize_unfilled())
@@ -51,27 +51,21 @@ impl tokio::io::AsyncWrite for MyStream {
         mut self: Pin<&mut Self>,
         cx: &mut Context<'_>,
         buf: &[u8],
-    ) -> Poll<Result<usize, std::io::Error>> {
+    ) -> Poll<io::Result<usize>> {
         match &mut *self {
             MyStream::PlainText(s) => Pin::new(s).poll_write(cx, buf),
             MyStream::Ciphered(s) => Pin::new(s).poll_write(cx, buf),
         }
     }
 
-    fn poll_flush(
-        mut self: Pin<&mut Self>,
-        cx: &mut Context<'_>,
-    ) -> Poll<Result<(), std::io::Error>> {
+    fn poll_flush(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<io::Result<()>> {
         match &mut *self {
             MyStream::PlainText(s) => Pin::new(s).poll_flush(cx),
             MyStream::Ciphered(s) => Pin::new(s).poll_flush(cx),
         }
     }
 
-    fn poll_shutdown(
-        mut self: Pin<&mut Self>,
-        cx: &mut Context<'_>,
-    ) -> Poll<Result<(), std::io::Error>> {
+    fn poll_shutdown(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<io::Result<()>> {
         match &mut *self {
             MyStream::PlainText(s) => {
                 s.get_ref().shutdown(std::net::Shutdown::Write)?;
@@ -94,13 +88,9 @@ struct MyConnector;
 impl hyper::service::Service<Uri> for MyConnector {
     type Response = MyStream;
     type Error = Error;
-    type Future =
-        Pin<Box<dyn std::future::Future<Output = Result<Self::Response, Self::Error>> + Send>>;
+    type Future = Pin<Box<dyn Future<Output = Result<Self::Response, Self::Error>> + Send>>;
 
-    fn poll_ready(
-        &mut self,
-        _cx: &mut std::task::Context<'_>,
-    ) -> std::task::Poll<Result<(), Self::Error>> {
+    fn poll_ready(&mut self, _cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         Poll::Ready(Ok(()))
     }
 
@@ -141,6 +131,7 @@ impl hyper::service::Service<Uri> for MyConnector {
 }
 
 async fn fetch(req: Request<Body>) -> Result<Response<Body>> {
+    println!("Inside fetch");
     Ok(Client::builder()
         .executor(MyExecutor)
         .build::<_, Body>(MyConnector)
@@ -155,22 +146,26 @@ fn main() {
         .run();
 
     let future = async {
-        let uri: Uri = "http://www.rust-lang.org".parse().unwrap();
-        let req = Request::builder()
-            .method("GET")
-            .uri(uri)
-            .header("User-Agent", "hyper/0.14.2")
-            .header("Accept", "text/html")
-            .body(hyper::Body::empty())
-            .unwrap();
+        // let uri: Uri = "http://www.rust-lang.org".parse().unwrap();
+        // let req = Request::builder()
+        //     .method("GET")
+        //     .uri(uri)
+        //     .header("User-Agent", "hyper/0.14.2")
+        //     .header("Accept", "text/html")
+        //     .body(hyper::Body::empty())
+        //     .unwrap();
 
+        let req = Request::get("http://www.rust-lang.org")
+            .body(Body::empty())
+            .unwrap();
         let resp = fetch(req).await.unwrap();
         let bytes = hyper::body::to_bytes(resp.into_body()).await.unwrap();
         let rslt = String::from_utf8(bytes.to_vec()).unwrap();
         println!("Got resp: {}", rslt);
     };
 
+    println!("[main] Before spawn task");
     let handle = task_spawn!(future);
-    let _ = future::block_on(handle);
-    println!("Done");
+    let _ = smol::future::block_on(handle);
+    println!("[main] Done");
 }
