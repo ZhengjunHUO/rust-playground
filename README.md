@@ -9,6 +9,8 @@ $ rustup update
 ### When unstable features engaged, use nightly build
 ```sh
 $ rustup override set nightly
+$ rustup show
+$ rustup override unset
 ```
 ```sh
 $ echo '[toolchain]\nchannel = "nightly"' > rust-toolchain.toml

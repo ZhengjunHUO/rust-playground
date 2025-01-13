@@ -13,5 +13,6 @@ flume = "0.11.1"
 http = "0.2.9"
 hyper = { version = "0.14.26", features = ["http1", "http2", "client", "runtime"] }
 log = "0.4.22"
+rand = "0.8.5"
 smol = "1.3.0"
 tokio = "1.14.0"
