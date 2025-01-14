@@ -3,10 +3,9 @@
 use rand::Rng;
 use std::fs::{File, OpenOptions};
 use std::io::{self, Write};
-use std::time::Instant;
-
 use std::ops::{Coroutine, CoroutineState};
 use std::pin::Pin;
+use std::time::Instant;
 
 struct FdWrapper {
     fd: File,
