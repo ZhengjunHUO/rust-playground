@@ -20,13 +20,8 @@ impl RWMgr {
     }
 
     fn run(&mut self) {
-        loop {
-            match Pin::new(&mut self.reader).resume(()) {
-                CoroutineState::Yielded(num) => {
-                    Pin::new(&mut self.writer).resume(num);
-                }
-                CoroutineState::Complete(_) => break,
-            }
+        while let CoroutineState::Yielded(num) = Pin::new(&mut self.reader).resume(()) {
+            Pin::new(&mut self.writer).resume(num);
         }
     }
 }

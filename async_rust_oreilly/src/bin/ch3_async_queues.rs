@@ -42,7 +42,7 @@ where
 
     let (runnable, task) = async_task::spawn(future, schedule);
     runnable.schedule();
-    return task;
+    task
 }
 
 #[derive(Debug, Clone, Copy)]

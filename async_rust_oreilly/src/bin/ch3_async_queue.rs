@@ -46,7 +46,7 @@ where
         "[spawn_task] Runnable scheduled, task queue size: {}",
         QUEUE.len()
     );
-    return task;
+    task
 }
 
 struct Counter {

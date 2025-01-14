@@ -36,7 +36,7 @@ fn main() -> std::io::Result<()> {
     let mut reader = ReaderWrapper::new("foo.txt")?;
     let mut writer = WriterWrapper::new("out.txt")?;
 
-    // A true symmetrical coroutine would pass control from the reader to the writer 
+    // A true symmetrical coroutine would pass control from the reader to the writer
     // without having to return to the main function
     while let Some(num) = Pin::new(&mut reader).resume_symm(()) {
         Pin::new(&mut writer).resume_symm(num);

@@ -166,6 +166,6 @@ fn main() {
 
     println!("[main] Before spawn task");
     let handle = task_spawn!(future);
-    let _ = smol::future::block_on(handle);
+    smol::future::block_on(handle);
     println!("[main] Done");
 }

@@ -13,9 +13,9 @@ where
     T: Send + 'static,
 {
     static CHANNEL: LazyLock<(Sender<Runnable>, Receiver<Runnable>)> =
-        LazyLock::new(|| flume::unbounded::<Runnable>());
+        LazyLock::new(flume::unbounded::<Runnable>);
     static CHANNEL_PREMIUM: LazyLock<(Sender<Runnable>, Receiver<Runnable>)> =
-        LazyLock::new(|| flume::unbounded::<Runnable>());
+        LazyLock::new(flume::unbounded::<Runnable>);
 
     // 普通队列只处理普通task
     static QUEUE: LazyLock<Sender<Runnable>> = LazyLock::new(|| {
@@ -79,7 +79,7 @@ where
 
     let (runnable, task) = async_task::spawn(future, schedule);
     runnable.schedule();
-    return task;
+    task
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -121,5 +121,11 @@ impl Runtime {
             task_spawn!(async {}, FuturePrio::High),
             task_spawn!(async {}, FuturePrio::Low)
         );
+    }
+}
+
+impl Default for Runtime {
+    fn default() -> Self {
+        Self::new()
     }
 }

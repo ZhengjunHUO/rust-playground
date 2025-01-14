@@ -9,11 +9,8 @@ use async_rust_oreilly::io::ReaderWrapper;
 fn main() -> io::Result<()> {
     let mut coroutine = ReaderWrapper::new("foo.txt")?;
 
-    loop {
-        match Pin::new(&mut coroutine).resume(()) {
-            CoroutineState::Yielded(num) => println!("Read from file: {num}"),
-            CoroutineState::Complete(_) => break,
-        }
+    while let CoroutineState::Yielded(num) = Pin::new(&mut coroutine).resume(()) {
+        println!("Read from file: {num}");
     }
 
     Ok(())
