@@ -38,22 +38,42 @@ impl Coroutine<()> for Sleeper {
     }
 }
 
-fn main() {
-    let num = 5;
-    let mut queue = VecDeque::new();
-    for _ in 0..num {
-        queue.push_back(Sleeper::new(Duration::from_secs(1)));
+struct Executor {
+    queue: VecDeque<Pin<Box<dyn Coroutine<(), Yield = (), Return = ()>>>>,
+}
+
+impl Executor {
+    fn new() -> Self {
+        Self {
+            queue: VecDeque::new(),
+        }
     }
 
-    let mut counter = 0;
+    fn append(&mut self, coroutine: Pin<Box<dyn Coroutine<(), Yield = (), Return = ()>>>) {
+        self.queue.push_back(coroutine);
+    }
+
+    fn poll(&mut self) {
+        println!("Current queue size: {}", self.queue.len());
+        let mut coroutine = self.queue.pop_front().unwrap();
+        match coroutine.as_mut().resume(()) {
+            CoroutineState::Yielded(_) => self.queue.push_back(coroutine),
+            CoroutineState::Complete(_) => {}
+        }
+    }
+}
+
+fn main() {
+    let num = 5;
+    let mut executor = Executor::new();
+    for _ in 0..num {
+        executor.append(Box::pin(Sleeper::new(Duration::from_millis(1))));
+    }
+
     let begin = Instant::now();
 
-    while counter < num {
-        let mut sleeper = queue.pop_front().unwrap();
-        match Pin::new(&mut sleeper).resume(()) {
-            CoroutineState::Yielded(_) => queue.push_back(sleeper),
-            CoroutineState::Complete(_) => counter += 1,
-        }
+    while !executor.queue.is_empty() {
+        executor.poll();
     }
 
     println!("Done, cost {:?}", begin.elapsed());
