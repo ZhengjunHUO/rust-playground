@@ -38,8 +38,10 @@ impl Coroutine<()> for Sleeper {
     }
 }
 
+type CoroutineQueue = VecDeque<Pin<Box<dyn Coroutine<(), Yield = (), Return = ()>>>>;
+
 struct Executor {
-    queue: VecDeque<Pin<Box<dyn Coroutine<(), Yield = (), Return = ()>>>>,
+    queue: CoroutineQueue,
 }
 
 impl Executor {
