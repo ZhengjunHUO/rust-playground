@@ -5,12 +5,15 @@ use std::{
         Arc, LazyLock,
     },
     task::Poll,
+    time::{Duration, Instant},
 };
 
-static TEMPERATURE: LazyLock<Arc<AtomicI16>> = LazyLock::new(|| Arc::new(AtomicI16::new(1000)));
+// Subjects
+static TEMPERATURE: LazyLock<Arc<AtomicI16>> = LazyLock::new(|| Arc::new(AtomicI16::new(1700)));
 static WANTED: LazyLock<Arc<AtomicI16>> = LazyLock::new(|| Arc::new(AtomicI16::new(1800)));
 static SWITCH_ON: LazyLock<Arc<AtomicBool>> = LazyLock::new(|| Arc::new(AtomicBool::new(false)));
 
+// Display observer
 struct Display {
     temperature: i16,
 }
@@ -51,7 +54,11 @@ impl Future for Display {
             "Acutal temperature: {} [Wanted: {}]; HEATER IS {}",
             current as f32 / 100.0,
             wanted as f32 / 100.0,
-            if on { "[ON]" } else { "[OFF]" }
+            if SWITCH_ON.load(Ordering::SeqCst) {
+                "[ON]"
+            } else {
+                "[OFF]"
+            }
         );
 
         cx.waker().wake_by_ref();
@@ -59,4 +66,80 @@ impl Future for Display {
     }
 }
 
-fn main() {}
+// Heater observer
+struct Heater {
+    last_update: Instant,
+}
+
+impl Heater {
+    fn new() -> Self {
+        Self {
+            last_update: Instant::now(),
+        }
+    }
+}
+
+impl Future for Heater {
+    type Output = ();
+
+    fn poll(
+        mut self: std::pin::Pin<&mut Self>,
+        cx: &mut std::task::Context<'_>,
+    ) -> Poll<Self::Output> {
+        if SWITCH_ON.load(Ordering::SeqCst) {
+            let current = Instant::now();
+            if current.duration_since(self.last_update) < Duration::from_secs(3) {
+                cx.waker().wake_by_ref();
+                return Poll::Pending;
+            }
+
+            TEMPERATURE.fetch_add(30, Ordering::SeqCst);
+        }
+
+        self.last_update = Instant::now();
+        cx.waker().wake_by_ref();
+        Poll::Pending
+    }
+}
+
+// HeatLoss observer
+struct HeatLoss {
+    last_update: Instant,
+}
+
+impl HeatLoss {
+    fn new() -> Self {
+        Self {
+            last_update: Instant::now(),
+        }
+    }
+}
+
+impl Future for HeatLoss {
+    type Output = ();
+
+    fn poll(
+        mut self: std::pin::Pin<&mut Self>,
+        cx: &mut std::task::Context<'_>,
+    ) -> Poll<Self::Output> {
+        let current = Instant::now();
+        if current.duration_since(self.last_update) > Duration::from_secs(3) {
+            TEMPERATURE.fetch_sub(10, Ordering::SeqCst);
+            self.last_update = Instant::now();
+        }
+        cx.waker().wake_by_ref();
+        Poll::Pending
+    }
+}
+
+#[tokio::main]
+async fn main() {
+    let handlers = vec![
+        tokio::spawn(Display::new()),
+        tokio::spawn(Heater::new()),
+        tokio::spawn(HeatLoss::new()),
+    ];
+    for handler in handlers {
+        handler.await.unwrap();
+    }
+}
