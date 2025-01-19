@@ -3,5 +3,5 @@
 
 pub mod io;
 pub mod macros;
-pub mod tasks;
 pub mod observers;
+pub mod tasks;

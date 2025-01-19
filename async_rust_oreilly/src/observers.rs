@@ -9,9 +9,10 @@ use std::{
 };
 
 // Subjects
-static TEMPERATURE: LazyLock<Arc<AtomicI16>> = LazyLock::new(|| Arc::new(AtomicI16::new(1700)));
-static WANTED: LazyLock<Arc<AtomicI16>> = LazyLock::new(|| Arc::new(AtomicI16::new(1800)));
-static SWITCH_ON: LazyLock<Arc<AtomicBool>> = LazyLock::new(|| Arc::new(AtomicBool::new(false)));
+pub static TEMPERATURE: LazyLock<Arc<AtomicI16>> = LazyLock::new(|| Arc::new(AtomicI16::new(1700)));
+pub static WANTED: LazyLock<Arc<AtomicI16>> = LazyLock::new(|| Arc::new(AtomicI16::new(1800)));
+pub static SWITCH_ON: LazyLock<Arc<AtomicBool>> =
+    LazyLock::new(|| Arc::new(AtomicBool::new(false)));
 
 // Display observer
 pub struct Display {
@@ -23,6 +24,12 @@ impl Display {
         Self {
             temperature: TEMPERATURE.load(Ordering::SeqCst),
         }
+    }
+}
+
+impl Default for Display {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -71,6 +78,12 @@ pub struct Heater {
     last_update: Instant,
 }
 
+impl Default for Heater {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Heater {
     pub fn new() -> Self {
         Self {
@@ -105,6 +118,12 @@ impl Future for Heater {
 // HeatLoss observer
 pub struct HeatLoss {
     last_update: Instant,
+}
+
+impl Default for HeatLoss {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl HeatLoss {
