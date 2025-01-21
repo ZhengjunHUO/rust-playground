@@ -4,13 +4,12 @@ use azure_storage_blobs::prelude::*;
 use futures::stream::StreamExt;
 use lazy_static::lazy_static;
 use log::info;
-use std::{collections::HashSet, io::Read, sync::{LazyLock, Mutex}};
+use std::{collections::HashSet, io::Read};
+use tokio::sync::Mutex;
 
 lazy_static! {
     pub(crate) static ref REMOTE_STORAGE_CACHE: Mutex<Vec<String>> = Mutex::new(Vec::new());
 }
-
-static REMOTE_STORAGE_CACHE_LAZY: LazyLock<Mutex<Vec<String>>> = LazyLock::new(|| Mutex::new(vec![]));
 
 trait Crud {
     /// List all folders under path in bucket
@@ -52,22 +51,21 @@ async fn list(client: &ContainerClient, path: String) -> Result<Vec<String>> {
     Ok(rslt)
 }
 
-async fn check_or_provision_cache(client: &ContainerClient) -> Result<()> {
-    if REMOTE_STORAGE_CACHE
-        .lock()
-        .is_ok_and(|list| list.is_empty())
-    {
-        info!("[DEBUG] Retrieve info from remote ...");
-        *REMOTE_STORAGE_CACHE.lock().unwrap() = list(client, String::new()).await?;
-        info!("[DEBUG] Retrieve info done");
+async fn check_or_provision_cache(client: &ContainerClient, id: &str) -> Result<()> {
+    let mut guard = REMOTE_STORAGE_CACHE.lock().await;
+    if guard.is_empty() {
+        info!("[Critical][{}] Retrieve info from remote ...", id);
+        *guard = list(client, String::new()).await?;
+        info!("[Critical][{}] Retrieve info done", id);
     }
+
     Ok(())
 }
 
-fn files_under_path(path: &str) -> Vec<String> {
+async fn files_under_path(path: &str) -> Vec<String> {
     REMOTE_STORAGE_CACHE
         .lock()
-        .unwrap()
+        .await
         .iter()
         .filter_map(|elem| elem.strip_prefix(path))
         .map(|striped| striped.to_owned())
@@ -99,16 +97,16 @@ fn find_files(list: Vec<String>) -> Vec<String> {
 impl Crud for AzureStorageClient {
     async fn list_folders(&self, path: String) -> Result<Vec<String>> {
         info!("[{}] Do check_or_provision_cache ...", self.id);
-        check_or_provision_cache(&self.container).await?;
+        check_or_provision_cache(&self.container, &self.id).await?;
         info!("[{}] Check_or_provision_cache done", self.id);
-        Ok(find_folders(files_under_path(&path)))
+        Ok(find_folders(files_under_path(&path).await))
     }
 
     async fn list_files(&self, path: String) -> Result<Vec<String>> {
         info!("[{}] Do check_or_provision_cache ...", self.id);
-        check_or_provision_cache(&self.container).await?;
+        check_or_provision_cache(&self.container, &self.id).await?;
         info!("[{}] Check_or_provision_cache done", self.id);
-        Ok(find_files(files_under_path(&path)))
+        Ok(find_files(files_under_path(&path).await))
     }
 
     async fn put_obj(&self, path: String, content: &[u8]) -> Result<()> {
@@ -184,7 +182,8 @@ async fn simple_test() -> Result<()> {
     let account = std::env::var("AZURE_ACCOUNT_NAME").expect("AZURE_ACCOUNT_NAME not set");
     let access_key = std::env::var("AZURE_ACCESS_KEY").expect("AZURE_ACCESS_KEY not set");
     let container = std::env::var("AZURE_CONTAINER_NAME").expect("AZURE_CONTAINER_NAME not set");
-    let container_client = AzureStorageClient::new(account, access_key, container, String::from("test"));
+    let container_client =
+        AzureStorageClient::new(account, access_key, container, String::from("test"));
 
     let new_blob = String::from("bar/baz/newfile");
     /*
@@ -222,14 +221,38 @@ async fn mulit_hosts_cache_access() -> Result<()> {
     let access_key = std::env::var("AZURE_ACCESS_KEY").expect("AZURE_ACCESS_KEY not set");
     let container = std::env::var("AZURE_CONTAINER_NAME").expect("AZURE_CONTAINER_NAME not set");
 
-    let client_foo =
-        AzureStorageClient::new(account.clone(), access_key.clone(), container.clone(), "foo".to_owned());
-    let client_bar =
-        AzureStorageClient::new(account.clone(), access_key.clone(), container.clone(), "bar".to_owned());
+    let client_foo = AzureStorageClient::new(
+        account.clone(),
+        access_key.clone(),
+        container.clone(),
+        "foo".to_owned(),
+    );
+    let client_bar = AzureStorageClient::new(
+        account.clone(),
+        access_key.clone(),
+        container.clone(),
+        "bar".to_owned(),
+    );
+    let client_baz = AzureStorageClient::new(
+        account.clone(),
+        access_key.clone(),
+        container.clone(),
+        "baz".to_owned(),
+    );
 
     let handlers = vec![
-        tokio::spawn(async move { client_foo.list_files(String::default()).await }),
-        tokio::spawn(async move { client_bar.list_folders(String::default()).await }),
+        tokio::spawn(async move {
+            let list = client_foo.list_files(String::default()).await;
+            println!("[foo] files: {:?}", list.unwrap_or_default());
+        }),
+        tokio::spawn(async move {
+            let list = client_bar.list_folders(String::default()).await;
+            println!("[bar] folders: {:?}", list.unwrap_or_default());
+        }),
+        tokio::spawn(async move {
+            let list = client_baz.list_files(String::default()).await;
+            println!("[baz] files: {:?}", list.unwrap_or_default());
+        }),
     ];
 
     for h in handlers {
