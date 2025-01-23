@@ -42,7 +42,7 @@ async fn list(client: &ContainerClient, path: String) -> Result<Vec<String>> {
                 let blobs: Vec<_> = elem.blobs.blobs().collect();
                 blobs.into_iter().for_each(|blob| {
                     rslt.push(blob.name.clone());
-                    info!("[DEBUG] {:?}", blob.name)
+                    //info!("[DEBUG] {:?}", blob.name)
                 });
             }
             _ => bail!("Sth wrong happened"),
