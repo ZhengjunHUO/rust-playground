@@ -288,20 +288,20 @@ async fn main() -> Result<()> {
     */
 
     // Minio
-    /*
     let config = Config {
         bucket_name: bucket_name,
         region: "eu".to_owned(),
-        endpoint: Some("http://127.0.0.1:9000".to_owned()),
+        endpoint: Some("http://172.19.0.11:9000".to_owned()),
     };
-    */
 
     // GCP
-    let config = Config {
-        bucket_name: bucket_name,
-        region: "eu".to_owned(),
-        endpoint: Some("https://storage.googleapis.com".to_owned()),
-    };
+    /*
+        let config = Config {
+            bucket_name: bucket_name,
+            region: "eu".to_owned(),
+            endpoint: Some("https://storage.googleapis.com".to_owned()),
+        };
+    */
 
     let bucket = prepare_client(config).await?;
 
@@ -320,8 +320,23 @@ async fn main() -> Result<()> {
     }
     */
 
-    put_obj(&bucket, String::from("test_dir/test"), b"Rust rocks!").await?;
+    //put_obj(&bucket, String::from("foo/bar"), b"Rust rocks!").await?;
+    //let results = bucket.list(String::from("/"), Some("/".to_string())).await?;
+    let results = bucket.list(String::from(""), Some("/".to_string())).await?;
+    println!("{:?}", results);
+    /*
+        if get_obj(&bucket, String::from("test_dir/")).await.is_err() {
+            println!("test_dir does not exist, creating...");
+            put_obj(&bucket, String::from("test_dir/"), b"").await?;
+        }
 
+        println!("In test_dir");
+        list_all_objs(&bucket, String::from("test_dir/")).await;
+        println!("Put obj");
+        put_obj(&bucket, String::from("test_dir/test"), b"Rust rocks!").await?;
+        println!("In test_dir");
+        list_all_objs(&bucket, String::from("test_dir/")).await;
+    */
     /*
     let path_to_file = "psql-dump/202311071020.sql";
     let content = get_obj(&bucket, String::from(path_to_file)).await?;

@@ -9,7 +9,7 @@ async fn main() -> Result<()> {
     let secret_key = env::var("GCS_SECRET_KEY")?;
 
     let bucket = Bucket::new(
-        "test-ckh-backup-demo",
+        "ui-test-default",
         Region::Custom {
             region: "eu".to_owned(),
             endpoint: "https://storage.googleapis.com".to_owned(),
@@ -18,16 +18,21 @@ async fn main() -> Result<()> {
     )?
     .with_path_style();
 
-    let s3_path = "shard_mtms/latest";
+    let s3_path = "shard_CsaData/latest";
 
     let task_num = 200;
     let mut pool = Vec::with_capacity(task_num);
     for i in 0..task_num {
-        let mut b = bucket.clone();
-        // Workaround, to use independant cred
-        b.set_credentials(
-            Credentials::new(Some(&access_key), Some(&secret_key), None, None, None).unwrap(),
-        );
+        let b = bucket.clone();
+
+        /*
+                // <=0.33.0 issue: https://github.com/durch/rust-s3/issues/337
+                // Workaround, to use independant cred
+                let mut b = bucket.clone();
+                b.set_credentials(
+                    Credentials::new(Some(&access_key), Some(&secret_key), None, None, None).unwrap(),
+                );
+        */
         pool.push(tokio::spawn(async move {
             let response_data = b.get_object(s3_path).await;
             match response_data {
