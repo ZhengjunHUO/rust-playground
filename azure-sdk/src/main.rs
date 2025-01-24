@@ -154,6 +154,7 @@ impl Crud for AzureStorageClient {
     }
 }
 
+#[derive(Clone)]
 struct AzureStorageClient {
     id: String,
     container: ContainerClient,
@@ -233,12 +234,7 @@ async fn mulit_hosts_cache_access() -> Result<()> {
         container.clone(),
         "bar".to_owned(),
     );
-    let client_baz = AzureStorageClient::new(
-        account.clone(),
-        access_key.clone(),
-        container.clone(),
-        "baz".to_owned(),
-    );
+    let client_bar_clone = client_bar.clone();
 
     let handlers = vec![
         tokio::spawn(async move {
@@ -250,8 +246,8 @@ async fn mulit_hosts_cache_access() -> Result<()> {
             println!("[bar] folders: {:?}", list.unwrap_or_default());
         }),
         tokio::spawn(async move {
-            let list = client_baz.list_files(String::default()).await;
-            println!("[baz] files: {:?}", list.unwrap_or_default());
+            let list = client_bar_clone.list_files(String::default()).await;
+            println!("[bar_clone] files: {:?}", list.unwrap_or_default());
         }),
     ];
 
