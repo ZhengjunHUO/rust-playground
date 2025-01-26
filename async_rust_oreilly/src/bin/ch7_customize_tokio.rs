@@ -36,11 +36,13 @@ async fn do_sth() -> usize {
     88
 }
 
+// - async task could start before all the worker threads are created
+// - the idle worker threads are being parked
 fn main() {
     let h = spawn_task(do_sth());
     println!("[main] Task spawned.");
-    println!("[main] Task status: {}", h.is_finished());
+    println!("[main] Task done ? {}", h.is_finished());
     std::thread::sleep(Duration::from_secs(2));
-    println!("[main] Task status: {}", h.is_finished());
+    println!("[main] Task done ? {}", h.is_finished());
     println!("[main] Got result: {}", CUSTOM_RUNTIME.block_on(h).unwrap());
 }
