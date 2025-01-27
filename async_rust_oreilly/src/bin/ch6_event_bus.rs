@@ -90,14 +90,11 @@ async fn gc(event_bus: Arc<EventBus<u32>>) {
 async fn subscribe_to_event_bus(event_bus: Arc<EventBus<u32>>) {
     let handle = event_bus.subscribe().await;
     loop {
-        match handle.poll().await {
-            Some(event) => {
-                println!("[ID {}] Retrieve from event: {}", handle.id, event);
-                if event == 88 {
-                    break;
-                }
+        if let Some(event) = handle.poll().await {
+            println!("[ID {}] Retrieve from event: {}", handle.id, event);
+            if event == 88 {
+                break;
             }
-            None => {}
         }
     }
 }
@@ -107,7 +104,7 @@ async fn main() {
     let event_bus = Arc::new(EventBus::<u32>::new());
 
     let gc_eb = event_bus.clone();
-    let _ = tokio::spawn(async { gc(gc_eb).await });
+    tokio::spawn(async { gc(gc_eb).await });
 
     let foo_eb = event_bus.clone();
     let foo = tokio::spawn(async { subscribe_to_event_bus(foo_eb).await });
