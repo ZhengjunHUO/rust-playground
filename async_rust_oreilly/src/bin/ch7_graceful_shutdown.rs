@@ -1,5 +1,6 @@
 use std::{cell::UnsafeCell, collections::HashMap, sync::LazyLock, time::Duration};
 
+use tokio::signal::unix::{signal, SignalKind};
 use tokio_util::task::LocalPoolHandle;
 
 pub async fn destroy_daemon() {
@@ -82,8 +83,13 @@ async fn main() {
         println!("Done!")
     });
 
-    tokio::signal::ctrl_c().await.unwrap();
-    println!("Ctrl-c captured, shuting down gracefully ...");
+    //tokio::signal::ctrl_c().await.unwrap();
+    //println!("Ctrl-c captured, shuting down gracefully ...");
+    println!("[PID: {}] Running ...", std::process::id());
+    let mut hup = signal(SignalKind::hangup()).unwrap();
+    hup.recv().await;
+    println!("SIGHUP captured, shuting down gracefully ...");
+
     let result = collect_all_counts().await;
     println!("Counting result: {:?}", result);
 }
