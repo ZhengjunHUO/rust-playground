@@ -1,5 +1,4 @@
 use std::{collections::HashMap, sync::OnceLock};
-
 use tokio::sync::{
     mpsc::{self, Receiver, Sender},
     oneshot,
@@ -87,5 +86,54 @@ pub async fn set(key: String, value: Vec<u8>) -> Result<(), std::io::Error> {
     Ok(())
 }
 
+pub async fn get(key: String) -> Result<Option<Vec<u8>>, std::io::Error> {
+    let (tx, rx) = oneshot::channel();
+    TX_ROUTER
+        .get()
+        .unwrap()
+        .send(RoutingPayload::KV(KVPayload::Get(GetKVPayload {
+            key,
+            resp: tx,
+        })))
+        .await
+        .unwrap();
+    let result = rx.await.unwrap();
+    Ok(result)
+}
+
+pub async fn del(key: String) -> Result<(), std::io::Error> {
+    let (tx, rx) = oneshot::channel();
+    TX_ROUTER
+        .get()
+        .unwrap()
+        .send(RoutingPayload::KV(KVPayload::Del(DelKVPayload {
+            key,
+            resp: tx,
+        })))
+        .await
+        .unwrap();
+    rx.await.unwrap();
+    Ok(())
+}
+
 #[tokio::main]
-async fn main() {}
+async fn main() -> Result<(), std::io::Error> {
+    // Prepare router actor
+    let (tx, rx) = mpsc::channel(128);
+    // Init global var
+    TX_ROUTER.set(tx).unwrap();
+    tokio::spawn(router_actor(rx));
+
+    // Inputs
+    let key = "rust".to_owned();
+    set(key.clone(), b"rocks".to_vec()).await?;
+    println!("Set done");
+    let val = get(key.clone()).await?.unwrap();
+    println!("Got: {:?}", String::from_utf8(val));
+
+    del(key.clone()).await?;
+    println!("Delete done");
+    let val = get(key).await?;
+    println!("Got: {:?}", val);
+    Ok(())
+}
