@@ -1,5 +1,5 @@
 use serde_json;
-use std::time::Duration;
+use std::f32::MANTISSA_DIGITS;
 use std::{collections::HashMap, sync::OnceLock};
 use tokio::fs::File;
 use tokio::io::{self, AsyncReadExt, AsyncSeekExt, AsyncWriteExt};
@@ -7,6 +7,7 @@ use tokio::sync::{
     mpsc::{self, Receiver, Sender},
     oneshot,
 };
+use tokio::time::{self, Duration, Instant};
 
 struct SetKVPayload {
     key: String,
@@ -32,6 +33,14 @@ enum KVPayload {
 
 enum RoutingPayload {
     KV(KVPayload),
+    KeepAlive(ActorType),
+    Reset(ActorType),
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+enum ActorType {
+    KVActor,
+    WriterActor,
 }
 
 enum WriterPayload {
@@ -90,6 +99,8 @@ async fn router_actor(mut recv: Receiver<RoutingPayload>) {
             RoutingPayload::KV(kv_payload) => {
                 let _ = tx_kv.send(kv_payload).await;
             }
+            RoutingPayload::KeepAlive(actor_type) => todo!(),
+            RoutingPayload::Reset(actor_type) => todo!(),
         }
     }
 }
@@ -105,23 +116,38 @@ async fn kv_actor(mut recv: Receiver<KVPayload>) {
     let _ = tx_writer.send(WriterPayload::Get(tx_writer_oneshot)).await;
     let mut dict = rx_writer_oneshot.await.unwrap();
 
-    while let Some(msg) = recv.recv().await {
-        // 向writer actor发送收到的消息的副本，同步写入文件
-        if let Some(msg_for_writer) = WriterPayload::from_kv_payload(&msg) {
-            let _ = tx_writer.send(msg_for_writer).await;
-        }
+    let timeout = Duration::from_millis(200);
+    let tx_router = TX_ROUTER.get().unwrap().clone();
 
-        match msg {
-            KVPayload::Set(SetKVPayload { key, value, resp }) => {
-                dict.insert(key, value);
-                let _ = resp.send(());
+    loop {
+        match time::timeout(timeout, recv.recv()).await {
+            Ok(Some(msg)) => {
+                // 向writer actor发送收到的消息的副本，同步写入文件
+                if let Some(msg_for_writer) = WriterPayload::from_kv_payload(&msg) {
+                    let _ = tx_writer.send(msg_for_writer).await;
+                }
+
+                match msg {
+                    KVPayload::Set(SetKVPayload { key, value, resp }) => {
+                        dict.insert(key, value);
+                        let _ = resp.send(());
+                    }
+                    KVPayload::Get(GetKVPayload { key, resp }) => {
+                        let _ = resp.send(dict.get(&key).cloned());
+                    }
+                    KVPayload::Del(DelKVPayload { key, resp }) => {
+                        dict.remove(&key);
+                        let _ = resp.send(());
+                    }
+                }
             }
-            KVPayload::Get(GetKVPayload { key, resp }) => {
-                let _ = resp.send(dict.get(&key).cloned());
-            }
-            KVPayload::Del(DelKVPayload { key, resp }) => {
-                dict.remove(&key);
-                let _ = resp.send(());
+            Ok(None) => break,
+            Err(_) => {
+                // send a heartbeat message to the router: the key-value store is still alive
+                tx_router
+                    .send(RoutingPayload::KeepAlive(ActorType::KVActor))
+                    .await
+                    .unwrap();
             }
         }
     }
@@ -132,26 +158,74 @@ async fn writer_actor(mut recv: Receiver<WriterPayload>) -> io::Result<()> {
     let mut state = load_state_map("./saved_state.json").await;
     let mut file = File::create("./saved_state.json").await.unwrap();
 
-    while let Some(msg) = recv.recv().await {
-        match msg {
-            WriterPayload::Set(key, value) => {
-                state.insert(key, value);
+    let timeout = Duration::from_millis(200);
+    let tx_router = TX_ROUTER.get().unwrap().clone();
+
+    loop {
+        match time::timeout(timeout, recv.recv()).await {
+            Ok(Some(msg)) => {
+                match msg {
+                    WriterPayload::Set(key, value) => {
+                        state.insert(key, value);
+                    }
+                    WriterPayload::Get(sender) => {
+                        let _ = sender.send(state.clone());
+                    }
+                    WriterPayload::Del(key) => {
+                        state.remove(&key);
+                    }
+                }
+                let buf = serde_json::to_string(&state).unwrap();
+                file.set_len(0).await?;
+                file.seek(std::io::SeekFrom::Start(0)).await?;
+                file.write_all(buf.as_bytes()).await?;
+                file.flush().await?;
             }
-            WriterPayload::Get(sender) => {
-                let _ = sender.send(state.clone());
-            }
-            WriterPayload::Del(key) => {
-                state.remove(&key);
+            Ok(None) => break,
+            Err(_) => {
+                tx_router
+                    .send(RoutingPayload::KeepAlive(ActorType::WriterActor))
+                    .await
+                    .unwrap();
             }
         }
-        let buf = serde_json::to_string(&state).unwrap();
-        file.set_len(0).await?;
-        file.seek(std::io::SeekFrom::Start(0)).await?;
-        file.write_all(buf.as_bytes()).await?;
-        file.flush().await?;
     }
-
     Ok(())
+}
+
+async fn supervisor_actor(mut recv: Receiver<ActorType>) {
+    let timeout = Duration::from_millis(200);
+    let mut dict = HashMap::new();
+
+    loop {
+        match time::timeout(timeout, recv.recv()).await {
+            Ok(Some(actor)) => {
+                dict.insert(actor, Instant::now());
+            }
+            Ok(None) => break,
+            Err(_) => continue,
+        }
+
+        let second_ago = Instant::now() - Duration::from_secs(1);
+        for (key, &value) in dict.iter() {
+            if value < second_ago {
+                match key {
+                    ActorType::KVActor | ActorType::WriterActor => {
+                        // 重启KVActor也会重启WriterActor
+                        TX_ROUTER
+                            .get()
+                            .unwrap()
+                            .send(RoutingPayload::Reset(ActorType::KVActor))
+                            .await
+                            .unwrap();
+                        dict.remove(&ActorType::KVActor);
+                        dict.remove(&ActorType::WriterActor);
+                        break;
+                    }
+                }
+            }
+        }
+    }
 }
 
 // router_actor的发送端，提供给外部发送信息
