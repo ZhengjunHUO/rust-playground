@@ -1,4 +1,8 @@
+use serde_json;
+use std::time::Duration;
 use std::{collections::HashMap, sync::OnceLock};
+use tokio::fs::File;
+use tokio::io::{self, AsyncReadExt, AsyncSeekExt, AsyncWriteExt};
 use tokio::sync::{
     mpsc::{self, Receiver, Sender},
     oneshot,
@@ -30,6 +34,50 @@ enum RoutingPayload {
     KV(KVPayload),
 }
 
+enum WriterPayload {
+    Set(String, Vec<u8>),
+    Get(oneshot::Sender<HashMap<String, Vec<u8>>>),
+    Del(String),
+}
+
+impl WriterPayload {
+    // construct WriterPayload from the KVPayload without consuming it
+    fn from_kv_payload(msg: &KVPayload) -> Option<WriterPayload> {
+        match msg {
+            KVPayload::Set(payload) => Some(WriterPayload::Set(
+                payload.key.clone(),
+                payload.value.clone(),
+            )),
+            KVPayload::Get(_) => None,
+            KVPayload::Del(payload) => Some(WriterPayload::Del(payload.key.clone())),
+        }
+    }
+}
+
+async fn load_from_file(path: &str) -> io::Result<HashMap<String, Vec<u8>>> {
+    let mut file = File::open(path).await?;
+    let mut buf = String::new();
+    file.read_to_string(&mut buf).await?;
+    let rslt = serde_json::from_str(&buf)?;
+    Ok(rslt)
+}
+
+async fn load_state_map(path: &str) -> HashMap<String, Vec<u8>> {
+    match load_from_file(path).await {
+        Ok(state) => {
+            println!("State resumed from file successfully: {:?}", state);
+            return state;
+        }
+        Err(e) => {
+            println!(
+                "Error occurred reading from file: {:?}\nUse empty state instead.",
+                e
+            );
+            return HashMap::new();
+        }
+    }
+}
+
 // 作为interface接收外部发送的msg，转发给kv_actor（由其创建）
 async fn router_actor(mut recv: Receiver<RoutingPayload>) {
     // 创建kv_actor
@@ -48,8 +96,21 @@ async fn router_actor(mut recv: Receiver<RoutingPayload>) {
 
 // 接收并处理Router分发的msg
 async fn kv_actor(mut recv: Receiver<KVPayload>) {
-    let mut dict = HashMap::new();
+    // 创建一个writer actor，把收到的msg抄送一份给它，让它写到一个文件中
+    let (tx_writer, rx_writer) = mpsc::channel(128);
+    tokio::spawn(writer_actor(rx_writer));
+
+    // 让writer actor从文件中读取保存的进度作为初始dict
+    let (tx_writer_oneshot, rx_writer_oneshot) = oneshot::channel();
+    let _ = tx_writer.send(WriterPayload::Get(tx_writer_oneshot)).await;
+    let mut dict = rx_writer_oneshot.await.unwrap();
+
     while let Some(msg) = recv.recv().await {
+        // 向writer actor发送收到的消息的副本，同步写入文件
+        if let Some(msg_for_writer) = WriterPayload::from_kv_payload(&msg) {
+            let _ = tx_writer.send(msg_for_writer).await;
+        }
+
         match msg {
             KVPayload::Set(SetKVPayload { key, value, resp }) => {
                 dict.insert(key, value);
@@ -64,6 +125,33 @@ async fn kv_actor(mut recv: Receiver<KVPayload>) {
             }
         }
     }
+}
+
+// created by kv_actor
+async fn writer_actor(mut recv: Receiver<WriterPayload>) -> io::Result<()> {
+    let mut state = load_state_map("./saved_state.json").await;
+    let mut file = File::create("./saved_state.json").await.unwrap();
+
+    while let Some(msg) = recv.recv().await {
+        match msg {
+            WriterPayload::Set(key, value) => {
+                state.insert(key, value);
+            }
+            WriterPayload::Get(sender) => {
+                let _ = sender.send(state.clone());
+            }
+            WriterPayload::Del(key) => {
+                state.remove(&key);
+            }
+        }
+        let buf = serde_json::to_string(&state).unwrap();
+        file.set_len(0).await?;
+        file.seek(std::io::SeekFrom::Start(0)).await?;
+        file.write_all(buf.as_bytes()).await?;
+        file.flush().await?;
+    }
+
+    Ok(())
 }
 
 // router_actor的发送端，提供给外部发送信息
@@ -130,10 +218,13 @@ async fn main() -> Result<(), std::io::Error> {
     println!("Set done");
     let val = get(key.clone()).await?.unwrap();
     println!("Got: {:?}", String::from_utf8(val));
-
-    del(key.clone()).await?;
-    println!("Delete done");
-    let val = get(key).await?;
-    println!("Got: {:?}", val);
+    /*
+        del(key.clone()).await?;
+        println!("Delete done");
+        let val = get(key).await?;
+        println!("Got: {:?}", val);
+    */
+    // 让writer actor有足够的时间写文件
+    std::thread::sleep(Duration::from_secs(3));
     Ok(())
 }
