@@ -1,5 +1,4 @@
 use serde_json;
-use std::f32::MANTISSA_DIGITS;
 use std::{collections::HashMap, sync::OnceLock};
 use tokio::fs::File;
 use tokio::io::{self, AsyncReadExt, AsyncSeekExt, AsyncWriteExt};
@@ -90,8 +89,12 @@ async fn load_state_map(path: &str) -> HashMap<String, Vec<u8>> {
 // 作为interface接收外部发送的msg，转发给kv_actor（由其创建）
 async fn router_actor(mut recv: Receiver<RoutingPayload>) {
     // 创建kv_actor
-    let (tx_kv, rx_kv) = mpsc::channel(128);
-    tokio::spawn(kv_actor(rx_kv));
+    let (mut tx_kv, mut rx_kv) = mpsc::channel(128);
+    let mut kv_handler = tokio::spawn(kv_actor(rx_kv));
+
+    // 创建supervisor_actor
+    let (tx_keepalive, rx_keepalive) = mpsc::channel(128);
+    tokio::spawn(supervisor_actor(rx_keepalive));
 
     // 接收外部发送的msg
     while let Some(msg) = recv.recv().await {
@@ -99,8 +102,19 @@ async fn router_actor(mut recv: Receiver<RoutingPayload>) {
             RoutingPayload::KV(kv_payload) => {
                 let _ = tx_kv.send(kv_payload).await;
             }
-            RoutingPayload::KeepAlive(actor_type) => todo!(),
-            RoutingPayload::Reset(actor_type) => todo!(),
+            RoutingPayload::KeepAlive(message) => {
+                let _ = tx_keepalive.send(message).await;
+            }
+            RoutingPayload::Reset(message) => match message {
+                ActorType::KVActor | ActorType::WriterActor => {
+                    kv_handler.abort();
+                    let (tx_kv_new, rx_kv_new) = mpsc::channel(128);
+                    tx_kv = tx_kv_new;
+                    rx_kv = rx_kv_new;
+                    kv_handler = tokio::spawn(kv_actor(rx_kv));
+                    time::sleep(Duration::from_millis(100)).await;
+                }
+            },
         }
     }
 }
@@ -292,6 +306,20 @@ async fn main() -> Result<(), std::io::Error> {
     println!("Set done");
     let val = get(key.clone()).await?.unwrap();
     println!("Got: {:?}", String::from_utf8(val));
+    let val = get(key.clone()).await?.unwrap();
+    println!("Got: {:?}", String::from_utf8(val));
+
+    // Reset
+    TX_ROUTER
+        .get()
+        .unwrap()
+        .send(RoutingPayload::Reset(ActorType::KVActor))
+        .await
+        .unwrap();
+    let val = get(key.clone()).await?.unwrap();
+    println!("Got: {:?}", String::from_utf8(val));
+
+    set(key.clone(), b"rusty".to_vec()).await?;
     /*
         del(key.clone()).await?;
         println!("Delete done");
@@ -299,6 +327,6 @@ async fn main() -> Result<(), std::io::Error> {
         println!("Got: {:?}", val);
     */
     // 让writer actor有足够的时间写文件
-    std::thread::sleep(Duration::from_secs(3));
+    std::thread::sleep(Duration::from_secs(1));
     Ok(())
 }
