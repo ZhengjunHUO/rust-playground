@@ -1,4 +1,3 @@
-use serde_json;
 use std::{collections::HashMap, sync::OnceLock};
 use tokio::fs::File;
 use tokio::io::{self, AsyncReadExt, AsyncSeekExt, AsyncWriteExt};
@@ -74,14 +73,14 @@ async fn load_state_map(path: &str) -> HashMap<String, Vec<u8>> {
     match load_from_file(path).await {
         Ok(state) => {
             println!("State resumed from file successfully: {:?}", state);
-            return state;
+            state
         }
         Err(e) => {
             println!(
                 "Error occurred reading from file: {:?}\nUse empty state instead.",
                 e
             );
-            return HashMap::new();
+            HashMap::new()
         }
     }
 }
