@@ -1,3 +1,5 @@
+use std::{future::Future, pin::Pin, task::Poll};
+
 enum State {
     On,
     Off,
@@ -22,6 +24,36 @@ impl State {
             _ => {
                 println!("Nothing todo, skip.");
                 self
+            }
+        }
+    }
+}
+
+struct StateFuture<F: Future, G: Future> {
+    state: State,
+    on_future: Pin<Box<F>>,
+    off_future: Pin<Box<G>>,
+}
+
+impl<F: Future, G: Future> Future for StateFuture<F, G> {
+    type Output = State;
+
+    fn poll(
+        mut self: std::pin::Pin<&mut Self>,
+        cx: &mut std::task::Context<'_>,
+    ) -> std::task::Poll<Self::Output> {
+        match self.state {
+            State::On => {
+                let inner = self.on_future.as_mut();
+                let _ = inner.poll(cx);
+                cx.waker().wake_by_ref();
+                Poll::Pending
+            }
+            State::Off => {
+                let inner = self.off_future.as_mut();
+                let _ = inner.poll(cx);
+                cx.waker().wake_by_ref();
+                Poll::Pending
             }
         }
     }

@@ -45,7 +45,7 @@ impl<F: Future + Logger> Future for LoggerWrapper<F> {
         inner.poll(cx)
     }
 }
- */
+*/
 
 struct LoggerWrapper<F: Future + Logger> {
     inner: Pin<Box<F>>,
