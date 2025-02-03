@@ -97,10 +97,11 @@ openssl-sys = {version = "0.9.90", features = ["vendored"]}
 ```
 
 ### Test coverage
-```
+```sh
 $ rustup component add llvm-tools
 $ CARGO_INCREMENTAL=0 RUSTFLAGS='-Cinstrument-coverage' LLVM_PROFILE_FILE='cargo-test-%p-%m.profraw' cargo test
-$ grcov . --binary-path ./target/debug/ -s . -t html --branch --ignore-not-existing -o ./target/debug/coverage/
+$ grcov . --llvm --binary-path ./target/debug/ -s . -t html,cobertura [--keep-only <crate-name>/src/*] [--excl-line r"//|^\s*\}|^\s*\{|^$|use|unreachable|^\s*\.await|#\[derive\(|^\s*#"] [--ignore xtask/*] [--ignore **/tests/*] --branch --ignore-not-existing -o ./target/debug/coverage/
+$ xmllint --xpath "concat('\''Coverage: '\'', 100 * string(//coverage/@line-rate), '\''%'\'')" coverage/html/cobertura.xml
 # check target/debug/coverage/index.html
 ```
 
