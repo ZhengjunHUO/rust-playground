@@ -2,53 +2,14 @@ use anyhow::{bail, Result};
 use azure_storage::prelude::*;
 use azure_storage_blobs::prelude::*;
 use futures::stream::StreamExt;
-use lazy_static::lazy_static;
-use log::info;
-use std::{collections::HashSet, io::Read};
-use tokio::sync::Mutex;
+//use lazy_static::lazy_static;
+use log::{debug, info};
+use std::io::Read;
+//use tokio::sync::Mutex;
 
+/*
 lazy_static! {
     pub(crate) static ref REMOTE_STORAGE_CACHE: Mutex<Vec<String>> = Mutex::new(Vec::new());
-}
-
-trait Crud {
-    /// List all folders under path in bucket
-    async fn list_folders(&self, path: String) -> Result<Vec<String>>;
-    /// List all files under path in bucket
-    async fn list_files(&self, path: String) -> Result<Vec<String>>;
-    /// Read the object's content
-    async fn get_obj(&self, path: String) -> Result<String>;
-    /// Create an object in bucket
-    async fn put_obj(&self, path: String, content: &[u8]) -> Result<()>;
-    /// Should delete recursively all the objects inside if the path is a "folder"
-    async fn del_obj(&self, path: String) -> Result<()>;
-    async fn put_obj_stream(&self, dump_name: &str, s3_path: String) -> Result<()>;
-}
-
-async fn list(client: &ContainerClient, path: String) -> Result<Vec<String>> {
-    let list = if path.is_empty() {
-        client.list_blobs()
-    } else {
-        client.list_blobs().prefix(path)
-    };
-
-    let mut rslt = Vec::new();
-
-    let mut stream = list.into_stream();
-    while let Some(resp) = stream.next().await {
-        info!("[DEBUG] Got a new page");
-        match resp {
-            Ok(elem) => {
-                let blobs: Vec<_> = elem.blobs.blobs().collect();
-                blobs.into_iter().for_each(|blob| {
-                    rslt.push(blob.name.clone());
-                    //info!("[DEBUG] {:?}", blob.name)
-                });
-            }
-            _ => bail!("Sth wrong happened"),
-        }
-    }
-    Ok(rslt)
 }
 
 async fn check_or_provision_cache(client: &ContainerClient, id: &str) -> Result<()> {
@@ -153,6 +114,128 @@ impl Crud for AzureStorageClient {
         Ok(())
     }
 }
+*/
+
+async fn list(client: &ContainerClient, path: String) -> Result<Vec<String>> {
+    let mut rslt = Vec::new();
+    let mut stream = client.list_blobs().prefix(path).into_stream();
+    while let Some(resp) = stream.next().await {
+        info!("[DEBUG] Got a new page");
+        match resp {
+            Ok(elem) => {
+                let blobs: Vec<_> = elem.blobs.blobs().collect();
+                blobs.into_iter().for_each(|blob| {
+                    rslt.push(blob.name.clone());
+                    //info!("[DEBUG] {:?}", blob.name)
+                });
+            }
+            _ => bail!("Sth wrong happened"),
+        }
+    }
+    Ok(rslt)
+}
+
+trait Crud {
+    /// List all folders under path in bucket
+    async fn list_folders(&self, path: String) -> Result<Vec<String>>;
+    /// List all files under path in bucket
+    async fn list_files(&self, path: String) -> Result<Vec<String>>;
+    /// Read the object's content
+    async fn get_obj(&self, path: String) -> Result<String>;
+    /// Create an object in bucket
+    async fn put_obj(&self, path: String, content: &[u8]) -> Result<()>;
+    /// Should delete recursively all the objects inside if the path is a "folder"
+    async fn del_obj(&self, path: String) -> Result<()>;
+    async fn put_obj_stream(&self, dump_name: &str, s3_path: String) -> Result<()>;
+}
+
+impl Crud for AzureStorageClient {
+    async fn list_folders(&self, path: String) -> Result<Vec<String>> {
+        let list = self.container.list_blobs().prefix(path).delimiter("/");
+        let mut rslt = Vec::new();
+
+        let mut stream = list.into_stream();
+        while let Some(resp) = stream.next().await {
+            info!("[DEBUG] Got a new page");
+            match resp {
+                Ok(elem) => {
+                    let blobs: Vec<_> = elem.blobs.prefixes().collect();
+                    blobs.into_iter().for_each(|blob| {
+                        rslt.push(blob.name.clone());
+                        debug!("Got {:?}", blob.name)
+                    });
+                }
+                _ => bail!("Sth wrong happened"),
+            }
+        }
+        Ok(rslt)
+    }
+
+    async fn list_files(&self, path: String) -> Result<Vec<String>> {
+        let list = self.container.list_blobs().prefix(path).delimiter("/");
+        let mut rslt = Vec::new();
+
+        let mut stream = list.into_stream();
+        while let Some(resp) = stream.next().await {
+            info!("[DEBUG] Got a new page");
+            match resp {
+                Ok(elem) => {
+                    let blobs: Vec<_> = elem.blobs.blobs().collect();
+                    blobs.into_iter().for_each(|blob| {
+                        rslt.push(blob.name.clone());
+                        debug!("Got {:?}", blob.name)
+                    });
+                }
+                _ => bail!("Sth wrong happened"),
+            }
+        }
+        Ok(rslt)
+    }
+
+    async fn put_obj(&self, path: String, content: &[u8]) -> Result<()> {
+        let resp = self
+            .container
+            .blob_client(path)
+            .put_block_blob(content.to_vec())
+            .await?;
+        info!("[DEBUG] put_obj got resp: {:?}", resp);
+        Ok(())
+    }
+
+    async fn put_obj_stream(&self, dump_name: &str, s3_path: String) -> Result<()> {
+        let mut buf_reader = std::io::BufReader::new(std::fs::File::open(dump_name)?);
+        let mut content = Vec::new();
+        buf_reader.read_to_end(&mut content)?;
+        let resp = self
+            .container
+            .blob_client(s3_path)
+            .put_block_blob(content)
+            .await?;
+        info!("[DEBUG] put_obj_stream got resp: {:?}", resp);
+        Ok(())
+    }
+
+    async fn get_obj(&self, path: String) -> Result<String> {
+        let content = self.container.blob_client(path).get_content().await?;
+        Ok(String::from_utf8_lossy(&content).to_string())
+    }
+
+    async fn del_obj(&self, path: String) -> Result<()> {
+        if !path.ends_with('/') {
+            let resp = self.container.blob_client(path).delete().await?;
+            info!("[DEBUG] del_obj got resp: {:?}", resp);
+        } else {
+            let list_to_delete = list(&self.container, path).await?;
+            for elem in list_to_delete {
+                info!("[DEBUG] delete {}", elem);
+                let resp = self.container.blob_client(elem).delete().await?;
+                info!("[DEBUG] del_obj got resp: {:?}", resp);
+            }
+        }
+
+        Ok(())
+    }
+}
 
 #[derive(Clone)]
 struct AzureStorageClient {
@@ -171,15 +254,86 @@ impl AzureStorageClient {
     }
 }
 
+/*
+async fn list_files_native(client: &ContainerClient, path: String) -> Result<Vec<String>> {
+    let list = client.list_blobs().prefix(path).delimiter("/");
+    let mut rslt = Vec::new();
+
+    let mut stream = list.into_stream();
+    while let Some(resp) = stream.next().await {
+        info!("[DEBUG] Got a new page");
+        match resp {
+            Ok(elem) => {
+                let blobs: Vec<_> = elem.blobs.blobs().collect();
+                blobs.into_iter().for_each(|blob| {
+                    rslt.push(blob.name.clone());
+                    debug!("Got {:?}", blob.name)
+                });
+            }
+            _ => bail!("Sth wrong happened"),
+        }
+    }
+    Ok(rslt)
+}
+
+async fn list_folders_native(client: &ContainerClient, path: String) -> Result<Vec<String>> {
+    let list = client.list_blobs().prefix(path).delimiter("/");
+    let mut rslt = Vec::new();
+
+    let mut stream = list.into_stream();
+    while let Some(resp) = stream.next().await {
+        info!("[DEBUG] Got a new page");
+        match resp {
+            Ok(elem) => {
+                let blobs: Vec<_> = elem.blobs.prefixes().collect();
+                blobs.into_iter().for_each(|blob| {
+                    rslt.push(blob.name.clone());
+                    debug!("Got {:?}", blob.name)
+                });
+            }
+            _ => bail!("Sth wrong happened"),
+        }
+    }
+    Ok(rslt)
+}
+*/
+
 #[tokio::main]
 async fn main() -> Result<()> {
     env_logger::init();
 
     mulit_hosts_cache_access().await?;
+    //poc().await?;
     Ok(())
 }
 
-async fn simple_test() -> Result<()> {
+pub async fn poc() -> Result<()> {
+    let account = std::env::var("AZURE_ACCOUNT_NAME").expect("AZURE_ACCOUNT_NAME not set");
+    let access_key = std::env::var("AZURE_ACCESS_KEY").expect("AZURE_ACCESS_KEY not set");
+    let container = std::env::var("AZURE_CONTAINER_NAME").expect("AZURE_CONTAINER_NAME not set");
+    let container_client =
+        AzureStorageClient::new(account, access_key, container, String::from("test"));
+
+    let path = String::from("default/shard_StdData/202501211311/shard0/");
+    println!("files under {}:", path);
+    let list = container_client.list_files(path.clone()).await?;
+    println!("  {:?}", list);
+    println!("folders under {}:", path);
+    let list = container_client.list_folders(path).await?;
+    println!("  {:?}", list);
+
+    let path = String::from("default/shard_StdData/202501211311/");
+    println!("files under {}:", path);
+    let list = container_client.list_files(path.clone()).await?;
+    println!("  {:?}", list);
+    println!("folders under {}:", path);
+    let list = container_client.list_folders(path).await?;
+    println!("  {:?}", list);
+
+    Ok(())
+}
+
+pub async fn simple_test() -> Result<()> {
     let account = std::env::var("AZURE_ACCOUNT_NAME").expect("AZURE_ACCOUNT_NAME not set");
     let access_key = std::env::var("AZURE_ACCESS_KEY").expect("AZURE_ACCESS_KEY not set");
     let container = std::env::var("AZURE_CONTAINER_NAME").expect("AZURE_CONTAINER_NAME not set");
@@ -238,21 +392,28 @@ async fn mulit_hosts_cache_access() -> Result<()> {
 
     let handlers = vec![
         tokio::spawn(async move {
-            let list = client_foo.list_files(String::default()).await;
-            println!("[foo] files: {:?}", list.unwrap_or_default());
+            let path = "default/shard_StdData/202501211311/shard0/".to_owned();
+            let list = client_foo.list_files(path.clone()).await;
+            println!("[foo] {} files: {:?}", path, list.unwrap_or_default());
         }),
         tokio::spawn(async move {
-            let list = client_bar.list_folders(String::default()).await;
-            println!("[bar] folders: {:?}", list.unwrap_or_default());
+            let path = String::from("psql-dump/");
+            let list = client_bar.list_folders(path.clone()).await;
+            println!("[bar] {} folders: {:?}", path, list.unwrap_or_default());
         }),
         tokio::spawn(async move {
-            let list = client_bar_clone.list_files(String::default()).await;
-            println!("[bar_clone] files: {:?}", list.unwrap_or_default());
+            let path = "default/shard_StdData/202501211311/".to_owned();
+            let list = client_bar_clone.list_folders(path.clone()).await;
+            println!(
+                "[bar_clone] {} folders: {:?}",
+                path,
+                list.unwrap_or_default()
+            );
         }),
     ];
 
     for h in handlers {
-        let _ = h.await.unwrap();
+        h.await.unwrap();
     }
 
     info!("Done");
