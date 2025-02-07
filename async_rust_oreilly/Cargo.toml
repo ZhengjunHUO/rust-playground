@@ -24,3 +24,8 @@ uuid = { version = "1.12.1", features = ["v4"] }
 
 [features]
 decorator_test = []
+
+[workspace]
+members = [
+    "data_layer",
+]
