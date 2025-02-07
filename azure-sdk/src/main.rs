@@ -151,7 +151,11 @@ trait Crud {
 
 impl Crud for AzureStorageClient {
     async fn list_folders(&self, path: String) -> Result<Vec<String>> {
-        let list = self.container.list_blobs().prefix(path).delimiter("/");
+        let list = self
+            .container
+            .list_blobs()
+            .prefix(path.clone())
+            .delimiter("/");
         let mut rslt = Vec::new();
 
         let mut stream = list.into_stream();
@@ -161,7 +165,14 @@ impl Crud for AzureStorageClient {
                 Ok(elem) => {
                     let blobs: Vec<_> = elem.blobs.prefixes().collect();
                     blobs.into_iter().for_each(|blob| {
-                        rslt.push(blob.name.clone());
+                        rslt.push(
+                            blob.name
+                                .strip_prefix(&path)
+                                .unwrap()
+                                .strip_suffix('/')
+                                .unwrap()
+                                .to_owned(),
+                        );
                         debug!("Got {:?}", blob.name)
                     });
                 }
@@ -172,7 +183,11 @@ impl Crud for AzureStorageClient {
     }
 
     async fn list_files(&self, path: String) -> Result<Vec<String>> {
-        let list = self.container.list_blobs().prefix(path).delimiter("/");
+        let list = self
+            .container
+            .list_blobs()
+            .prefix(path.clone())
+            .delimiter("/");
         let mut rslt = Vec::new();
 
         let mut stream = list.into_stream();
@@ -182,7 +197,7 @@ impl Crud for AzureStorageClient {
                 Ok(elem) => {
                     let blobs: Vec<_> = elem.blobs.blobs().collect();
                     blobs.into_iter().for_each(|blob| {
-                        rslt.push(blob.name.clone());
+                        rslt.push(blob.name.strip_prefix(&path).unwrap().to_owned());
                         debug!("Got {:?}", blob.name)
                     });
                 }
@@ -302,8 +317,8 @@ async fn list_folders_native(client: &ContainerClient, path: String) -> Result<V
 async fn main() -> Result<()> {
     env_logger::init();
 
-    mulit_hosts_cache_access().await?;
-    //poc().await?;
+    //mulit_hosts_cache_access().await?;
+    poc().await?;
     Ok(())
 }
 
@@ -328,6 +343,13 @@ pub async fn poc() -> Result<()> {
     println!("  {:?}", list);
     println!("folders under {}:", path);
     let list = container_client.list_folders(path).await?;
+    println!("  {:?}", list);
+
+    println!("files under root");
+    let list = container_client.list_files(String::new()).await?;
+    println!("  {:?}", list);
+    println!("folders under root");
+    let list = container_client.list_folders(String::new()).await?;
     println!("  {:?}", list);
 
     Ok(())
@@ -371,7 +393,7 @@ pub async fn simple_test() -> Result<()> {
     Ok(())
 }
 
-async fn mulit_hosts_cache_access() -> Result<()> {
+pub async fn mulit_hosts_cache_access() -> Result<()> {
     let account = std::env::var("AZURE_ACCOUNT_NAME").expect("AZURE_ACCOUNT_NAME not set");
     let access_key = std::env::var("AZURE_ACCESS_KEY").expect("AZURE_ACCESS_KEY not set");
     let container = std::env::var("AZURE_CONTAINER_NAME").expect("AZURE_CONTAINER_NAME not set");
