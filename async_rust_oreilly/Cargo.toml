@@ -28,4 +28,5 @@ decorator_test = []
 [workspace]
 members = [
     "data_layer",
+    "async_runtime",
 ]
