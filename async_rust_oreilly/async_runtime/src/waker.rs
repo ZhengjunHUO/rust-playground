@@ -8,13 +8,13 @@ unsafe fn custom_clone(raw_waker: *const ()) -> RawWaker {
 }
 
 unsafe fn custom_wake(raw_waker: *const ()) {
-    drop(Box::from_raw(raw_waker as *mut u32));
+    drop(unsafe { Box::from_raw(raw_waker as *mut u32) });
 }
 
 unsafe fn custom_wake_by_ref(_raw_waker: *const ()) {}
 
 unsafe fn custom_drop(raw_waker: *const ()) {
-    drop(Box::from_raw(raw_waker as *mut u32));
+    drop(unsafe { Box::from_raw(raw_waker as *mut u32) });
 }
 
 pub fn build_raw_waker() -> RawWaker {
