@@ -7,8 +7,10 @@ use s3::region::Region;
 use s3::Bucket;
 use std::env;
 use std::fs::File;
-use std::io::Write;
+use std::io::{Read, Write};
 use std::str::FromStr;
+
+const CHUNK_SIZE: usize = 100 * 1024 * 1024;
 
 struct Config {
     bucket_name: String,
@@ -225,6 +227,64 @@ async fn put_obj(bucket: &Bucket, path: String, content: &[u8]) -> Result<()> {
     }
 }
 
+async fn put_obj_stream(bucket: &Bucket, dump_name: &str, s3_path: String) -> Result<()> {
+    let mut file = tokio::fs::File::open(dump_name).await?;
+    match bucket.put_object_stream(&mut file, s3_path).await {
+        Ok(resp) => {
+            println!("Object updated [{}] ", resp.status_code());
+            Ok(())
+        }
+        Err(e) => {
+            bail!("Got error from put_obj_stream: {:?}", e);
+        }
+    }
+}
+
+async fn put_obj_multipart(bucket: &Bucket, dump_name: &str, s3_path: &str) -> Result<()> {
+    let file = std::fs::File::open(dump_name)?;
+    let metadata = file.metadata()?;
+    let file_size = metadata.len();
+    println!("[{}] File size: {}", dump_name, file_size);
+    let mut reader = std::io::BufReader::new(file);
+
+    let init_resp = bucket
+        .initiate_multipart_upload(s3_path, "application/octet-stream")
+        .await?;
+    println!("Upload ID: {:?}", init_resp.upload_id);
+
+    let mut chunk_num = 1;
+    let mut parts = Vec::new();
+    let mut buf = vec![0; CHUNK_SIZE];
+
+    while let Ok(num_bytes) = reader.read(&mut buf) {
+        println!("Read {} bytes", num_bytes);
+        if num_bytes == 0 {
+            break;
+        }
+
+        let chunk = &buf[..num_bytes];
+        let part = bucket
+            .put_multipart_chunk(
+                chunk.to_vec(),
+                s3_path,
+                chunk_num,
+                &init_resp.upload_id,
+                "application/octet-stream",
+            )
+            .await?;
+        println!("Chunk {} uploaded (part: [{:?}])", chunk_num, part);
+        parts.push(part);
+
+        chunk_num += 1;
+    }
+
+    bucket
+        .complete_multipart_upload(s3_path, &init_resp.upload_id, parts)
+        .await?;
+    println!("Done");
+    Ok(())
+}
+
 async fn del_obj(bucket: &Bucket, path: String) -> Result<()> {
     match bucket.delete_object(path).await {
         Ok(resp) => {
@@ -322,6 +382,13 @@ async fn main() -> Result<()> {
 
     //put_obj(&bucket, String::from("foo/bar"), b"Rust rocks!").await?;
     //let results = bucket.list(String::from("/"), Some("/".to_string())).await?;
+    put_obj_multipart(
+        &bucket,
+        "crackstation-human-only.txt",
+        "test/crackstation-human-only.txt",
+    )
+    .await?;
+
     let results = bucket.list(String::from(""), Some("/".to_string())).await?;
     println!("{:?}", results);
     /*
