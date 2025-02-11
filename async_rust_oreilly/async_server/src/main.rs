@@ -73,7 +73,7 @@ async fn handle(mut stream: TcpStream) -> io::Result<()> {
         Err(e) => println!("Error occured during deserializing: {}", e),
     }
     Sleep::new(Duration::from_secs(1)).await;
-    stream.write_all(b"Greeting from server")?;
+    stream.write_all(b"Pong")?;
     Ok(())
 }
 
