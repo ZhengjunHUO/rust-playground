@@ -29,4 +29,5 @@ decorator_test = []
 members = [
     "data_layer",
     "async_runtime",
+    "async_server",
 ]
