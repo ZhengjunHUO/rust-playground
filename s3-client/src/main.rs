@@ -6,11 +6,14 @@ use s3::creds::Credentials;
 use s3::region::Region;
 use s3::Bucket;
 use std::env;
-use std::fs::File;
-use std::io::{Read, Write};
+use std::fs::{File, OpenOptions};
+use std::io::{Read, Seek, Write};
 use std::str::FromStr;
+use std::thread::sleep;
+use std::time::Duration;
 
 const CHUNK_SIZE: usize = 100 * 1024 * 1024;
+const SINGLE_PUT_LIMIT: usize = 5 * 1000 * 1000 * 1000;
 
 struct Config {
     bucket_name: String,
@@ -19,8 +22,8 @@ struct Config {
 }
 
 async fn prepare_client(config: Config) -> Result<Bucket> {
-    let access_key = env::var("S3_ACCESS_KEY")?;
-    let secret_key = env::var("S3_SECRET_KEY")?;
+    let access_key = env::var("S3_ACCESS_KEY").expect("S3_ACCESS_KEY not set");
+    let secret_key = env::var("S3_SECRET_KEY").expect("S3_SECRET_KEY not set");
 
     let s3_endpoint;
     if config.endpoint.is_none() {
@@ -245,6 +248,9 @@ async fn put_obj_multipart(bucket: &Bucket, dump_name: &str, s3_path: &str) -> R
     let metadata = file.metadata()?;
     let file_size = metadata.len();
     println!("[{}] File size: {}", dump_name, file_size);
+    if file_size as usize > SINGLE_PUT_LIMIT {
+        println!("Found a big file to upload");
+    }
     let mut reader = std::io::BufReader::new(file);
 
     let init_resp = bucket
@@ -281,6 +287,41 @@ async fn put_obj_multipart(bucket: &Bucket, dump_name: &str, s3_path: &str) -> R
     bucket
         .complete_multipart_upload(s3_path, &init_resp.upload_id, parts)
         .await?;
+    println!("Done");
+    Ok(())
+}
+
+async fn get_obj_multipart(bucket: &Bucket, out_name: &str, s3_path: &str) -> Result<()> {
+    let (head, _) = bucket.head_object(s3_path).await?;
+    let obj_size = head.content_length.unwrap() as usize;
+    println!("[{}] File size: {}", s3_path, obj_size);
+
+    let mut file = OpenOptions::new().write(true).create(true).open(out_name)?;
+
+    let mut start = 0;
+    while start < obj_size {
+        let end = (start + CHUNK_SIZE - 1).min(obj_size - 1);
+        println!("Dealing with {}-{}", start, end);
+
+        match bucket
+            .get_object_range(s3_path, start as u64, Some(end as u64))
+            .await
+        {
+            Ok(data) => {
+                file.seek(std::io::SeekFrom::Start(start as u64))?;
+                file.write_all(data.as_slice())?;
+                println!("Downloaded {}-{}", start, end);
+            }
+            Err(e) => {
+                println!("Error occurred downloading {}-{}: {}", start, end, e);
+                sleep(Duration::from_secs(3));
+                continue;
+            }
+        }
+
+        start += CHUNK_SIZE;
+    }
+
     println!("Done");
     Ok(())
 }
@@ -339,20 +380,20 @@ async fn main() -> Result<()> {
     */
 
     // AWS
-    /*
     let config = Config {
         bucket_name: bucket_name,
         region: "eu-west-3".to_owned(),
         endpoint: None,
     };
-    */
 
     // Minio
+    /*
     let config = Config {
         bucket_name: bucket_name,
         region: "eu".to_owned(),
         endpoint: Some("http://172.19.0.11:9000".to_owned()),
     };
+    */
 
     // GCP
     /*
@@ -372,25 +413,28 @@ async fn main() -> Result<()> {
     //list_all_objs(&bucket, String::from("data/")).await;
 
     /*
-    match get_obj(&bucket, path.clone()).await {
-        Ok(content) => {
-            println!("Read content from {}: {}", path, content);
+        match get_obj(&bucket, String::from("test/crackstation-human-only.txt")).await {
+            Ok(content) => {
+                println!("Read content ok, write to file ...");
+                write_to_file("test.txt", &content)?;
+            }
+            Err(e) => println!("File doesn't exist: {}", e),
         }
-        Err(e) => println!("{} doesn't exist: {}", path, e),
-    }
     */
-
     //put_obj(&bucket, String::from("foo/bar"), b"Rust rocks!").await?;
     //let results = bucket.list(String::from("/"), Some("/".to_string())).await?;
-    put_obj_multipart(
-        &bucket,
-        "crackstation-human-only.txt",
-        "test/crackstation-human-only.txt",
-    )
-    .await?;
+    /*
+        put_obj_multipart(
+            &bucket,
+            "crackstation-human-only.txt",
+            "test/crackstation-human-only.txt",
+        )
+        .await?;
+    */
+    get_obj_multipart(&bucket, "test.txt", "test/crackstation-human-only.txt").await?;
 
-    let results = bucket.list(String::from(""), Some("/".to_string())).await?;
-    println!("{:?}", results);
+    //let results = bucket.list(String::from(""), Some("/".to_string())).await?;
+    //println!("{:?}", results);
     /*
         if get_obj(&bucket, String::from("test_dir/")).await.is_err() {
             println!("test_dir does not exist, creating...");
