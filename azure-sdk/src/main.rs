@@ -1,10 +1,17 @@
 use anyhow::{bail, Result};
+use azure_core::prelude::Range;
 use azure_storage::prelude::*;
 use azure_storage_blobs::prelude::*;
 use futures::stream::StreamExt;
 //use lazy_static::lazy_static;
 use log::{debug, info};
-use std::io::Read;
+use std::{
+    collections::btree_map::Values,
+    fs::OpenOptions,
+    io::{Read, Seek, Write},
+    thread::sleep,
+    time::Duration,
+};
 //use tokio::sync::Mutex;
 
 const CHUNK_SIZE: usize = 100 * 1024 * 1024;
@@ -256,6 +263,36 @@ impl Crud for AzureStorageClient {
     }
 
     async fn download_obj_multipart(&self, out_name: &str, path: String) -> Result<()> {
+        let client = self.container.blob_client(&path);
+        let propretites = client.get_properties().await?;
+        let blob_size = propretites.blob.properties.content_length;
+        println!("[{}] File size: {}", path, blob_size);
+
+        let mut file = OpenOptions::new().write(true).create(true).open(out_name)?;
+
+        let mut start = 0;
+        while start < blob_size {
+            let end = (start + CHUNK_SIZE as u64 - 1).min(blob_size - 1);
+            println!("Dealing with {}-{}", start, end);
+
+            let mut chunk: Vec<u8> = vec![];
+            let mut stream = client.get().range(Range::new(start, end + 1)).into_stream();
+            while let Some(data) = stream.next().await {
+                let mut body = data?.data;
+                while let Some(value) = body.next().await {
+                    let value_to_extend = value?;
+                    chunk.extend(&value_to_extend);
+                }
+            }
+
+            file.seek(std::io::SeekFrom::Start(start as u64))?;
+            file.write_all(chunk.as_slice())?;
+            println!("Downloaded {}-{}", start, end);
+
+            start += CHUNK_SIZE as u64;
+        }
+
+        println!("Done");
         Ok(())
     }
 
@@ -371,8 +408,12 @@ pub async fn test_multipart() -> Result<()> {
     let container_client =
         AzureStorageClient::new(account, access_key, container, String::from("test"));
 
+    //container_client
+    //    .put_obj_multipart("crackstation-human-only.txt", "test/test.txt".to_owned())
+    //    .await?;
+
     container_client
-        .put_obj_multipart("crackstation-human-only.txt", "test/test.txt".to_owned())
+        .download_obj_multipart("test.txt", "test/test.txt".to_owned())
         .await?;
     Ok(())
 }
