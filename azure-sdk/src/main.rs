@@ -7,6 +7,8 @@ use log::{debug, info};
 use std::io::Read;
 //use tokio::sync::Mutex;
 
+const CHUNK_SIZE: usize = 100 * 1024 * 1024;
+
 /*
 lazy_static! {
     pub(crate) static ref REMOTE_STORAGE_CACHE: Mutex<Vec<String>> = Mutex::new(Vec::new());
@@ -147,6 +149,8 @@ trait Crud {
     /// Should delete recursively all the objects inside if the path is a "folder"
     async fn del_obj(&self, path: String) -> Result<()>;
     async fn put_obj_stream(&self, dump_name: &str, s3_path: String) -> Result<()>;
+    async fn download_obj_multipart(&self, out_name: &str, path: String) -> Result<()>;
+    async fn put_obj_multipart(&self, in_name: &str, path: String) -> Result<()>;
 }
 
 impl Crud for AzureStorageClient {
@@ -250,6 +254,43 @@ impl Crud for AzureStorageClient {
 
         Ok(())
     }
+
+    async fn download_obj_multipart(&self, out_name: &str, path: String) -> Result<()> {
+        Ok(())
+    }
+
+    async fn put_obj_multipart(&self, in_name: &str, path: String) -> Result<()> {
+        let file = std::fs::File::open(in_name)?;
+        let metadata = file.metadata()?;
+        let file_size = metadata.len();
+        println!("[{}] File size: {}", in_name, file_size);
+        let mut reader = std::io::BufReader::new(file);
+
+        let client = self.container.blob_client(&path);
+        let mut block_list = BlockList { blocks: Vec::new() };
+        let mut chunk_num = 0;
+        let mut buf = vec![0; CHUNK_SIZE];
+
+        while let Ok(num_bytes) = reader.read(&mut buf) {
+            println!("Read {} bytes", num_bytes);
+            if num_bytes == 0 {
+                break;
+            }
+
+            let block_id = format!("{:08}", chunk_num);
+            let block_data = buf[..num_bytes].to_vec();
+            let resp = client.put_block(block_id.clone(), block_data).await?;
+            block_list
+                .blocks
+                .push(BlobBlockType::new_uncommitted(block_id.clone()));
+            println!("Chunk {} uploaded (resp: [{:?}])", block_id, resp);
+            chunk_num += 1;
+        }
+        client.put_block_list(block_list).await?;
+
+        println!("Done");
+        Ok(())
+    }
 }
 
 #[derive(Clone)]
@@ -318,7 +359,21 @@ async fn main() -> Result<()> {
     env_logger::init();
 
     //mulit_hosts_cache_access().await?;
-    poc().await?;
+    //poc().await?;
+    test_multipart().await?;
+    Ok(())
+}
+
+pub async fn test_multipart() -> Result<()> {
+    let account = std::env::var("AZURE_ACCOUNT_NAME").expect("AZURE_ACCOUNT_NAME not set");
+    let access_key = std::env::var("AZURE_ACCESS_KEY").expect("AZURE_ACCESS_KEY not set");
+    let container = std::env::var("AZURE_CONTAINER_NAME").expect("AZURE_CONTAINER_NAME not set");
+    let container_client =
+        AzureStorageClient::new(account, access_key, container, String::from("test"));
+
+    container_client
+        .put_obj_multipart("crackstation-human-only.txt", "test/test.txt".to_owned())
+        .await?;
     Ok(())
 }
 
