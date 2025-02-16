@@ -41,9 +41,13 @@ where
 
 #[cfg(test)]
 mod tests {
+    use std::sync::Arc;
+
     use super::*;
     use mockall::mock;
     use mockall::predicate::*;
+    use tokio::sync::Mutex;
+    use tokio::time::{sleep, timeout, Duration};
 
     mock! {
         S3Handler {}
@@ -119,6 +123,36 @@ mod tests {
             .unwrap();
         let rslt = runtime.block_on(handle_async(h, 5));
         assert_eq!(rslt, Err(String::from("Too big.")));
+    }
+
+    #[tokio::test]
+    async fn test_deadlock_detect() {
+        let lock0 = Arc::new(Mutex::new(vec![0]));
+        let lock0_clone = lock0.clone();
+        let lock1 = Arc::new(Mutex::new(vec![1]));
+        let lock1_clone = lock0.clone();
+
+        let task1 = tokio::spawn(async move {
+            let guard0 = lock0.lock().await;
+            sleep(Duration::from_millis(200)).await;
+            let guard1 = lock1.lock().await;
+            println!("Read from locks: {:?}; {:?}", guard0, guard1);
+        });
+
+        let task2 = tokio::spawn(async move {
+            let guard1 = lock1_clone.lock().await;
+            sleep(Duration::from_millis(200)).await;
+            let guard0 = lock0_clone.lock().await;
+            println!("Read from locks: {:?}; {:?}", guard1, guard0);
+        });
+
+        let rslt = timeout(Duration::from_secs(3), async {
+            let _ = task2.await;
+            let _ = task1.await;
+        })
+        .await;
+
+        assert!(rslt.is_ok(), "Deadlock found !");
     }
 }
 
