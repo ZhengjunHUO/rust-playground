@@ -41,13 +41,35 @@ where
 
 #[cfg(test)]
 mod tests {
+    use std::sync::atomic::{AtomicUsize, Ordering};
     use std::sync::Arc;
 
     use super::*;
     use mockall::mock;
     use mockall::predicate::*;
+    use tokio::runtime::Builder;
     use tokio::sync::Mutex;
     use tokio::time::{sleep, timeout, Duration};
+
+    static COUNTER_SINGLE: AtomicUsize = AtomicUsize::new(0);
+    static COUNTER_MULTI: AtomicUsize = AtomicUsize::new(0);
+    static COUNTER_MULTI_SLEEP: AtomicUsize = AtomicUsize::new(0);
+
+    async fn non_atomic_add() {
+        let val = COUNTER_SINGLE.load(Ordering::SeqCst);
+        COUNTER_SINGLE.store(val + 1, Ordering::SeqCst);
+    }
+
+    async fn non_atomic_add_multi() {
+        let val = COUNTER_MULTI.load(Ordering::SeqCst);
+        COUNTER_MULTI.store(val + 1, Ordering::SeqCst);
+    }
+
+    async fn non_atomic_add_multi_sleep() {
+        let val = COUNTER_MULTI_SLEEP.load(Ordering::SeqCst);
+        sleep(Duration::from_millis(200)).await;
+        COUNTER_MULTI_SLEEP.store(val + 1, Ordering::SeqCst);
+    }
 
     mock! {
         S3Handler {}
@@ -146,13 +168,73 @@ mod tests {
             println!("Read from locks: {:?}; {:?}", guard1, guard0);
         });
 
-        let rslt = timeout(Duration::from_secs(3), async {
+        let rslt = timeout(Duration::from_secs(1), async {
             let _ = task2.await;
             let _ = task1.await;
         })
         .await;
 
         assert!(rslt.is_ok(), "Deadlock found !");
+    }
+
+    #[test]
+    fn test_race_condition_single_thread_ok() {
+        let runtime = Builder::new_current_thread().enable_all().build().unwrap();
+        let mut handles = vec![];
+        let num = 10000;
+        for _ in 0..num {
+            let h = runtime.spawn(non_atomic_add());
+            handles.push(h);
+        }
+        for h in handles {
+            runtime.block_on(h).unwrap();
+        }
+        // Will pass, because only 1 thread is running.
+        assert_eq!(
+            COUNTER_SINGLE.load(Ordering::SeqCst),
+            num,
+            "Race condition found !"
+        );
+    }
+
+    #[test]
+    fn test_race_condition_multi_thread() {
+        let runtime = tokio::runtime::Runtime::new().unwrap();
+        let mut handles = vec![];
+        let num = 10000;
+        for _ in 0..num {
+            let h = runtime.spawn(non_atomic_add_multi());
+            handles.push(h);
+        }
+        for h in handles {
+            runtime.block_on(h).unwrap();
+        }
+        // Will fail, COUNTER_MULTI is less than num
+        assert_eq!(
+            COUNTER_MULTI.load(Ordering::SeqCst),
+            num,
+            "Race condition found !"
+        );
+    }
+
+    #[test]
+    fn test_race_condition_multi_thread_with_sleep() {
+        let runtime = tokio::runtime::Runtime::new().unwrap();
+        let mut handles = vec![];
+        let num = 10000;
+        for _ in 0..num {
+            let h = runtime.spawn(non_atomic_add_multi_sleep());
+            handles.push(h);
+        }
+        for h in handles {
+            runtime.block_on(h).unwrap();
+        }
+        // Will fail, COUNTER_MULTI will be 1, each task will read 0 before sleep, and write 1 back
+        assert_eq!(
+            COUNTER_MULTI_SLEEP.load(Ordering::SeqCst),
+            num,
+            "Race condition found !"
+        );
     }
 }
 
