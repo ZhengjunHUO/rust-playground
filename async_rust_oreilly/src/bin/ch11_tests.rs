@@ -47,6 +47,7 @@ mod tests {
     use super::*;
     use mockall::mock;
     use mockall::predicate::*;
+    use mockito::Matcher;
     use tokio::runtime::Builder;
     use tokio::sync::{mpsc, Mutex};
     use tokio::time::{sleep, timeout, Duration};
@@ -148,7 +149,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_deadlock_detect() {
+    async fn test_deadlock_detect_fail() {
         let lock0 = Arc::new(Mutex::new(vec![0]));
         let lock0_clone = lock0.clone();
         let lock1 = Arc::new(Mutex::new(vec![1]));
@@ -198,7 +199,7 @@ mod tests {
     }
 
     #[test]
-    fn test_race_condition_multi_thread() {
+    fn test_race_condition_multi_thread_fail() {
         let runtime = tokio::runtime::Runtime::new().unwrap();
         let mut handles = vec![];
         let num = 10000;
@@ -218,7 +219,7 @@ mod tests {
     }
 
     #[test]
-    fn test_race_condition_multi_thread_with_sleep() {
+    fn test_race_condition_multi_thread_with_sleep_fail() {
         let runtime = tokio::runtime::Runtime::new().unwrap();
         let mut handles = vec![];
         let num = 10000;
@@ -284,6 +285,44 @@ mod tests {
         });
 
         assert!(rslt.is_ok(), "Channel's buffer is full !");
+    }
+
+    #[test]
+    fn test_networking() {
+        let mut server = mockito::Server::new();
+        let url = server.url();
+
+        let mock = server
+            .mock("GET", "/req")
+            .match_query(Matcher::AllOf(vec![
+                Matcher::UrlEncoded("param1".into(), "val1".into()),
+                Matcher::UrlEncoded("param2".into(), "val2".into()),
+            ]))
+            .with_status(201)
+            .with_body("Rustacean")
+            .expect(5)
+            .create();
+
+        let runtime = Builder::new_current_thread().enable_all().build().unwrap();
+        let mut handles = vec![];
+
+        for _ in 0..5 {
+            let url_clone = url.clone();
+            handles.push(runtime.spawn(async move {
+                let client = reqwest::Client::new();
+                client
+                    .get(format!("{}/req?param1=val1&param2=val2", url_clone))
+                    .send()
+                    .await
+                    .unwrap()
+            }));
+        }
+
+        for h in handles {
+            runtime.block_on(h).unwrap();
+        }
+
+        mock.assert();
     }
 }
 
