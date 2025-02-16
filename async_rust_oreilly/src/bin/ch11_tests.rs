@@ -43,6 +43,7 @@ where
 mod tests {
     use std::sync::atomic::{AtomicUsize, Ordering};
     use std::sync::Arc;
+    use std::task::Poll;
 
     use super::*;
     use mockall::mock;
@@ -51,6 +52,8 @@ mod tests {
     use tokio::runtime::Builder;
     use tokio::sync::{mpsc, Mutex};
     use tokio::time::{sleep, timeout, Duration};
+    use tokio_test::assert_pending;
+    use tokio_test::task::spawn;
 
     static COUNTER_SINGLE: AtomicUsize = AtomicUsize::new(0);
     static COUNTER_MULTI: AtomicUsize = AtomicUsize::new(0);
@@ -323,6 +326,45 @@ mod tests {
         }
 
         mock.assert();
+    }
+
+    async fn incr_mutex(lock: Arc<Mutex<i32>>) {
+        let mut guard = lock.lock().await;
+        *guard += 1;
+        sleep(Duration::from_millis(1)).await;
+    }
+
+    #[tokio::test]
+    async fn test_future() {
+        let lock = Arc::new(Mutex::new(0));
+        let lock0 = lock.clone();
+        let lock1 = lock.clone();
+
+        let mut h1 = spawn(incr_mutex(lock0));
+        let mut h2 = spawn(incr_mutex(lock1));
+
+        // h1 will acquire the lock, although the state is Pending
+        assert_pending!(h1.poll());
+        assert_pending!(h2.poll());
+
+        // h2 will always Pending since h1 got the lock
+        for _ in 0..10 {
+            assert_pending!(h2.poll());
+            sleep(Duration::from_millis(1)).await;
+        }
+
+        // h1 should be ready now
+        assert_eq!(h1.poll(), Poll::Ready(()));
+        // h2 still Pending since h1 is not dropped yet
+        assert_pending!(h2.poll());
+
+        drop(h1);
+        sleep(Duration::from_millis(1)).await;
+        // h1 dropped, h2 will acquire the lock and get Ready
+        assert_eq!(h2.poll(), Poll::Ready(()));
+
+        let guard = lock.lock().await;
+        assert_eq!(*guard, 2);
     }
 }
 
