@@ -48,7 +48,7 @@ mod tests {
     use mockall::mock;
     use mockall::predicate::*;
     use tokio::runtime::Builder;
-    use tokio::sync::Mutex;
+    use tokio::sync::{mpsc, Mutex};
     use tokio::time::{sleep, timeout, Duration};
 
     static COUNTER_SINGLE: AtomicUsize = AtomicUsize::new(0);
@@ -235,6 +235,55 @@ mod tests {
             num,
             "Race condition found !"
         );
+    }
+
+    #[test]
+    fn test_channel_capacity_fail() {
+        let runtime = Builder::new_current_thread().enable_all().build().unwrap();
+        let (tx, _rx) = mpsc::channel::<i32>(5);
+        let h = runtime.spawn(async move {
+            for i in 0..10 {
+                tx.send(i).await.unwrap();
+            }
+        });
+
+        let rslt = runtime.block_on(async {
+            timeout(Duration::from_secs(1), async {
+                h.await.unwrap();
+            })
+            .await
+        });
+
+        assert!(rslt.is_ok(), "Channel's buffer is full !");
+    }
+
+    #[test]
+    fn test_channel_capacity_success() {
+        let runtime = Builder::new_current_thread().enable_all().build().unwrap();
+        let (tx, mut rx) = mpsc::channel::<i32>(5);
+        let h = runtime.spawn(async move {
+            for i in 0..10 {
+                tx.send(i).await.unwrap();
+            }
+        });
+
+        runtime.spawn(async move {
+            let mut i = 0;
+            while let Some(data) = rx.recv().await {
+                assert_eq!(i, data);
+                println!("Recv data: {}", data);
+                i += 1;
+            }
+        });
+
+        let rslt = runtime.block_on(async {
+            timeout(Duration::from_secs(1), async {
+                h.await.unwrap();
+            })
+            .await
+        });
+
+        assert!(rslt.is_ok(), "Channel's buffer is full !");
     }
 }
 
