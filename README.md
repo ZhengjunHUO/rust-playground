@@ -38,6 +38,11 @@ $ cargo clippy
 $ cargo test -- --nocapture
 ```
 
+### Run tests in order
+```
+$ cargo test -- --test-threads=1
+```
+
 ### Find out crate's dependencies
 ```sh
 $ cargo tree --target=x86_64-unknown-linux-musl -i openssl-sys
