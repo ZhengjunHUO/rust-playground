@@ -5,6 +5,8 @@ edition = "2021"
 
 [dependencies]
 actix-web = "4"
+actix-session = { version = "0.10.1", features = ["cookie-session"] }
 anyhow = "1.0.98"
 derive_more = "2.0.1"
 openidconnect = "4.0.0"
+serde = "1.0"
