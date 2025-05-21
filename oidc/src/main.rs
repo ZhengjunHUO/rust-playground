@@ -58,7 +58,8 @@ struct Pkce {
 }
 
 #[derive(Serialize, Deserialize)]
-struct Cred {
+struct SessionData {
+    user_id: String,
     access_token: AccessToken,
     refresh_token: RefreshToken,
     expires_in: Duration,
@@ -95,6 +96,7 @@ async fn main() -> std::io::Result<()> {
             .service(login)
             .service(callback)
             .service(userinfo)
+            .service(logout)
     })
     .bind(("127.0.0.1", 8888))?
     .run()
@@ -115,7 +117,7 @@ async fn init_oidcclient() -> OIDCClient {
     .await
     .expect("Error grabbing provider metadata");
 
-    let client = CoreClient::from_provider_metadata(
+    CoreClient::from_provider_metadata(
         provider_metadata,
         ClientId::new("tresor-backend".to_owned()),
         Some(ClientSecret::new(
@@ -125,9 +127,7 @@ async fn init_oidcclient() -> OIDCClient {
     .set_redirect_uri(
         RedirectUrl::new("http://127.0.0.1:8888/callback".to_owned())
             .expect("Error setting redirect url"),
-    );
-
-    return client;
+    )
 }
 
 #[get("/login")]
@@ -186,16 +186,14 @@ async fn callback(
             .set_pkce_verifier(pkce.pkce_verifier)
             .request_async(&http_client)
             .await
-            .map_err(|_| OIDCError::ExchangeAccessTokenError)?;
+            .map_err(|_| OIDCError::ExchangeAccessToken)?;
 
         // Extract the ID token claims after verifying its authenticity and nonce
-        let id_token = token_response
-            .id_token()
-            .ok_or_else(|| OIDCError::ExtractIDTokenError)?;
+        let id_token = token_response.id_token().ok_or(OIDCError::ExtractIDToken)?;
         let id_token_verifier = data.oidc_client.id_token_verifier();
         let claims = id_token
             .claims(&id_token_verifier, &pkce.nonce)
-            .map_err(|_| OIDCError::GetIDTokenClaimError)?;
+            .map_err(|_| OIDCError::GetIDTokenClaim)?;
 
         // Verify the access token hash to ensure that the access token hasn't been substituted
         match claims.access_token_hash() {
@@ -204,20 +202,20 @@ async fn callback(
                     token_response.access_token(),
                     id_token
                         .signing_alg()
-                        .map_err(|_| OIDCError::TokenSigningError)?,
+                        .map_err(|_| OIDCError::TokenSigning)?,
                     id_token
                         .signing_key(&id_token_verifier)
-                        .map_err(|_| OIDCError::TokenSigningError)?,
+                        .map_err(|_| OIDCError::TokenSigning)?,
                 )
-                .map_err(|_| OIDCError::TokenSigningError)?;
+                .map_err(|_| OIDCError::TokenSigning)?;
 
                 if actual_access_token_hash != *expected_access_token_hash {
-                    Err(OIDCError::VerifyTokenError)
+                    Err(OIDCError::VerifyToken)
                 } else {
                     Ok(())
                 }
             }
-            None => Err(OIDCError::VerifyTokenError),
+            None => Err(OIDCError::VerifyToken),
         }?;
 
         println!(
@@ -229,7 +227,8 @@ async fn callback(
                 .unwrap_or("<not provided>"),
         );
 
-        let cred = Cred {
+        let cred = SessionData {
+            user_id: claims.subject().to_string(),
             access_token: token_response.access_token().to_owned(),
             refresh_token: token_response
                 .refresh_token()
@@ -256,13 +255,28 @@ async fn callback(
 
 #[get("/userinfo")]
 async fn userinfo(req: HttpRequest, session: Session) -> Result<HttpResponse, Error> {
-    println!("Request cookies: {:?}", req.cookies());
+    //println!("Request cookies: {:?}", req.cookies());
     if let Some(session_cookie) = req.cookie("session") {
         let session_id = session_cookie.value();
-        if let Some(cred) = session.get::<Cred>(session_id)? {
-            println!("Session verified, token expire in: {:?}", cred.expires_in);
+        if let Some(cred) = session.get::<SessionData>(session_id)? {
+            println!(
+                "Session verified, token expire in: {:?} for user {}",
+                cred.expires_in, cred.user_id
+            );
             return Ok(HttpResponse::Ok().body("Success"));
         }
+    }
+    Ok(HttpResponse::Unauthorized().finish())
+}
+
+#[get("/logout")]
+async fn logout(req: HttpRequest, session: Session) -> Result<HttpResponse, Error> {
+    if let Some(session_cookie) = req.cookie("session") {
+        let session_id = session_cookie.value();
+        if session.remove(session_id).is_some() {
+            println!("[{}] Session data cleaned.", session_id);
+        }
+        return Ok(HttpResponse::SeeOther().insert_header(("Location", "http://localhost:8080/realms/tresor/protocol/openid-connect/logout?redirect_uri=http://127.0.0.1:8888/login")).finish());
     }
     Ok(HttpResponse::Unauthorized().finish())
 }
@@ -270,15 +284,15 @@ async fn userinfo(req: HttpRequest, session: Session) -> Result<HttpResponse, Er
 #[derive(Debug, Display)]
 enum OIDCError {
     #[display("Failed to exchange access token with authorization code")]
-    ExchangeAccessTokenError,
+    ExchangeAccessToken,
     #[display("Failed to extract id token from token response")]
-    ExtractIDTokenError,
+    ExtractIDToken,
     #[display("Failed to get id token claim")]
-    GetIDTokenClaimError,
+    GetIDTokenClaim,
     #[display("Failed to verify token signing")]
-    TokenSigningError,
+    TokenSigning,
     #[display("Failed to verify token")]
-    VerifyTokenError,
+    VerifyToken,
 }
 
 impl actix_web::error::ResponseError for OIDCError {
