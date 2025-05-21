@@ -1,16 +1,17 @@
 use actix_session::storage::CookieSessionStore;
 use actix_session::{Session, SessionMiddleware};
 use actix_web::web::{Data, Query};
-use actix_web::{cookie, get, App, Error, HttpResponse, HttpServer};
+use actix_web::{cookie, get, App, Error, HttpRequest, HttpResponse, HttpServer};
 use derive_more::Display;
 use openidconnect::core::{CoreAuthenticationFlow, CoreClient, CoreProviderMetadata};
 use openidconnect::{
-    reqwest, AccessTokenHash, AuthorizationCode, ClientId, ClientSecret, CsrfToken, IssuerUrl,
-    Nonce, OAuth2TokenResponse, PkceCodeChallenge, PkceCodeVerifier, RedirectUrl, Scope,
-    TokenResponse,
+    reqwest, AccessToken, AccessTokenHash, AuthorizationCode, ClientId, ClientSecret, CsrfToken,
+    IssuerUrl, Nonce, OAuth2TokenResponse, PkceCodeChallenge, PkceCodeVerifier, RedirectUrl,
+    RefreshToken, Scope, TokenResponse,
 };
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
+use std::time::Duration;
 
 type OIDCClient = openidconnect::Client<
     openidconnect::EmptyAdditionalClaims,
@@ -56,6 +57,13 @@ struct Pkce {
     nonce: Nonce,
 }
 
+#[derive(Serialize, Deserialize)]
+struct Cred {
+    access_token: AccessToken,
+    refresh_token: RefreshToken,
+    expires_in: Duration,
+}
+
 #[derive(Deserialize, Debug)]
 pub struct OpCallback {
     pub state: String,
@@ -86,6 +94,7 @@ async fn main() -> std::io::Result<()> {
             }))
             .service(login)
             .service(callback)
+            .service(userinfo)
     })
     .bind(("127.0.0.1", 8888))?
     .run()
@@ -219,10 +228,43 @@ async fn callback(
                 .map(|email| email.as_str())
                 .unwrap_or("<not provided>"),
         );
-        Ok(HttpResponse::Ok().body("Success"))
+
+        let cred = Cred {
+            access_token: token_response.access_token().to_owned(),
+            refresh_token: token_response
+                .refresh_token()
+                .expect("Error retrieving refresh token")
+                .to_owned(),
+            expires_in: token_response
+                .expires_in()
+                .expect("Error retrieving expires_in duration"),
+        };
+        let session_id = uuid::Uuid::new_v4().to_string();
+        println!("session_id: {}", session_id);
+        session.insert(session_id.clone(), &cred)?;
+
+        Ok(HttpResponse::Ok()
+            .append_header((
+                "Set-Cookie",
+                format!("session={}; HttpOnly; Secure; SameSite=Strict", session_id),
+            ))
+            .body("Success"))
     } else {
         Ok(HttpResponse::Unauthorized().finish())
     }
+}
+
+#[get("/userinfo")]
+async fn userinfo(req: HttpRequest, session: Session) -> Result<HttpResponse, Error> {
+    println!("Request cookies: {:?}", req.cookies());
+    if let Some(session_cookie) = req.cookie("session") {
+        let session_id = session_cookie.value();
+        if let Some(cred) = session.get::<Cred>(session_id)? {
+            println!("Session verified, token expire in: {:?}", cred.expires_in);
+            return Ok(HttpResponse::Ok().body("Success"));
+        }
+    }
+    Ok(HttpResponse::Unauthorized().finish())
 }
 
 #[derive(Debug, Display)]
