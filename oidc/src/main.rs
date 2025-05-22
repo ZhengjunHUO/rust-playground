@@ -1,5 +1,6 @@
-use actix_session::storage::CookieSessionStore;
+//use actix_session::storage::CookieSessionStore;
 use actix_session::{Session, SessionMiddleware};
+use actix_session_sqlx_postgres::SqlxPostgresqlSessionStore;
 use actix_web::web::{Data, Query};
 use actix_web::{cookie, get, App, Error, HttpRequest, HttpResponse, HttpServer};
 use derive_more::Display;
@@ -79,11 +80,17 @@ async fn main() -> std::io::Result<()> {
     let cookie_key = "GM4>?/%PNes8x[{5Cz$Y7ztOnF/tJ<=lQWLjr9J0:$|k*p6D)Bv)j%IDQ19!=BQz";
 
     let client = Arc::new(init_oidcclient().await);
+    let psql_store =
+        SqlxPostgresqlSessionStore::new("postgres://postgres:admin@127.0.0.1:5432/oidc")
+            .await
+            .expect("Error init psql session store");
+
     HttpServer::new(move || {
         App::new()
             .wrap(
                 SessionMiddleware::builder(
-                    CookieSessionStore::default(),
+                    //CookieSessionStore::default(),
+                    psql_store.clone(),
                     cookie::Key::from(cookie_key.as_bytes()),
                 )
                 .cookie_secure(false)
@@ -241,6 +248,7 @@ async fn callback(
         let session_id = uuid::Uuid::new_v4().to_string();
         println!("session_id: {}", session_id);
         session.insert(session_id.clone(), &cred)?;
+        session.remove("pkce");
 
         Ok(HttpResponse::Ok()
             .append_header((
@@ -271,11 +279,12 @@ async fn userinfo(req: HttpRequest, session: Session) -> Result<HttpResponse, Er
 
 #[get("/logout")]
 async fn logout(req: HttpRequest, session: Session) -> Result<HttpResponse, Error> {
-    if let Some(session_cookie) = req.cookie("session") {
-        let session_id = session_cookie.value();
-        if session.remove(session_id).is_some() {
-            println!("[{}] Session data cleaned.", session_id);
-        }
+    if let Some(_session_cookie) = req.cookie("session") {
+        session.purge();
+        // let session_id = session_cookie.value();
+        // if session.remove(session_id).is_some() {
+        //     println!("[{}] Session data cleaned.", session_id);
+        // }
         return Ok(HttpResponse::SeeOther().insert_header(("Location", "http://localhost:8080/realms/tresor/protocol/openid-connect/logout?redirect_uri=http://127.0.0.1:8888/login")).finish());
     }
     Ok(HttpResponse::Unauthorized().finish())
