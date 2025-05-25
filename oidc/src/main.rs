@@ -269,11 +269,12 @@ async fn userinfo(req: HttpRequest, session: Session) -> Result<HttpResponse, Er
     if let Some(session_cookie) = req.cookie("session") {
         let session_id = session_cookie.value();
         if let Some(cred) = session.get::<SessionData>(session_id)? {
-            println!(
+            let output = format!(
                 "Session verified, token expire in: {:?} for user {}",
                 cred.expires_in, cred.user_id
             );
-            return Ok(HttpResponse::Ok().body("Success"));
+            println!("{}", output);
+            return Ok(HttpResponse::Ok().body(output));
         }
     }
     Ok(HttpResponse::Unauthorized().finish())
@@ -378,7 +379,9 @@ impl SessionStore for PsqlSessionStore {
     ) -> Result<SessionKey, SaveError> {
         let session_key: SessionKey = uuid::Uuid::new_v4().to_string().try_into().unwrap();
         let key = (self.config.cache_keygen)(session_key.as_ref());
-        let val = serde_json::to_value(&session_state).map_err(Into::into).map_err(SaveError::Serialization)?;
+        let val = serde_json::to_value(&session_state)
+            .map_err(Into::into)
+            .map_err(SaveError::Serialization)?;
         let exp = chrono::Utc::now() + chrono::Duration::seconds(ttl.whole_seconds());
         query("INSERT INTO sessions(key, session_state, expires) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING")
             .bind(key)
@@ -398,7 +401,9 @@ impl SessionStore for PsqlSessionStore {
         ttl: &Duration,
     ) -> Result<SessionKey, UpdateError> {
         let key = (self.config.cache_keygen)(session_key.as_ref());
-        let val = serde_json::to_value(&session_state).map_err(Into::into).map_err(UpdateError::Serialization)?;
+        let val = serde_json::to_value(&session_state)
+            .map_err(Into::into)
+            .map_err(UpdateError::Serialization)?;
         let exp = chrono::Utc::now() + chrono::Duration::seconds(ttl.whole_seconds());
         query("UPDATE sessions SET session_state = $1, expires = $2 WHERE key = $3")
             .bind(val)
