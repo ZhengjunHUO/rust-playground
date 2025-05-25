@@ -376,9 +376,19 @@ impl SessionStore for PsqlSessionStore {
         session_state: SessionState,
         ttl: &Duration,
     ) -> Result<SessionKey, SaveError> {
-        todo!()
-        // let key = uuid::Uuid::new_v4().to_string();
-        // let val = serde_json::to_value(&session_state).map_err(Into::into).map_err(SaveError::Serialization)?;
+        let session_key: SessionKey = uuid::Uuid::new_v4().to_string().try_into().unwrap();
+        let key = (self.config.cache_keygen)(session_key.as_ref());
+        let val = serde_json::to_value(&session_state).map_err(Into::into).map_err(SaveError::Serialization)?;
+        let exp = chrono::Utc::now() + chrono::Duration::seconds(ttl.whole_seconds());
+        query("INSERT INTO sessions(key, session_state, expires) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING")
+            .bind(key)
+            .bind(val)
+            .bind(exp)
+            .execute(self.client.as_ref())
+            .await
+            .map_err(Into::into)
+            .map_err(SaveError::Other)?;
+        Ok(session_key)
     }
 
     async fn update(
@@ -387,7 +397,18 @@ impl SessionStore for PsqlSessionStore {
         session_state: SessionState,
         ttl: &Duration,
     ) -> Result<SessionKey, UpdateError> {
-        todo!()
+        let key = (self.config.cache_keygen)(session_key.as_ref());
+        let val = serde_json::to_value(&session_state).map_err(Into::into).map_err(UpdateError::Serialization)?;
+        let exp = chrono::Utc::now() + chrono::Duration::seconds(ttl.whole_seconds());
+        query("UPDATE sessions SET session_state = $1, expires = $2 WHERE key = $3")
+            .bind(val)
+            .bind(exp)
+            .bind(key)
+            .execute(self.client.as_ref())
+            .await
+            .map_err(Into::into)
+            .map_err(UpdateError::Other)?;
+        Ok(session_key)
     }
 
     async fn update_ttl(
@@ -395,10 +416,26 @@ impl SessionStore for PsqlSessionStore {
         session_key: &SessionKey,
         ttl: &Duration,
     ) -> Result<(), anyhow::Error> {
-        todo!()
+        let key = (self.config.cache_keygen)(session_key.as_ref());
+        let exp = chrono::Utc::now() + chrono::Duration::seconds(ttl.whole_seconds());
+        query("UPDATE sessions SET expires = $1 WHERE key = $2")
+            .bind(exp)
+            .bind(key)
+            .execute(self.client.as_ref())
+            .await
+            .map_err(Into::into)
+            .map_err(UpdateError::Other)?;
+        Ok(())
     }
 
     async fn delete(&self, session_key: &SessionKey) -> Result<(), anyhow::Error> {
-        todo!()
+        let key = (self.config.cache_keygen)(session_key.as_ref());
+        query("DELETE FROM sessions WHERE key = $1")
+            .bind(key)
+            .execute(self.client.as_ref())
+            .await
+            .map_err(Into::into)
+            .map_err(UpdateError::Other)?;
+        Ok(())
     }
 }
