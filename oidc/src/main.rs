@@ -1,6 +1,6 @@
+use actix_session::storage::{LoadError, SaveError, SessionKey, SessionStore, UpdateError};
 //use actix_session::storage::CookieSessionStore;
 use actix_session::{Session, SessionMiddleware};
-use actix_session_sqlx_postgres::SqlxPostgresqlSessionStore;
 use actix_web::web::{Data, Query};
 use actix_web::{cookie, get, App, Error, HttpRequest, HttpResponse, HttpServer};
 use derive_more::Display;
@@ -11,8 +11,11 @@ use openidconnect::{
     RefreshToken, Scope, TokenResponse,
 };
 use serde::{Deserialize, Serialize};
+use sqlx::postgres::PgPoolOptions;
+use sqlx::{query, Pool, Postgres, Row};
+use std::collections::HashMap;
 use std::sync::Arc;
-use std::time::Duration;
+use time::Duration;
 
 type OIDCClient = openidconnect::Client<
     openidconnect::EmptyAdditionalClaims,
@@ -63,7 +66,7 @@ struct SessionData {
     user_id: String,
     access_token: AccessToken,
     refresh_token: RefreshToken,
-    expires_in: Duration,
+    expires_in: std::time::Duration,
 }
 
 #[derive(Deserialize, Debug)]
@@ -80,10 +83,9 @@ async fn main() -> std::io::Result<()> {
     let cookie_key = "GM4>?/%PNes8x[{5Cz$Y7ztOnF/tJ<=lQWLjr9J0:$|k*p6D)Bv)j%IDQ19!=BQz";
 
     let client = Arc::new(init_oidcclient().await);
-    let psql_store =
-        SqlxPostgresqlSessionStore::new("postgres://postgres:admin@127.0.0.1:5432/oidc")
-            .await
-            .expect("Error init psql session store");
+    let psql_store = PsqlSessionStore::new("postgres://postgres:admin@127.0.0.1:5432/oidc")
+        .await
+        .expect("Error init psql session store");
 
     HttpServer::new(move || {
         App::new()
@@ -311,5 +313,92 @@ impl actix_web::error::ResponseError for OIDCError {
 
     fn error_response(&self) -> HttpResponse {
         HttpResponse::InternalServerError().finish()
+    }
+}
+
+type SessionState = HashMap<String, String>;
+type PsqlPool = Pool<Postgres>;
+
+#[derive(Clone)]
+struct CacheConfiguration {
+    cache_keygen: Arc<dyn Fn(&str) -> String + Send + Sync>,
+}
+
+impl Default for CacheConfiguration {
+    fn default() -> Self {
+        Self {
+            cache_keygen: Arc::new(str::to_owned),
+        }
+    }
+}
+
+#[derive(Clone)]
+struct PsqlSessionStore {
+    client: Arc<PsqlPool>,
+    config: CacheConfiguration,
+}
+
+impl PsqlSessionStore {
+    async fn new(conn_str: &str) -> Result<Self, anyhow::Error> {
+        Ok(PsqlSessionStore {
+            client: Arc::new(
+                PgPoolOptions::new()
+                    .max_connections(1)
+                    .connect(conn_str)
+                    .await?,
+            ),
+            config: CacheConfiguration::default(),
+        })
+    }
+}
+
+impl SessionStore for PsqlSessionStore {
+    async fn load(&self, session_key: &SessionKey) -> Result<Option<SessionState>, LoadError> {
+        let key = (self.config.cache_keygen)(session_key.as_ref());
+        let rslt = query("SELECT session_state FROM sessions WHERE key = $1 AND expires > NOW()")
+            .bind(key)
+            .fetch_optional(self.client.as_ref())
+            .await
+            .map_err(Into::into)
+            .map_err(LoadError::Other)?;
+        if let Some(row) = rslt {
+            let val = row.get("session_state");
+            let session_state = serde_json::from_value(val)
+                .map_err(Into::into)
+                .map_err(LoadError::Deserialization)?;
+            return Ok(session_state);
+        }
+        Ok(None)
+    }
+
+    async fn save(
+        &self,
+        session_state: SessionState,
+        ttl: &Duration,
+    ) -> Result<SessionKey, SaveError> {
+        todo!()
+        // let key = uuid::Uuid::new_v4().to_string();
+        // let val = serde_json::to_value(&session_state).map_err(Into::into).map_err(SaveError::Serialization)?;
+    }
+
+    async fn update(
+        &self,
+        session_key: SessionKey,
+        session_state: SessionState,
+        ttl: &Duration,
+    ) -> Result<SessionKey, UpdateError> {
+        todo!()
+    }
+
+    async fn update_ttl(
+        &self,
+        session_key: &SessionKey,
+        ttl: &Duration,
+    ) -> Result<(), anyhow::Error> {
+        todo!()
+    }
+
+    async fn delete(&self, session_key: &SessionKey) -> Result<(), anyhow::Error> {
+        todo!()
     }
 }

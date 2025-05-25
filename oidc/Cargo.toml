@@ -5,10 +5,12 @@ edition = "2021"
 
 [dependencies]
 actix-web = "4"
-actix-session = { version = "0.10.1", features = ["cookie-session"] }
-actix-session-sqlx-postgres = "0.3.0"
+actix-session = { version = "0.10.1" }
 anyhow = "1.0.98"
 derive_more = "2.0.1"
 openidconnect = "4.0.0"
 serde = "1.0"
+serde_json = "1.0.140"
+sqlx = { version = "0.8.6", features = ["postgres", "runtime-tokio"] }
+time = "0.3.41"
 uuid = { version = "1.16.0", features = ["serde", "v4"] }
