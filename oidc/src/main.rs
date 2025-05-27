@@ -119,7 +119,7 @@ async fn init_oidcclient() -> OIDCClient {
         .expect("Error initing http client");
 
     let provider_metadata = CoreProviderMetadata::discover_async(
-        IssuerUrl::new("http://localhost:8080/realms/tresor".to_string())
+        IssuerUrl::new("http://localhost:8080/realms/oidc".to_string())
             .expect("Error setting issuer url"),
         &http_client,
     )
@@ -128,7 +128,7 @@ async fn init_oidcclient() -> OIDCClient {
 
     CoreClient::from_provider_metadata(
         provider_metadata,
-        ClientId::new("tresor-backend".to_owned()),
+        ClientId::new("oidc-backend".to_owned()),
         Some(ClientSecret::new(
             "8cHU783LSC839uhapouji3dHJ34N32SC".to_owned(),
         )),
@@ -152,7 +152,7 @@ async fn login(data: Data<AppState>, session: Session) -> Result<HttpResponse, E
             CsrfToken::new_random,
             Nonce::new_random,
         )
-        .add_scope(Scope::new("tresor".to_string()))
+        .add_scope(Scope::new("oidc".to_string()))
         .set_pkce_challenge(pkce_challenge)
         .url();
 
@@ -288,7 +288,7 @@ async fn logout(req: HttpRequest, session: Session) -> Result<HttpResponse, Erro
         // if session.remove(session_id).is_some() {
         //     println!("[{}] Session data cleaned.", session_id);
         // }
-        return Ok(HttpResponse::SeeOther().insert_header(("Location", "http://localhost:8080/realms/tresor/protocol/openid-connect/logout?redirect_uri=http://127.0.0.1:8888/login")).finish());
+        return Ok(HttpResponse::SeeOther().insert_header(("Location", "http://localhost:8080/realms/oidc/protocol/openid-connect/logout?redirect_uri=http://127.0.0.1:8888/login")).finish());
     }
     Ok(HttpResponse::Unauthorized().finish())
 }
