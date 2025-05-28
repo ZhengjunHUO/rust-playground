@@ -61,7 +61,7 @@ struct Pkce {
     nonce: Nonce,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 struct SessionData {
     user_id: String,
     access_token: AccessToken,
@@ -243,10 +243,12 @@ async fn callback(
                 .refresh_token()
                 .expect("Error retrieving refresh token")
                 .to_owned(),
+            // TODO: calculate expire timestamp
             expires_in: token_response
                 .expires_in()
                 .expect("Error retrieving expires_in duration"),
         };
+
         let session_id = uuid::Uuid::new_v4().to_string();
         println!("session_id: {}", session_id);
         session.insert(session_id.clone(), &cred)?;
@@ -264,16 +266,28 @@ async fn callback(
 }
 
 #[get("/userinfo")]
-async fn userinfo(req: HttpRequest, session: Session) -> Result<HttpResponse, Error> {
+async fn userinfo(
+    req: HttpRequest,
+    data: Data<AppState>,
+    session: Session,
+) -> Result<HttpResponse, Error> {
     //println!("Request cookies: {:?}", req.cookies());
     if let Some(session_cookie) = req.cookie("session") {
         let session_id = session_cookie.value();
         if let Some(cred) = session.get::<SessionData>(session_id)? {
+            println!("Cred before: {:?}", cred);
+
             let output = format!(
                 "Session verified, token expire in: {:?} for user {}",
                 cred.expires_in, cred.user_id
             );
             println!("{}", output);
+
+            // TODO: check ttl and decide if refresh the access token or not
+            let cred_updated = refresh(data, cred).await;
+            println!("Cred after: {:?}", cred_updated);
+            session.insert(session_id, cred_updated)?;
+
             return Ok(HttpResponse::Ok().body(output));
         }
     }
@@ -291,6 +305,34 @@ async fn logout(req: HttpRequest, session: Session) -> Result<HttpResponse, Erro
         return Ok(HttpResponse::SeeOther().insert_header(("Location", "http://localhost:8080/realms/oidc/protocol/openid-connect/logout?redirect_uri=http://127.0.0.1:8888/login")).finish());
     }
     Ok(HttpResponse::Unauthorized().finish())
+}
+
+async fn refresh(data: Data<AppState>, cred: SessionData) -> SessionData {
+    let http_client = reqwest::ClientBuilder::new()
+        .redirect(reqwest::redirect::Policy::none())
+        .build()
+        .expect("Error initing http client");
+
+    // TODO: Handle error if refresh token is expired
+    let token_response = data
+        .oidc_client
+        .exchange_refresh_token(&cred.refresh_token)
+        .unwrap()
+        .request_async(&http_client)
+        .await
+        .unwrap();
+    SessionData {
+        user_id: cred.user_id,
+        access_token: token_response.access_token().to_owned(),
+        refresh_token: token_response
+            .refresh_token()
+            .expect("Error retrieving refresh token")
+            .to_owned(),
+        // TODO: calculate expire timestamp
+        expires_in: token_response
+            .expires_in()
+            .expect("Error retrieving expires_in duration"),
+    }
 }
 
 #[derive(Debug, Display)]
