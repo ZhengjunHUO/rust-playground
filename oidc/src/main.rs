@@ -3,6 +3,7 @@ use actix_session::storage::{LoadError, SaveError, SessionKey, SessionStore, Upd
 use actix_session::{Session, SessionMiddleware};
 use actix_web::web::{Data, Query};
 use actix_web::{cookie, get, App, Error, HttpRequest, HttpResponse, HttpServer};
+use chrono::{DateTime, Utc};
 use derive_more::Display;
 use openidconnect::core::{CoreAuthenticationFlow, CoreClient, CoreProviderMetadata};
 use openidconnect::{
@@ -66,7 +67,7 @@ struct SessionData {
     user_id: String,
     access_token: AccessToken,
     refresh_token: RefreshToken,
-    expires_in: std::time::Duration,
+    expires_in: DateTime<Utc>,
 }
 
 #[derive(Deserialize, Debug)]
@@ -243,10 +244,15 @@ async fn callback(
                 .refresh_token()
                 .expect("Error retrieving refresh token")
                 .to_owned(),
-            // TODO: calculate expire timestamp
-            expires_in: token_response
-                .expires_in()
-                .expect("Error retrieving expires_in duration"),
+            expires_in: chrono::Utc::now()
+                + chrono::Duration::seconds(
+                    token_response
+                        .expires_in()
+                        .expect("Error retrieving expires_in duration")
+                        .as_secs()
+                        .try_into()
+                        .unwrap(),
+                ),
         };
 
         let session_id = uuid::Uuid::new_v4().to_string();
@@ -275,7 +281,7 @@ async fn userinfo(
     if let Some(session_cookie) = req.cookie("session") {
         let session_id = session_cookie.value();
         if let Some(cred) = session.get::<SessionData>(session_id)? {
-            println!("Cred before: {:?}", cred);
+            println!("Cred: {:?}", cred);
 
             let output = format!(
                 "Session verified, token expire in: {:?} for user {}",
@@ -283,10 +289,26 @@ async fn userinfo(
             );
             println!("{}", output);
 
-            // TODO: check ttl and decide if refresh the access token or not
-            let cred_updated = refresh(data, cred).await;
-            println!("Cred after: {:?}", cred_updated);
-            session.insert(session_id, cred_updated)?;
+            if Utc::now() > cred.expires_in {
+                println!(
+                    "Access token expired ({} > {})",
+                    Utc::now(),
+                    cred.expires_in
+                );
+                match refresh(data, cred).await {
+                    Ok(cred_updated) => {
+                        println!("Cred after update: {:?}", cred_updated);
+                        session.insert(session_id, cred_updated)?;
+                    }
+                    Err(err) => {
+                        println!("Refresh error: {:?}", err);
+                        // TODO: clean up old session data
+                        return Ok(HttpResponse::SeeOther()
+                            .insert_header(("Location", "http://127.0.0.1:8888/login"))
+                            .finish());
+                    }
+                }
+            }
 
             return Ok(HttpResponse::Ok().body(output));
         }
@@ -307,32 +329,34 @@ async fn logout(req: HttpRequest, session: Session) -> Result<HttpResponse, Erro
     Ok(HttpResponse::Unauthorized().finish())
 }
 
-async fn refresh(data: Data<AppState>, cred: SessionData) -> SessionData {
+async fn refresh(data: Data<AppState>, cred: SessionData) -> anyhow::Result<SessionData> {
     let http_client = reqwest::ClientBuilder::new()
         .redirect(reqwest::redirect::Policy::none())
         .build()
         .expect("Error initing http client");
 
-    // TODO: Handle error if refresh token is expired
     let token_response = data
         .oidc_client
-        .exchange_refresh_token(&cred.refresh_token)
-        .unwrap()
+        .exchange_refresh_token(&cred.refresh_token)?
         .request_async(&http_client)
-        .await
-        .unwrap();
-    SessionData {
+        .await?;
+    Ok(SessionData {
         user_id: cred.user_id,
         access_token: token_response.access_token().to_owned(),
         refresh_token: token_response
             .refresh_token()
             .expect("Error retrieving refresh token")
             .to_owned(),
-        // TODO: calculate expire timestamp
-        expires_in: token_response
-            .expires_in()
-            .expect("Error retrieving expires_in duration"),
-    }
+        expires_in: chrono::Utc::now()
+            + chrono::Duration::seconds(
+                token_response
+                    .expires_in()
+                    .expect("Error retrieving expires_in duration")
+                    .as_secs()
+                    .try_into()
+                    .unwrap(),
+            ),
+    })
 }
 
 #[derive(Debug, Display)]
