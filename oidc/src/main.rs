@@ -114,10 +114,7 @@ async fn main() -> std::io::Result<()> {
 }
 
 async fn init_oidcclient() -> OIDCClient {
-    let http_client = reqwest::ClientBuilder::new()
-        .redirect(reqwest::redirect::Policy::none())
-        .build()
-        .expect("Error initing http client");
+    let http_client = init_http_client().expect("Error initing http client");
 
     let provider_metadata = CoreProviderMetadata::discover_async(
         IssuerUrl::new("http://localhost:8080/realms/oidc".to_string())
@@ -183,10 +180,7 @@ async fn callback(
     // Now have access to the authorization code
     // should verify that the `state` parameter returned by the server matches `csrf_state`.
     if let Some(pkce) = session.get::<Pkce>("pkce")? {
-        let http_client = reqwest::ClientBuilder::new()
-            .redirect(reqwest::redirect::Policy::none())
-            .build()
-            .expect("Error initing http client");
+        let http_client = init_http_client().expect("Error initing http client");
 
         // exchange authorization code for an access token and ID token
         let token_response = data
@@ -281,8 +275,6 @@ async fn userinfo(
     if let Some(session_cookie) = req.cookie("session") {
         let session_id = session_cookie.value();
         if let Some(cred) = session.get::<SessionData>(session_id)? {
-            println!("Cred: {:?}", cred);
-
             let output = format!(
                 "Session verified, token expire in: {:?} for user {}",
                 cred.expires_in, cred.user_id
@@ -302,7 +294,7 @@ async fn userinfo(
                     }
                     Err(err) => {
                         println!("Refresh error: {:?}", err);
-                        // TODO: clean up old session data
+                        session.remove(session_id);
                         return Ok(HttpResponse::SeeOther()
                             .insert_header(("Location", "http://127.0.0.1:8888/login"))
                             .finish());
@@ -330,10 +322,7 @@ async fn logout(req: HttpRequest, session: Session) -> Result<HttpResponse, Erro
 }
 
 async fn refresh(data: Data<AppState>, cred: SessionData) -> anyhow::Result<SessionData> {
-    let http_client = reqwest::ClientBuilder::new()
-        .redirect(reqwest::redirect::Policy::none())
-        .build()
-        .expect("Error initing http client");
+    let http_client = init_http_client().expect("Error initing http client");
 
     let token_response = data
         .oidc_client
@@ -357,6 +346,12 @@ async fn refresh(data: Data<AppState>, cred: SessionData) -> anyhow::Result<Sess
                     .unwrap(),
             ),
     })
+}
+
+fn init_http_client() -> reqwest::Result<reqwest::Client> {
+    reqwest::ClientBuilder::new()
+        .redirect(reqwest::redirect::Policy::none())
+        .build()
 }
 
 #[derive(Debug, Display)]
