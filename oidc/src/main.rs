@@ -5,11 +5,11 @@ use actix_web::web::{Data, Query};
 use actix_web::{cookie, get, App, Error, HttpRequest, HttpResponse, HttpServer};
 use chrono::{DateTime, Utc};
 use derive_more::Display;
-use openidconnect::core::{CoreAuthenticationFlow, CoreClient, CoreProviderMetadata};
+use openidconnect::core::{CoreAuthenticationFlow, CoreProviderMetadata};
 use openidconnect::{
-    reqwest, AccessToken, AccessTokenHash, AuthorizationCode, ClientId, ClientSecret, CsrfToken,
-    IssuerUrl, Nonce, OAuth2TokenResponse, PkceCodeChallenge, PkceCodeVerifier, RedirectUrl,
-    RefreshToken, Scope, TokenResponse,
+    reqwest, AccessToken, AccessTokenHash, AdditionalClaims, AuthorizationCode, Client, ClientId,
+    ClientSecret, CsrfToken, IssuerUrl, Nonce, OAuth2TokenResponse, PkceCodeChallenge,
+    PkceCodeVerifier, RedirectUrl, RefreshToken, Scope, TokenResponse,
 };
 use serde::{Deserialize, Serialize};
 use sqlx::postgres::PgPoolOptions;
@@ -19,7 +19,8 @@ use std::sync::Arc;
 use time::Duration;
 
 type OIDCClient = openidconnect::Client<
-    openidconnect::EmptyAdditionalClaims,
+    //openidconnect::EmptyAdditionalClaims,
+    OIDCAdditionClaims,
     openidconnect::core::CoreAuthDisplay,
     openidconnect::core::CoreGenderClaim,
     openidconnect::core::CoreJweContentEncryptionAlgorithm,
@@ -28,7 +29,8 @@ type OIDCClient = openidconnect::Client<
     openidconnect::StandardErrorResponse<openidconnect::core::CoreErrorResponseType>,
     openidconnect::StandardTokenResponse<
         openidconnect::IdTokenFields<
-            openidconnect::EmptyAdditionalClaims,
+            //openidconnect::EmptyAdditionalClaims,
+            OIDCAdditionClaims,
             openidconnect::EmptyExtraTokenFields,
             openidconnect::core::CoreGenderClaim,
             openidconnect::core::CoreJweContentEncryptionAlgorithm,
@@ -50,6 +52,14 @@ type OIDCClient = openidconnect::Client<
     openidconnect::EndpointMaybeSet,
 >;
 
+#[derive(Serialize, Deserialize, Debug)]
+struct OIDCAdditionClaims {
+    oidc_id: Option<String>,
+    oidc_role: Option<String>,
+}
+
+impl AdditionalClaims for OIDCAdditionClaims {}
+
 struct AppState {
     oidc_client: Arc<OIDCClient>,
     //pkce: Mutex<Option<Pkce>>,
@@ -68,6 +78,8 @@ struct SessionData {
     access_token: AccessToken,
     refresh_token: RefreshToken,
     expires_in: DateTime<Utc>,
+    oidc_id: Option<String>,
+    oidc_role: Option<String>,
 }
 
 #[derive(Deserialize, Debug)]
@@ -124,7 +136,8 @@ async fn init_oidcclient() -> OIDCClient {
     .await
     .expect("Error grabbing provider metadata");
 
-    CoreClient::from_provider_metadata(
+    //openidconnect::core::CoreClient::from_provider_metadata(
+    Client::from_provider_metadata(
         provider_metadata,
         ClientId::new("oidc-backend".to_owned()),
         Some(ClientSecret::new(
@@ -223,12 +236,14 @@ async fn callback(
         }?;
 
         println!(
-            "User {} with e-mail address {} has authenticated successfully",
+            "User {} with e-mail address {} has authenticated successfully.\nAdditional Claims: [id] {:?} ; [role] {:?}",
             claims.subject().as_str(),
             claims
                 .email()
                 .map(|email| email.as_str())
                 .unwrap_or("<not provided>"),
+            claims.additional_claims().oidc_id,
+            claims.additional_claims().oidc_role,
         );
 
         let cred = SessionData {
@@ -247,6 +262,8 @@ async fn callback(
                         .try_into()
                         .unwrap(),
                 ),
+            oidc_id: claims.additional_claims().oidc_id.clone(),
+            oidc_role: claims.additional_claims().oidc_role.clone(),
         };
 
         let session_id = uuid::Uuid::new_v4().to_string();
@@ -287,7 +304,7 @@ async fn userinfo(
                     Utc::now(),
                     cred.expires_in
                 );
-                match refresh(data, cred).await {
+                match try_refresh(data, cred).await {
                     Ok(cred_updated) => {
                         println!("Cred after update: {:?}", cred_updated);
                         session.insert(session_id, cred_updated)?;
@@ -321,7 +338,7 @@ async fn logout(req: HttpRequest, session: Session) -> Result<HttpResponse, Erro
     Ok(HttpResponse::Unauthorized().finish())
 }
 
-async fn refresh(data: Data<AppState>, cred: SessionData) -> anyhow::Result<SessionData> {
+async fn try_refresh(data: Data<AppState>, cred: SessionData) -> anyhow::Result<SessionData> {
     let http_client = init_http_client().expect("Error initing http client");
 
     let token_response = data
@@ -345,6 +362,8 @@ async fn refresh(data: Data<AppState>, cred: SessionData) -> anyhow::Result<Sess
                     .try_into()
                     .unwrap(),
             ),
+        oidc_id: cred.oidc_id,
+        oidc_role: cred.oidc_role,
     })
 }
 
