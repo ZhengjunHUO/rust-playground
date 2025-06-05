@@ -1,8 +1,8 @@
 use actix_session::storage::{LoadError, SaveError, SessionKey, SessionStore, UpdateError};
 //use actix_session::storage::CookieSessionStore;
 use actix_session::{Session, SessionMiddleware};
-use actix_web::web::{Data, Query};
-use actix_web::{cookie, get, App, Error, HttpRequest, HttpResponse, HttpServer};
+use actix_web::web::{self, Data, Query};
+use actix_web::{cookie, get, App, Error, HttpRequest, HttpResponse, HttpServer, Responder};
 use chrono::{DateTime, Utc};
 use derive_more::Display;
 use openidconnect::core::{CoreAuthenticationFlow, CoreProviderMetadata};
@@ -119,6 +119,7 @@ async fn main() -> std::io::Result<()> {
             .service(callback)
             .service(userinfo)
             .service(logout)
+            .default_service(web::to(forward_handler))
     })
     .bind(("127.0.0.1", 8888))?
     .run()
@@ -336,6 +337,12 @@ async fn logout(req: HttpRequest, session: Session) -> Result<HttpResponse, Erro
         return Ok(HttpResponse::SeeOther().insert_header(("Location", "http://localhost:8080/realms/oidc/protocol/openid-connect/logout?redirect_uri=http://127.0.0.1:8888/login")).finish());
     }
     Ok(HttpResponse::Unauthorized().finish())
+}
+
+async fn forward_handler(req: HttpRequest, session: Session) -> impl Responder {
+    HttpResponse::NotFound()
+        .content_type("text/plain")
+        .body(format!("No route found for: {}", req.path()))
 }
 
 async fn try_refresh(data: Data<AppState>, cred: SessionData) -> anyhow::Result<SessionData> {
