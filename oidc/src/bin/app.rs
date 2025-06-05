@@ -107,6 +107,11 @@ async fn init_oidcclient() -> OIDCClient {
 #[get("/app")]
 async fn app(req: HttpRequest, data: Data<AppState>) -> Result<HttpResponse, Error> {
     println!("Request: {:?}", req);
+
+    if let Some(cred) = req.headers().get("authorization") {
+        println!("Found access token: {:?}", cred);
+    }
+
     // TODO: grab Access Token and check it against IdP
 
     return Ok(HttpResponse::Ok().body("Success"));

@@ -15,6 +15,7 @@ use serde::{Deserialize, Serialize};
 use sqlx::postgres::PgPoolOptions;
 use sqlx::{query, Pool, Postgres, Row};
 use std::collections::HashMap;
+use std::fmt::Debug;
 use std::sync::Arc;
 use time::Duration;
 
@@ -340,9 +341,42 @@ async fn logout(req: HttpRequest, session: Session) -> Result<HttpResponse, Erro
 }
 
 async fn forward_handler(req: HttpRequest, session: Session) -> impl Responder {
-    HttpResponse::NotFound()
-        .content_type("text/plain")
-        .body(format!("No route found for: {}", req.path()))
+    if let Some(session_cookie) = req.cookie("session") {
+        let session_id = session_cookie.value();
+        if let Some(cred) = session.get::<SessionData>(session_id).unwrap() {
+            let http_client = init_http_client().expect("Error initing http client");
+            // TODO make it more generic
+            let url = format!("http://127.0.0.1:8001{}", req.path());
+            println!("url: {}", url);
+            match http_client
+                .get(url)
+                .bearer_auth(cred.access_token.into_secret())
+                .send()
+                .await
+            {
+                Ok(resp) => {
+                    let status = resp.status().as_u16();
+                    let body = resp.bytes().await.unwrap_or_default();
+
+                    return HttpResponse::build(
+                        actix_web::http::StatusCode::from_u16(status).unwrap(),
+                    )
+                    .content_type("application/octet-stream")
+                    .body(body);
+                }
+                Err(error) => {
+                    println!("Error occurred proxying the req: {:?}", error);
+                    return HttpResponse::InternalServerError()
+                        .body("Error occurred proxying the req");
+                }
+            }
+        }
+    }
+
+    HttpResponse::Unauthorized().finish()
+    // HttpResponse::NotFound()
+    //     .content_type("text/plain")
+    //     .body(format!("No route found for: {}", req.path()))
 }
 
 async fn try_refresh(data: Data<AppState>, cred: SessionData) -> anyhow::Result<SessionData> {
