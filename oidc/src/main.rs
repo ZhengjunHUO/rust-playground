@@ -269,14 +269,14 @@ async fn callback(
         };
 
         let session_id = uuid::Uuid::new_v4().to_string();
-        println!("session_id: {}", session_id);
+        println!("session_id: {session_id}");
         session.insert(session_id.clone(), &cred)?;
         session.remove("pkce");
 
         Ok(HttpResponse::Ok()
             .append_header((
                 "Set-Cookie",
-                format!("session={}; HttpOnly; Secure; SameSite=Strict", session_id),
+                format!("session={session_id}; HttpOnly; Secure; SameSite=Strict"),
             ))
             .body("Success"))
     } else {
@@ -298,7 +298,7 @@ async fn userinfo(
                 "Session verified, token expire in: {:?} for user {}",
                 cred.expires_in, cred.user_id
             );
-            println!("{}", output);
+            println!("{output}");
 
             if Utc::now() > cred.expires_in {
                 println!(
@@ -308,11 +308,11 @@ async fn userinfo(
                 );
                 match try_refresh(data, cred).await {
                     Ok(cred_updated) => {
-                        println!("Cred after update: {:?}", cred_updated);
+                        println!("Cred after update: {cred_updated:?}");
                         session.insert(session_id, cred_updated)?;
                     }
                     Err(err) => {
-                        println!("Refresh error: {:?}", err);
+                        println!("Refresh error: {err:?}");
                         session.remove(session_id);
                         return Ok(HttpResponse::SeeOther()
                             .insert_header(("Location", "http://127.0.0.1:8888/login"))
@@ -347,7 +347,7 @@ async fn forward_handler(req: HttpRequest, session: Session) -> impl Responder {
             let http_client = init_http_client().expect("Error initing http client");
             // TODO make it more generic
             let url = format!("http://127.0.0.1:8001{}", req.path());
-            println!("url: {}", url);
+            println!("url: {url}");
             match http_client
                 .get(url)
                 .bearer_auth(cred.access_token.into_secret())
@@ -365,7 +365,7 @@ async fn forward_handler(req: HttpRequest, session: Session) -> impl Responder {
                     .body(body);
                 }
                 Err(error) => {
-                    println!("Error occurred proxying the req: {:?}", error);
+                    println!("Error occurred proxying the req: {error:?}");
                     return HttpResponse::InternalServerError()
                         .body("Error occurred proxying the req");
                 }

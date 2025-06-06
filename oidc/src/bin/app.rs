@@ -1,10 +1,9 @@
 use actix_web::web::Data;
-use actix_web::{cookie, get, App, Error, HttpRequest, HttpResponse, HttpServer};
-use openidconnect::core::{CoreAuthenticationFlow, CoreProviderMetadata};
+use actix_web::{get, App, Error, HttpRequest, HttpResponse, HttpServer, Responder};
+use openidconnect::core::CoreProviderMetadata;
 use openidconnect::{
-    reqwest, AccessToken, AccessTokenHash, AdditionalClaims, AuthorizationCode, Client, ClientId,
-    ClientSecret, CsrfToken, IssuerUrl, Nonce, OAuth2TokenResponse, PkceCodeChallenge,
-    PkceCodeVerifier, RedirectUrl, RefreshToken, Scope, TokenResponse,
+    reqwest, AdditionalClaims, Client, ClientId, ClientSecret, CsrfToken, IssuerUrl, Nonce,
+    PkceCodeVerifier, RedirectUrl,
 };
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
@@ -73,6 +72,7 @@ async fn main() -> std::io::Result<()> {
                 //pkce: Mutex::new(None),
             }))
             .service(app)
+            .default_service(actix_web::web::to(catch_all_handler))
     })
     .bind(("127.0.0.1", 8001))?
     .run()
@@ -105,16 +105,22 @@ async fn init_oidcclient() -> OIDCClient {
 }
 
 #[get("/app")]
-async fn app(req: HttpRequest, data: Data<AppState>) -> Result<HttpResponse, Error> {
-    println!("Request: {:?}", req);
+async fn app(req: HttpRequest, _data: Data<AppState>) -> Result<HttpResponse, Error> {
+    println!("Request: {req:?}");
 
     if let Some(cred) = req.headers().get("authorization") {
-        println!("Found access token: {:?}", cred);
+        println!("Found access token: {cred:?}");
     }
 
     // TODO: grab Access Token and check it against IdP
 
-    return Ok(HttpResponse::Ok().body("Success"));
+    Ok(HttpResponse::Ok().body("Success"))
+}
+
+async fn catch_all_handler(req: HttpRequest) -> impl Responder {
+    HttpResponse::NotFound()
+        .content_type("text/plain")
+        .body(format!("No route found for: {}", req.path()))
 }
 
 fn init_http_client() -> reqwest::Result<reqwest::Client> {
