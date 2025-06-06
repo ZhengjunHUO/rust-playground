@@ -120,7 +120,7 @@ async fn app(req: HttpRequest, _data: Data<AppState>) -> Result<HttpResponse, Er
 async fn catch_all_handler(req: HttpRequest) -> impl Responder {
     HttpResponse::NotFound()
         .content_type("text/plain")
-        .body(format!("No route found for: {}", req.path()))
+        .body(format!("[APP] No route found for: {}", req.path()))
 }
 
 fn init_http_client() -> reqwest::Result<reqwest::Client> {

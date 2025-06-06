@@ -1,7 +1,7 @@
 use actix_session::storage::{LoadError, SaveError, SessionKey, SessionStore, UpdateError};
 //use actix_session::storage::CookieSessionStore;
 use actix_session::{Session, SessionMiddleware};
-use actix_web::web::{self, Data, Query};
+use actix_web::web::{Data, Query};
 use actix_web::{cookie, get, App, Error, HttpRequest, HttpResponse, HttpServer, Responder};
 use chrono::{DateTime, Utc};
 use derive_more::Display;
@@ -120,7 +120,8 @@ async fn main() -> std::io::Result<()> {
             .service(callback)
             .service(userinfo)
             .service(logout)
-            .default_service(web::to(forward_handler))
+            .service(app)
+            .default_service(actix_web::web::to(catch_all_handler))
     })
     .bind(("127.0.0.1", 8888))?
     .run()
@@ -340,14 +341,27 @@ async fn logout(req: HttpRequest, session: Session) -> Result<HttpResponse, Erro
     Ok(HttpResponse::Unauthorized().finish())
 }
 
-async fn forward_handler(req: HttpRequest, session: Session) -> impl Responder {
+#[get("/app{sub_path:.*}")]
+async fn app(
+    req: HttpRequest,
+    session: Session,
+    sub_path: actix_web::web::Path<String>,
+) -> Result<HttpResponse, Error> {
     if let Some(session_cookie) = req.cookie("session") {
         let session_id = session_cookie.value();
         if let Some(cred) = session.get::<SessionData>(session_id).unwrap() {
-            let http_client = init_http_client().expect("Error initing http client");
-            // TODO make it more generic
+            println!("sub_path: {sub_path}");
             let url = format!("http://127.0.0.1:8001{}", req.path());
             println!("url: {url}");
+            return Ok(HttpResponse::SeeOther()
+                .insert_header(("Location", url.as_str()))
+                .insert_header((
+                    "Authorization",
+                    format!("Bearer {}", cred.access_token.into_secret()),
+                ))
+                .finish());
+            /*
+            let http_client = init_http_client().expect("Error initing http client");
             match http_client
                 .get(url)
                 .bearer_auth(cred.access_token.into_secret())
@@ -370,13 +384,17 @@ async fn forward_handler(req: HttpRequest, session: Session) -> impl Responder {
                         .body("Error occurred proxying the req");
                 }
             }
+            */
         }
     }
 
-    HttpResponse::Unauthorized().finish()
-    // HttpResponse::NotFound()
-    //     .content_type("text/plain")
-    //     .body(format!("No route found for: {}", req.path()))
+    Ok(HttpResponse::Unauthorized().finish())
+}
+
+async fn catch_all_handler(req: HttpRequest) -> impl Responder {
+    HttpResponse::NotFound()
+        .content_type("text/plain")
+        .body(format!("No route found for: {}", req.path()))
 }
 
 async fn try_refresh(data: Data<AppState>, cred: SessionData) -> anyhow::Result<SessionData> {
