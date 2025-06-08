@@ -74,8 +74,8 @@ struct Pkce {
 }
 
 #[derive(Serialize, Deserialize)]
-struct Url {
-    origin_url: String,
+struct OrigPath {
+    path: String,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -279,16 +279,16 @@ async fn callback(
         session.insert(session_id.clone(), &cred)?;
         session.remove("pkce");
 
-        if let Some(url) = session.get::<Url>("orig_url").unwrap() {
-            println!("Original url is: {}", url.origin_url);
-            session.remove("orig_url");
-            // return Ok(HttpResponse::SeeOther()
-            //                 .append_header((
-            //                     "Set-Cookie",
-            //                     format!("session={session_id}; HttpOnly; Secure; SameSite=Strict"),
-            //                 ))
-            //                 .insert_header(("Location", url.origin_url))
-            //                 .finish());
+        if let Some(orig_path) = session.get::<OrigPath>("orig_path").unwrap() {
+            println!("Original url is: {}", orig_path.path);
+            session.remove("orig_path");
+            return Ok(HttpResponse::SeeOther()
+                .append_header((
+                    "Set-Cookie",
+                    format!("session={session_id}; Path=/; HttpOnly; Secure; SameSite=Lax"),
+                ))
+                .insert_header(("Location", orig_path.path))
+                .finish());
         }
 
         Ok(HttpResponse::Ok()
@@ -333,12 +333,12 @@ async fn userinfo(
                     Err(err) => {
                         println!("Refresh error: {err:?}");
                         session.remove(session_id);
-                        let url = Url {
-                            origin_url: req.full_url().as_str().to_owned(),
+                        let orig_path = OrigPath {
+                            path: req.full_url().as_str().to_owned(),
                         };
-                        session.insert("orig_url", url)?;
+                        session.insert("orig_path", orig_path)?;
                         return Ok(HttpResponse::SeeOther()
-                            .insert_header(("Location", "http://127.0.0.1:8888/login"))
+                            .insert_header(("Location", "/login"))
                             .finish());
                     }
                 }
@@ -349,12 +349,12 @@ async fn userinfo(
     }
     println!("Cookie not found, redirect to login");
     //Ok(HttpResponse::Unauthorized().finish())
-    let url = Url {
-        origin_url: req.full_url().as_str().to_owned(),
+    let orig_path = OrigPath {
+        path: req.path().to_owned(),
     };
-    session.insert("orig_url", url)?;
+    session.insert("orig_path", orig_path)?;
     Ok(HttpResponse::SeeOther()
-        .insert_header(("Location", "http://127.0.0.1:8888/login"))
+        .insert_header(("Location", "/login"))
         .finish())
 }
 
