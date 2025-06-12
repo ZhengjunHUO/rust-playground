@@ -14,3 +14,9 @@ CREATE TABLE sessions(
     expires TIMESTAMP WITH TIME ZONE NOT NULL
 );
 ```
+
+# GraphQL introspection
+```
+cargo run --bin graphql
+curl -X POST 127.0.0.1:8080/graphql -H "Content-Type: application/json" -d '{"query":"query IntrospectionQuery { __schema { types { name kind fields { name } } } }"}' | jq
+```

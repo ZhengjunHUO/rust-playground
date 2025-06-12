@@ -1,0 +1,215 @@
+{
+  "data": {
+    "__schema": {
+      "types": [
+        {
+          "name": "Episode",
+          "kind": "ENUM",
+          "fields": null
+        },
+        {
+          "name": "__DirectiveLocation",
+          "kind": "ENUM",
+          "fields": null
+        },
+        {
+          "name": "__TypeKind",
+          "kind": "ENUM",
+          "fields": null
+        },
+        {
+          "name": "NewHuman",
+          "kind": "INPUT_OBJECT",
+          "fields": null
+        },
+        {
+          "name": "Boolean",
+          "kind": "SCALAR",
+          "fields": null
+        },
+        {
+          "name": "String",
+          "kind": "SCALAR",
+          "fields": null
+        },
+        {
+          "name": "Human",
+          "kind": "OBJECT",
+          "fields": [
+            {
+              "name": "id"
+            },
+            {
+              "name": "name"
+            },
+            {
+              "name": "appearsIn"
+            },
+            {
+              "name": "homePlanet"
+            }
+          ]
+        },
+        {
+          "name": "MutationRoot",
+          "kind": "OBJECT",
+          "fields": [
+            {
+              "name": "createHuman"
+            }
+          ]
+        },
+        {
+          "name": "QueryRoot",
+          "kind": "OBJECT",
+          "fields": [
+            {
+              "name": "human"
+            }
+          ]
+        },
+        {
+          "name": "__Directive",
+          "kind": "OBJECT",
+          "fields": [
+            {
+              "name": "name"
+            },
+            {
+              "name": "description"
+            },
+            {
+              "name": "locations"
+            },
+            {
+              "name": "isRepeatable"
+            },
+            {
+              "name": "args"
+            }
+          ]
+        },
+        {
+          "name": "__EnumValue",
+          "kind": "OBJECT",
+          "fields": [
+            {
+              "name": "name"
+            },
+            {
+              "name": "description"
+            },
+            {
+              "name": "isDeprecated"
+            },
+            {
+              "name": "deprecationReason"
+            }
+          ]
+        },
+        {
+          "name": "__Field",
+          "kind": "OBJECT",
+          "fields": [
+            {
+              "name": "name"
+            },
+            {
+              "name": "description"
+            },
+            {
+              "name": "args"
+            },
+            {
+              "name": "type"
+            },
+            {
+              "name": "isDeprecated"
+            },
+            {
+              "name": "deprecationReason"
+            }
+          ]
+        },
+        {
+          "name": "__InputValue",
+          "kind": "OBJECT",
+          "fields": [
+            {
+              "name": "name"
+            },
+            {
+              "name": "description"
+            },
+            {
+              "name": "type"
+            },
+            {
+              "name": "defaultValue"
+            }
+          ]
+        },
+        {
+          "name": "__Schema",
+          "kind": "OBJECT",
+          "fields": [
+            {
+              "name": "description"
+            },
+            {
+              "name": "types"
+            },
+            {
+              "name": "queryType"
+            },
+            {
+              "name": "mutationType"
+            },
+            {
+              "name": "subscriptionType"
+            },
+            {
+              "name": "directives"
+            }
+          ]
+        },
+        {
+          "name": "__Type",
+          "kind": "OBJECT",
+          "fields": [
+            {
+              "name": "name"
+            },
+            {
+              "name": "description"
+            },
+            {
+              "name": "specifiedByUrl"
+            },
+            {
+              "name": "kind"
+            },
+            {
+              "name": "fields"
+            },
+            {
+              "name": "ofType"
+            },
+            {
+              "name": "inputFields"
+            },
+            {
+              "name": "interfaces"
+            },
+            {
+              "name": "possibleTypes"
+            },
+            {
+              "name": "enumValues"
+            }
+          ]
+        }
+      ]
+    }
+  }
+}
