@@ -13,7 +13,7 @@ $ rustup show
 $ rustup override unset
 ```
 ```sh
-$ echo '[toolchain]\nchannel = "nightly"' > rust-toolchain.toml
+$ echo -e '[toolchain]\nchannel = "nightly"' > rust-toolchain.toml
 ```
 
 ### Perform macro expansion to debug
