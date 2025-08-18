@@ -583,7 +583,7 @@
     "alwaysDisplayInConsole" : false,
     "clientAuthenticatorType" : "client-secret",
     "secret" : "3788e5a3-d174-402d-b1c3-a353b6b1b1e5",
-    "redirectUris" : [ "http://127.0.0.1:8084/*", "http://127.0.0.1:8888/*", "http://127.0.0.1:3000/*" ],
+    "redirectUris" : [ "http://127.0.0.1:8084/*", "http://127.0.0.1:8888/*", "http://127.0.0.1:3000/*", "http://localhost/*"],
     "webOrigins" : [ ],
     "notBefore" : 0,
     "bearerOnly" : false,
