@@ -1,8 +1,8 @@
+use futures_util::{SinkExt, StreamExt};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use tokio_tungstenite::{connect_async, tungstenite::protocol::Message};
 use url::Url;
-use futures_util::{SinkExt, StreamExt};
 
 #[derive(Debug, Serialize, Deserialize)]
 struct ToolCall {
