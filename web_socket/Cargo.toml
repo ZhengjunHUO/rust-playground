@@ -1,0 +1,9 @@
+[package]
+name = "web_socket"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "sync", "time", "io-std"] }
+tokio-tungstenite = "0.28"
+futures-util = "0.3"
