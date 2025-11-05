@@ -1,7 +1,7 @@
+use futures_util::{SinkExt, StreamExt};
+use std::error::Error;
 use tokio::net::{TcpListener, TcpStream};
 use tokio_tungstenite::{accept_async, tungstenite::Message};
-use futures_util::{StreamExt, SinkExt};
-use std::error::Error;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
@@ -37,7 +37,7 @@ async fn handle_connection(stream: TcpStream) {
                     if let Err(e) = write.send(Message::Close(None)).await {
                         eprintln!("Error responding to client for close: {}", e);
                     }
-                    break
+                    break;
                 }
                 if write.send(Message::Text(text)).await.is_err() {
                     break;

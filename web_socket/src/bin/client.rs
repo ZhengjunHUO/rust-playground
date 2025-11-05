@@ -1,7 +1,7 @@
-use tokio_tungstenite::{connect_async, tungstenite::Message};
 use tokio::io::{AsyncBufReadExt, BufReader};
+use tokio_tungstenite::{connect_async, tungstenite::Message};
 //use tokio::time::{timeout, Duration};
-use futures_util::{StreamExt, SinkExt};
+use futures_util::{SinkExt, StreamExt};
 use std::error::Error;
 
 // async fn close_connection_gracefully(
@@ -31,7 +31,7 @@ use std::error::Error;
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
     let url = "ws://127.0.0.1:8080";
-    
+
     println!("Try connecting to {} ...", url);
     let (ws_stream, _) = connect_async(url).await?;
     println!("Connection established!");
@@ -59,7 +59,6 @@ async fn main() -> Result<(), Box<dyn Error>> {
     // }
 
     // println!("Connection closed gracefully.");
-
 
     let read_task = tokio::spawn(async move {
         while let Some(msg) = read.next().await {
@@ -98,7 +97,11 @@ async fn main() -> Result<(), Box<dyn Error>> {
                     //     }
                     // } else if !trimmed.is_empty() {
                     if !trimmed.is_empty() {
-                        if write.send(Message::Text(trimmed.to_string().into())).await.is_err() {
+                        if write
+                            .send(Message::Text(trimmed.to_string().into()))
+                            .await
+                            .is_err()
+                        {
                             break;
                         }
                         println!("→ Sent: {}", trimmed);

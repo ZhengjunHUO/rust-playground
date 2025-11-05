@@ -1,6 +1,11 @@
-use std::{collections::HashMap, error::Error, net::SocketAddr, sync::{Arc, Mutex}};
 use futures_channel::mpsc::{self, UnboundedSender};
 use futures_util::{TryStreamExt, future, pin_mut, stream::StreamExt};
+use std::{
+    collections::HashMap,
+    error::Error,
+    net::SocketAddr,
+    sync::{Arc, Mutex},
+};
 use tokio::net::{TcpListener, TcpStream};
 use tokio_tungstenite::{accept_async, tungstenite::Message};
 
@@ -21,7 +26,9 @@ async fn main() -> Result<(), Box<dyn Error>> {
 }
 
 async fn handle_conn(conn: TcpStream, addr: SocketAddr, manager: ConnManager) {
-    let stream = accept_async(conn).await.expect("Error occurred accepting a new websocket");
+    let stream = accept_async(conn)
+        .await
+        .expect("Error occurred accepting a new websocket");
     let (sink, stream) = stream.split();
 
     let (tx, rx) = mpsc::unbounded::<Message>();
@@ -42,7 +49,7 @@ async fn handle_conn(conn: TcpStream, addr: SocketAddr, manager: ConnManager) {
     let recv_and_writeback = rx.map(Ok).forward(sink);
     pin_mut!(read_and_broadcast, recv_and_writeback);
 
-    tokio::select!{
+    tokio::select! {
         _ = read_and_broadcast => {},
         _ = recv_and_writeback => {},
     };
