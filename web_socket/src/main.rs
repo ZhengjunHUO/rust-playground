@@ -32,7 +32,7 @@ async fn handle_connection(stream: TcpStream) {
     while let Some(msg) = read.next().await {
         match msg {
             Ok(Message::Text(text)) => {
-                println!("Received: {}", text.to_string());
+                println!("Received: {}", text);
                 if text == "quit" {
                     if let Err(e) = write.send(Message::Close(None)).await {
                         eprintln!("Error responding to client for close: {}", e);
