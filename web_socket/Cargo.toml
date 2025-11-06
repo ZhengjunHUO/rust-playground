@@ -6,6 +6,6 @@ edition = "2024"
 [dependencies]
 tokio = { version = "1", features = ["macros", "rt-multi-thread", "sync", "time", "io-std"] }
 tokio-native-tls = "0.3.1"
-tokio-tungstenite = "0.28"
+tokio-tungstenite = { version = "0.28", features = ["native-tls"] }
 futures-channel = "0.3.31"
 futures-util = "0.3"

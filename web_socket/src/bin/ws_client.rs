@@ -2,17 +2,38 @@ use futures_channel::mpsc::{UnboundedSender, unbounded};
 use futures_util::{pin_mut, stream::StreamExt};
 use std::env;
 use tokio::io::{AsyncBufReadExt, BufReader, stdin};
-use tokio_tungstenite::{connect_async, tungstenite::Message};
+use tokio_native_tls::native_tls;
+use tokio_tungstenite::{
+    Connector, connect_async, connect_async_tls_with_config, tungstenite::Message,
+};
 
 #[tokio::main]
 async fn main() {
-    let sock = env::args()
-        .nth(1)
-        .unwrap_or("ws://127.0.0.1:8888".to_owned());
-    let (wsstream, _) = connect_async(&sock)
-        .await
-        .expect("Error connecting to ws server");
-    println!("Connected to {}.", sock);
+    let sock = env::args().nth(1).unwrap_or("127.0.0.1:8888".to_owned());
+
+    let tls_enabled = env::args()
+        .nth(2)
+        .map(|arg| !arg.is_empty())
+        .unwrap_or(false);
+
+    let url = format!("{}{}", if tls_enabled { "wss://" } else { "ws://" }, sock);
+
+    let (wsstream, _) = if tls_enabled {
+        let tls_connector = Connector::NativeTls(
+            native_tls::TlsConnector::builder()
+                .danger_accept_invalid_certs(true)
+                .build()
+                .expect("Error initiating tls connector"),
+        );
+        connect_async_tls_with_config(&url, None, false, Some(tls_connector))
+            .await
+            .expect("Error connecting to ws server")
+    } else {
+        connect_async(&url)
+            .await
+            .expect("Error connecting to ws server")
+    };
+    println!("Connected to {}.", url);
     let (sink, mut stream) = wsstream.split();
 
     let (tx, rx) = unbounded::<Message>();
