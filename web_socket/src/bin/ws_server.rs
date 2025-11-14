@@ -79,15 +79,26 @@ where
     let (sink, stream) = conn.split();
 
     let (tx, rx) = mpsc::unbounded::<Message>();
+    let tx_cloned = tx.clone();
     manager.lock().unwrap().insert(addr, tx);
 
     let read_and_broadcast = stream.try_for_each(|msg| {
-        println!("Received message from {}: {}", addr, msg.to_text().unwrap());
-        let guard = manager.lock().unwrap();
+        match msg {
+            Message::Text(_) => {
+                // Broadcast
+                println!("Received message from {}: {}", addr, msg.to_text().unwrap());
+                let guard = manager.lock().unwrap();
 
-        let senders = guard.values();
-        for sender in senders {
-            sender.unbounded_send(msg.clone()).unwrap();
+                let senders = guard.values();
+                for sender in senders {
+                    sender.unbounded_send(msg.clone()).unwrap();
+                }
+            }
+            Message::Close(_) => {
+                // Disconnect
+                tx_cloned.unbounded_send(msg).unwrap();
+            }
+            _ => {}
         }
 
         future::ok(())
