@@ -1,5 +1,6 @@
 use futures_channel::mpsc::{self, UnboundedSender};
 use futures_util::{TryStreamExt, future, pin_mut, stream::StreamExt};
+use serde::{Deserialize, Serialize};
 use std::{
     collections::HashMap,
     env,
@@ -13,15 +14,37 @@ use tokio::time::interval;
 use tokio_native_tls::{TlsAcceptor, native_tls};
 use tokio_tungstenite::{WebSocketStream, accept_async, tungstenite::Message};
 
-type ConnManager = Arc<Mutex<HashMap<SocketAddr, UnboundedSender<Message>>>>;
+#[derive(Deserialize)]
+struct HandshakeMessage {
+    #[serde(rename = "type")]
+    msg_type: String,
+    name: String,
+    version: Option<String>,
+}
+
+#[derive(Serialize)]
+struct SystemMessage {
+    #[serde(rename = "type")]
+    msg_type: String,
+    message: String,
+    timestamp: u64,
+    connected_clients: usize,
+}
+
+#[derive(Clone)]
+struct ClientInfo {
+    sender: UnboundedSender<Message>,
+    name: String,
+    connected_at: SystemTime,
+}
+
+type ConnManager = Arc<Mutex<HashMap<SocketAddr, ClientInfo>>>;
 
 async fn system_message_broadcaster(manager: ConnManager) {
-    let mut interval = interval(Duration::from_secs(15)); // Broadcast every 30 seconds
-    // let mut counter = 0;
+    let mut interval = interval(Duration::from_secs(15)); // Broadcast every 15 seconds
 
     loop {
         interval.tick().await;
-        // counter += 1;
 
         // Generate system message
         let timestamp = SystemTime::now()
@@ -29,30 +52,37 @@ async fn system_message_broadcaster(manager: ConnManager) {
             .unwrap()
             .as_secs();
 
-        // let system_msg = format!(
-        //     "{{\"type\":\"system\",\"message\":\"System heartbeat #{}\",\"timestamp\":{},\"connected_clients\":{}}}",
-        //     counter,
-        //     timestamp,
-        //     manager.lock().unwrap().len()
-        // );
-        let system_msg = format!("[Server Heartbeat] {}", timestamp);
-
-        // Broadcast to all connected clients
         let guard = manager.lock().unwrap();
         let connected_count = guard.len();
 
         if connected_count > 0 {
+            let system_msg = SystemMessage {
+                msg_type: "system".to_string(),
+                message: "Server heartbeat".to_string(),
+                timestamp,
+                connected_clients: connected_count,
+            };
+
+            let system_msg_json = serde_json::to_string(&system_msg).unwrap();
+
+            // Collect client names for logging
+            let client_names: Vec<String> =
+                guard.values().map(|client| client.name.clone()).collect();
+
             println!(
-                "Broadcasting system message to {} clients: {}",
-                connected_count, system_msg
+                "Broadcasting system message to {} clients [{}]: {}",
+                connected_count,
+                client_names.join(", "),
+                system_msg_json
             );
 
             // Collect failed senders to remove them later
             let mut failed_senders = Vec::new();
 
-            for (addr, sender) in guard.iter() {
-                if sender
-                    .unbounded_send(Message::Text(system_msg.clone().into()))
+            for (addr, client_info) in guard.iter() {
+                if client_info
+                    .sender
+                    .unbounded_send(Message::Text(system_msg_json.clone().into()))
                     .is_err()
                 {
                     // Mark this sender as failed (client probably disconnected)
@@ -65,8 +95,12 @@ async fn system_message_broadcaster(manager: ConnManager) {
             if !failed_senders.is_empty() {
                 let mut guard = manager.lock().unwrap();
                 for addr in failed_senders {
-                    println!("Removing failed connection: {}", addr);
-                    guard.remove(&addr);
+                    if let Some(client_info) = guard.remove(&addr) {
+                        println!(
+                            "Removing failed connection: {} ({})",
+                            addr, client_info.name
+                        );
+                    }
                 }
             }
         }
@@ -146,18 +180,50 @@ where
 
     let (tx, rx) = mpsc::unbounded::<Message>();
     let tx_cloned = tx.clone();
-    manager.lock().unwrap().insert(addr, tx);
 
-    let read_and_broadcast = stream.try_for_each(|msg| {
+    // Initially insert with placeholder name
+    let client_info = ClientInfo {
+        sender: tx,
+        name: "unknown".to_string(),
+        connected_at: SystemTime::now(),
+    };
+    manager.lock().unwrap().insert(addr, client_info);
+
+    let manager_clone = manager.clone();
+    let read_and_broadcast = stream.try_for_each(move |msg| {
         match msg {
-            Message::Text(_) => {
-                // Broadcast
-                println!("Received message from {}: {}", addr, msg.to_text().unwrap());
-                let guard = manager.lock().unwrap();
+            Message::Text(text) => {
+                // Try to parse as handshake message first
+                if let Ok(handshake) = serde_json::from_str::<HandshakeMessage>(&text)
+                    && handshake.msg_type == "handshake"
+                {
+                    // Update client info with the provided name
+                    let mut guard = manager_clone.lock().unwrap();
+                    if let Some(client_info) = guard.get_mut(&addr) {
+                        client_info.name = handshake.name.clone();
+                        println!("Client {} registered with name: {}", addr, handshake.name);
+                    }
+                    return future::ok(());
+                }
 
-                let senders = guard.values();
-                for sender in senders {
-                    sender.unbounded_send(msg.clone()).unwrap();
+                // Regular message - broadcast to all clients
+                let guard = manager_clone.lock().unwrap();
+                let sender_name = guard
+                    .get(&addr)
+                    .map(|client| client.name.as_str())
+                    .unwrap_or("unknown");
+
+                println!("Received message from {} ({}): {}", addr, sender_name, text);
+
+                // Broadcast to all connected clients
+                for (client_addr, client_info) in guard.iter() {
+                    if *client_addr != addr {
+                        // Don't echo back to sender
+                        let formatted_msg = format!("[{}]: {}", sender_name, text);
+                        let _ = client_info
+                            .sender
+                            .unbounded_send(Message::Text(formatted_msg.into()));
+                    }
                 }
             }
             Message::Close(_) => {
@@ -178,6 +244,13 @@ where
         _ = recv_and_writeback => {},
     };
 
-    println!("Client {} disconnected.", addr);
+    let client_name = manager
+        .lock()
+        .unwrap()
+        .get(&addr)
+        .map(|client| client.name.clone())
+        .unwrap_or_else(|| "unknown".to_string());
+
+    println!("Client {} ({}) disconnected.", addr, client_name);
     manager.lock().unwrap().remove(&addr);
 }
