@@ -1,5 +1,6 @@
 use futures_channel::mpsc::{UnboundedSender, unbounded};
 use futures_util::{pin_mut, stream::StreamExt};
+use names::Generator;
 use std::env;
 use tokio::io::{AsyncBufReadExt, BufReader, stdin};
 use tokio_native_tls::native_tls;
@@ -36,8 +37,11 @@ async fn main() {
     println!("Connected to {}.", url);
     let (sink, mut stream) = wsstream.split();
 
+    let mut generator = Generator::default();
+    let client_name = generator.next().unwrap_or("rust_client".to_owned());
+
     let (tx, rx) = unbounded::<Message>();
-    tokio::spawn(client_input(tx));
+    tokio::spawn(client_input(tx, client_name));
 
     let recv_and_write = rx.map(Ok).forward(sink);
     let read_and_print = tokio::spawn(async move {
@@ -64,7 +68,7 @@ async fn main() {
     }
 }
 
-async fn client_input(tx: UnboundedSender<Message>) {
+async fn client_input(tx: UnboundedSender<Message>, client_name: String) {
     let input = stdin();
     let mut reader = BufReader::new(input);
     let mut line = String::new();
@@ -76,8 +80,10 @@ async fn client_input(tx: UnboundedSender<Message>) {
             Ok(_) => {
                 let trimmed = line.trim();
                 if !trimmed.is_empty() {
-                    tx.unbounded_send(Message::Text(trimmed.to_string().into()))
-                        .unwrap();
+                    tx.unbounded_send(Message::Text(
+                        format!("[{}] {}", client_name, trimmed).into(),
+                    ))
+                    .unwrap();
                 };
             }
             Err(e) => {

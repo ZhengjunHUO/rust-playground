@@ -17,11 +17,11 @@ type ConnManager = Arc<Mutex<HashMap<SocketAddr, UnboundedSender<Message>>>>;
 
 async fn system_message_broadcaster(manager: ConnManager) {
     let mut interval = interval(Duration::from_secs(15)); // Broadcast every 30 seconds
-    let mut counter = 0;
+    // let mut counter = 0;
 
     loop {
         interval.tick().await;
-        counter += 1;
+        // counter += 1;
 
         // Generate system message
         let timestamp = SystemTime::now()
@@ -29,12 +29,13 @@ async fn system_message_broadcaster(manager: ConnManager) {
             .unwrap()
             .as_secs();
 
-        let system_msg = format!(
-            "{{\"type\":\"system\",\"message\":\"System heartbeat #{}\",\"timestamp\":{},\"connected_clients\":{}}}",
-            counter,
-            timestamp,
-            manager.lock().unwrap().len()
-        );
+        // let system_msg = format!(
+        //     "{{\"type\":\"system\",\"message\":\"System heartbeat #{}\",\"timestamp\":{},\"connected_clients\":{}}}",
+        //     counter,
+        //     timestamp,
+        //     manager.lock().unwrap().len()
+        // );
+        let system_msg = format!("[Server Heartbeat] {}", timestamp);
 
         // Broadcast to all connected clients
         let guard = manager.lock().unwrap();
@@ -50,7 +51,10 @@ async fn system_message_broadcaster(manager: ConnManager) {
             let mut failed_senders = Vec::new();
 
             for (addr, sender) in guard.iter() {
-                if sender.unbounded_send(Message::Text(system_msg.clone().into())).is_err() {
+                if sender
+                    .unbounded_send(Message::Text(system_msg.clone().into()))
+                    .is_err()
+                {
                     // Mark this sender as failed (client probably disconnected)
                     failed_senders.push(*addr);
                 }
