@@ -6,12 +6,68 @@ use std::{
     error::Error,
     net::SocketAddr,
     sync::{Arc, Mutex},
+    time::{Duration, SystemTime, UNIX_EPOCH},
 };
 use tokio::net::TcpListener;
+use tokio::time::interval;
 use tokio_native_tls::{TlsAcceptor, native_tls};
 use tokio_tungstenite::{WebSocketStream, accept_async, tungstenite::Message};
 
 type ConnManager = Arc<Mutex<HashMap<SocketAddr, UnboundedSender<Message>>>>;
+
+async fn system_message_broadcaster(manager: ConnManager) {
+    let mut interval = interval(Duration::from_secs(15)); // Broadcast every 30 seconds
+    let mut counter = 0;
+
+    loop {
+        interval.tick().await;
+        counter += 1;
+
+        // Generate system message
+        let timestamp = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_secs();
+
+        let system_msg = format!(
+            "{{\"type\":\"system\",\"message\":\"System heartbeat #{}\",\"timestamp\":{},\"connected_clients\":{}}}",
+            counter,
+            timestamp,
+            manager.lock().unwrap().len()
+        );
+
+        // Broadcast to all connected clients
+        let guard = manager.lock().unwrap();
+        let connected_count = guard.len();
+
+        if connected_count > 0 {
+            println!(
+                "Broadcasting system message to {} clients: {}",
+                connected_count, system_msg
+            );
+
+            // Collect failed senders to remove them later
+            let mut failed_senders = Vec::new();
+
+            for (addr, sender) in guard.iter() {
+                if sender.unbounded_send(Message::Text(system_msg.clone().into())).is_err() {
+                    // Mark this sender as failed (client probably disconnected)
+                    failed_senders.push(*addr);
+                }
+            }
+
+            // Clean up failed senders
+            drop(guard); // Release the lock before removing entries
+            if !failed_senders.is_empty() {
+                let mut guard = manager.lock().unwrap();
+                for addr in failed_senders {
+                    println!("Removing failed connection: {}", addr);
+                    guard.remove(&addr);
+                }
+            }
+        }
+    }
+}
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
@@ -43,6 +99,12 @@ async fn main() -> Result<(), Box<dyn Error>> {
     );
 
     let manager = ConnManager::new(Mutex::new(HashMap::new()));
+
+    // Start the system message broadcaster task
+    let broadcaster_manager = manager.clone();
+    tokio::spawn(async move {
+        system_message_broadcaster(broadcaster_manager).await;
+    });
 
     while let Ok((conn, addr)) = listener.accept().await {
         let tls_accptor_clone = tls_acceptor.clone();
